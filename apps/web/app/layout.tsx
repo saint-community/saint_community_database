@@ -1,30 +1,47 @@
-import { Geist, Geist_Mono } from "next/font/google"
+import { Poppins, Geist_Mono, Abhaya_Libre } from 'next/font/google';
 
-import "@workspace/ui/globals.css"
-import { Providers } from "@/components/providers"
+import '@workspace/ui/globals.css';
+import { Providers } from '@/components/providers';
 
-const fontSans = Geist({
-  subsets: ["latin"],
-  variable: "--font-sans",
-})
+const fontSans = Poppins({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  weight: '400',
+});
+const fontSans600 = Poppins({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  weight: '600',
+});
+const fontSans500 = Poppins({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  weight: '500',
+});
 
 const fontMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-})
+  subsets: ['latin'],
+  variable: '--font-mono',
+});
+
+const fontSerif = Abhaya_Libre({
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-serif',
+});
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang='en' suppressHydrationWarning>
       <body
-        className={`${fontSans.variable} ${fontMono.variable} font-sans antialiased `}
+        className={`${fontSans.variable} ${fontMono.variable} ${fontSerif.variable} ${fontSans600.variable} ${fontSans500.variable} font-sans antialiased `}
       >
         <Providers>{children}</Providers>
       </body>
     </html>
-  )
+  );
 }
