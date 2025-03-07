@@ -1,3 +1,4 @@
+'use client';
 import { Button } from '@workspace/ui/components/button';
 import { Input } from '@workspace/ui/components/input';
 import { Label } from '@workspace/ui/components/label';
@@ -5,8 +6,10 @@ import { PasswordInput } from '@workspace/ui/components/password-input';
 import imageFile from '@/assets/svgs/back.svg';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
+  const router = useRouter();
   return (
     <div className='flex h-svh'>
       <div className='flex flex-1 bg-slate-600 overflow-hidden relative justify-center items-center'>
@@ -55,7 +58,14 @@ export default function LoginPage() {
               </Link>
             </div>
           </div>
-          <Button className='w-full h-[48px] font-medium mt-10'>Sign In</Button>
+          <Button
+            className='w-full h-[48px] font-medium mt-10'
+            onClick={() => {
+              router.push('/d');
+            }}
+          >
+            Sign In
+          </Button>
         </div>
       </div>
     </div>

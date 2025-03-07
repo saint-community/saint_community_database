@@ -206,15 +206,9 @@ const NewPasswordSection = ({
         />
       </div>
 
-      <Button className='w-full h-[48px] font-medium mt-10'>Send OTP</Button>
-      <div className='mt-2'>
-        <Link href='/login'>
-          <p className='text-sm group'>
-            Remember Password?{' '}
-            <span className='group-hover:underline text-primary'>Sign In</span>
-          </p>
-        </Link>
-      </div>
+      <Button className='w-full h-[48px] font-medium mt-10'>
+        Reset Password
+      </Button>
     </div>
   );
 };

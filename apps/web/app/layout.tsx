@@ -1,3 +1,4 @@
+'use client';
 import { Poppins, Geist_Mono, Abhaya_Libre } from 'next/font/google';
 
 import '@workspace/ui/globals.css';
@@ -17,6 +18,11 @@ const fontSans500 = Poppins({
   subsets: ['latin'],
   variable: '--font-sans',
   weight: '500',
+});
+const fontSans300 = Poppins({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  weight: '300',
 });
 
 const fontMono = Geist_Mono({
@@ -38,7 +44,7 @@ export default function RootLayout({
   return (
     <html lang='en' suppressHydrationWarning>
       <body
-        className={`${fontSans.variable} ${fontMono.variable} ${fontSerif.variable} ${fontSans600.variable} ${fontSans500.variable} font-sans antialiased `}
+        className={`${fontSans.variable} ${fontMono.variable} ${fontSerif.variable} ${fontSans600.variable} ${fontSans500.variable} ${fontSans300.variable} font-sans antialiased`}
       >
         <Providers>{children}</Providers>
       </body>
