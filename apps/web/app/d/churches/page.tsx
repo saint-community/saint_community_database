@@ -1,4 +1,5 @@
 'use client';
+import { AddNewChurchSheet } from '@/components/AddNewChurch';
 import { ChurchChart } from '@/components/church-graph';
 import { ListLinkSection } from '@/components/ListLinkSection';
 import { TableCard } from '@/components/TableCard';
@@ -42,8 +43,7 @@ export default function Page() {
       <div className=''>
         <TableCard
           title='Churches List'
-          action={onAddAChurch}
-          actionTitle='Add a Church'
+          action={<AddNewChurchSheet />}
           data={data}
           columnKeys={[
             {

@@ -13,7 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@workspace/ui/components/react-table';
-import { ArrowUpDown, ListFilter, SquarePlus } from 'lucide-react';
+import { ArrowUpDown, ListFilter } from 'lucide-react';
 
 import { Button } from '@workspace/ui/components/button';
 import { Checkbox } from '@workspace/ui/components/checkbox';
@@ -32,8 +32,7 @@ import EmptyTableImage from '@/assets/svgs/empty-table.svg';
 
 interface TableCardProps {
   title: string;
-  action?: () => void;
-  actionTitle?: string;
+  action?: React.ReactNode;
   data: unknown[];
   columnKeys: {
     name: string;
@@ -161,7 +160,6 @@ function buildColumns(
 export function TableCard({
   title,
   action,
-  actionTitle,
   data,
   columnKeys,
   searchKeys = ['email'],
@@ -223,12 +221,7 @@ export function TableCard({
             <ListFilter className='text-primary' size={24} />
             Filter by
           </div>
-          {action && (
-            <Button className='text-sm h-[44px]'>
-              <SquarePlus size={30} />
-              {actionTitle || 'action'}
-            </Button>
-          )}
+          {action}
         </div>
         <div className='rounded-md border'>
           <Table>
