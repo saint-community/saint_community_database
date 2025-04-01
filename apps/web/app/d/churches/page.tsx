@@ -1,12 +1,18 @@
 'use client';
-import { AddNewChurchSheet } from '@/components/AddNewChurch';
 import { ChurchChart } from '@/components/church-graph';
 import { ListLinkSection } from '@/components/ListLinkSection';
-import { TableCard } from '@/components/TableCard';
 import { Church, ListCheck, User2, Users2 } from 'lucide-react';
+import { useChurches } from '@/hooks/churches';
+import { AddNewChurchSheet } from '@/components/AddNewChurch';
+import { TableCard } from '@/components/TableCard';
+import { useStatistics } from '@/hooks/statistics';
 
 export default function Page() {
-  const onAddAChurch = () => {};
+  const { data: churches } = useChurches();
+  const { data: stats } = useStatistics();
+
+  console.log({ churches });
+
   return (
     <div className='flex-1 flex p-6 w-full flex-col gap-6'>
       <div className='flex gap-6'>
@@ -18,22 +24,22 @@ export default function Page() {
             list={[
               {
                 title: 'Total no of Churches:',
-                value: 5,
+                value: stats?.Churches || 0,
                 icon: <Church size={24} className='stroke-red-500' />,
               },
               {
                 title: 'Total no of Fellowships/PCFs:',
-                value: 5,
+                value: stats?.fellowships || 0,
                 icon: <ListCheck size={24} className='stroke-red-500' />,
               },
               {
                 title: 'Total no of Cells:',
-                value: 5,
+                value: stats?.cells || 0,
                 icon: <Users2 size={24} className='stroke-red-500' />,
               },
               {
                 title: 'Total members:',
-                value: 5,
+                value: stats?.members || 0,
                 icon: <User2 size={24} className='stroke-red-500' />,
               },
             ]}
@@ -44,129 +50,29 @@ export default function Page() {
         <TableCard
           title='Churches List'
           action={<AddNewChurchSheet />}
-          data={data}
+          data={churches || []}
           columnKeys={[
             {
               name: 'name',
               title: 'Name',
             },
             {
-              name: 'location',
-              title: 'Location',
+              name: 'address',
+              title: 'Address',
             },
             {
-              name: 'pastor',
-              title: 'Pastor',
+              name: 'state',
+              title: 'State',
+            },
+            {
+              name: 'country',
+              title: 'Country',
             },
           ]}
-          searchKeys={['location']}
+          searchKeys={['name']}
+          pathName='d/churches'
         />
       </div>
     </div>
   );
 }
-
-const data = [
-  {
-    id: 'tstss',
-    name: 'm5gr84i9',
-    location: 'success',
-    pastor: 'ken99',
-  },
-  {
-    id: 'tstss',
-    name: '3u1reuv4',
-    location: 'success',
-    pastor: 'Abe45',
-  },
-  {
-    id: 'tstss',
-    name: 'derv1ws0',
-    location: 'processing',
-    pastor: 'Monserrat44',
-  },
-  {
-    id: 'tstss',
-    name: '5kma53ae',
-    location: 'success',
-    pastor: 'Silas22',
-  },
-  {
-    id: 'tstss',
-    name: 'bhqecj4p',
-    location: 'failed',
-    pastor: 'carmella',
-  },
-  {
-    id: 'tstss',
-    name: '3u1reuv4',
-    location: 'success',
-    pastor: 'Abe45',
-  },
-  {
-    id: 'tstss',
-    name: 'derv1ws0',
-    location: 'processing',
-    pastor: 'Monserrat44',
-  },
-  {
-    id: 'tstss',
-    name: '5kma53ae',
-    location: 'success',
-    pastor: 'Silas22',
-  },
-  {
-    id: 'tstss',
-    name: 'bhqecj4p',
-    location: 'failed',
-    pastor: 'carmella',
-  },
-  {
-    id: 'tstss',
-    name: '3u1reuv4',
-    location: 'success',
-    pastor: 'Abe45',
-  },
-  {
-    id: 'tstss',
-    name: 'derv1ws0',
-    location: 'processing',
-    pastor: 'Monserrat44',
-  },
-  {
-    id: 'tstss',
-    name: '5kma53ae',
-    location: 'success',
-    pastor: 'Silas22',
-  },
-  {
-    id: 'tstss',
-    name: 'bhqecj4p',
-    location: 'failed',
-    pastor: 'carmella',
-  },
-  {
-    id: 'tstss',
-    name: '3u1reuv4',
-    location: 'success',
-    pastor: 'Abe45',
-  },
-  {
-    id: 'tstss',
-    name: 'derv1ws0',
-    location: 'processing',
-    pastor: 'Monserrat44',
-  },
-  {
-    id: 'tstss',
-    name: '5kma53ae',
-    location: 'success',
-    pastor: 'Silas22',
-  },
-  {
-    id: 'tstss',
-    name: 'bhqecj4p',
-    location: 'failed',
-    pastor: 'carmella',
-  },
-];

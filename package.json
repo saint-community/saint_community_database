@@ -19,5 +19,8 @@
   "packageManager": "pnpm@9.12.3",
   "engines": {
     "node": ">=20"
+  },
+  "dependencies": {
+    "date-fns": "^4.1.0"
   }
 }

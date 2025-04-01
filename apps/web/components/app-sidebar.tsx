@@ -63,7 +63,7 @@ export const getRouteNameFromPath = (pathname: string) =>
 const otherItems = [
   {
     title: 'Settings',
-    url: '#',
+    url: '/d/settings/general',
     icon: Settings,
   },
   {

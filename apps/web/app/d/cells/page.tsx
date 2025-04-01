@@ -1,11 +1,16 @@
 'use client';
+import { AddNewCellSheet } from '@/components/AddNewCell';
 import { ChurchChart } from '@/components/church-graph';
 import { ListLinkSection } from '@/components/ListLinkSection';
 import { TableCard } from '@/components/TableCard';
 import { User, User2, Users2 } from 'lucide-react';
+import { useStatistics } from '@/hooks/statistics';
+import { useCells } from '@/hooks/cell';
 
 export default function Page() {
-  const onAddAChurch = () => {};
+  const { data: stats } = useStatistics();
+  const { data: cells } = useCells();
+
   return (
     <div className='flex-1 flex p-6 w-full flex-col gap-6'>
       <div className='flex gap-6'>
@@ -17,17 +22,17 @@ export default function Page() {
             list={[
               {
                 title: 'Cell Leaders:',
-                value: 5,
+                value: stats?.workers || 0,
                 icon: <Users2 size={24} className='stroke-red-500' />,
               },
               {
                 title: 'Workers-In-Training:',
-                value: 5,
+                value: stats?.workers || 0,
                 icon: <User size={24} className='stroke-red-500' />,
               },
               {
                 title: 'Total members:',
-                value: 5,
+                value: stats?.members || 0,
                 icon: <User2 size={24} className='stroke-red-500' />,
               },
             ]}
@@ -37,131 +42,26 @@ export default function Page() {
       <div className=''>
         <TableCard
           title='Churches List'
-          action={onAddAChurch}
-          actionTitle='Add a Church'
-          data={data}
+          action={<AddNewCellSheet />}
+          data={cells || []}
           columnKeys={[
             {
               name: 'name',
               title: 'Name',
             },
             {
-              name: 'location',
-              title: 'Location',
+              name: 'address',
+              title: 'Address',
             },
             {
-              name: 'pastor',
-              title: 'Pastor',
+              name: 'leader_id',
+              title: 'Leader',
             },
           ]}
-          searchKeys={['location']}
+          searchKeys={['name']}
+          pathName='d/cells'
         />
       </div>
     </div>
   );
 }
-
-const data = [
-  {
-    id: 'tstss',
-    name: 'm5gr84i9',
-    location: 'success',
-    pastor: 'ken99',
-  },
-  {
-    id: 'tstss',
-    name: '3u1reuv4',
-    location: 'success',
-    pastor: 'Abe45',
-  },
-  {
-    id: 'tstss',
-    name: 'derv1ws0',
-    location: 'processing',
-    pastor: 'Monserrat44',
-  },
-  {
-    id: 'tstss',
-    name: '5kma53ae',
-    location: 'success',
-    pastor: 'Silas22',
-  },
-  {
-    id: 'tstss',
-    name: 'bhqecj4p',
-    location: 'failed',
-    pastor: 'carmella',
-  },
-  {
-    id: 'tstss',
-    name: '3u1reuv4',
-    location: 'success',
-    pastor: 'Abe45',
-  },
-  {
-    id: 'tstss',
-    name: 'derv1ws0',
-    location: 'processing',
-    pastor: 'Monserrat44',
-  },
-  {
-    id: 'tstss',
-    name: '5kma53ae',
-    location: 'success',
-    pastor: 'Silas22',
-  },
-  {
-    id: 'tstss',
-    name: 'bhqecj4p',
-    location: 'failed',
-    pastor: 'carmella',
-  },
-  {
-    id: 'tstss',
-    name: '3u1reuv4',
-    location: 'success',
-    pastor: 'Abe45',
-  },
-  {
-    id: 'tstss',
-    name: 'derv1ws0',
-    location: 'processing',
-    pastor: 'Monserrat44',
-  },
-  {
-    id: 'tstss',
-    name: '5kma53ae',
-    location: 'success',
-    pastor: 'Silas22',
-  },
-  {
-    id: 'tstss',
-    name: 'bhqecj4p',
-    location: 'failed',
-    pastor: 'carmella',
-  },
-  {
-    id: 'tstss',
-    name: '3u1reuv4',
-    location: 'success',
-    pastor: 'Abe45',
-  },
-  {
-    id: 'tstss',
-    name: 'derv1ws0',
-    location: 'processing',
-    pastor: 'Monserrat44',
-  },
-  {
-    id: 'tstss',
-    name: '5kma53ae',
-    location: 'success',
-    pastor: 'Silas22',
-  },
-  {
-    id: 'tstss',
-    name: 'bhqecj4p',
-    location: 'failed',
-    pastor: 'carmella',
-  },
-];

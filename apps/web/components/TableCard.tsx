@@ -14,7 +14,6 @@ import {
   useReactTable,
 } from '@workspace/ui/components/react-table';
 import { ArrowUpDown, ListFilter } from 'lucide-react';
-
 import { Button } from '@workspace/ui/components/button';
 import { Checkbox } from '@workspace/ui/components/checkbox';
 import { Input } from '@workspace/ui/components/input';
@@ -29,6 +28,7 @@ import {
 import { Card } from '@workspace/ui/components/card';
 import Image from 'next/image';
 import EmptyTableImage from '@/assets/svgs/empty-table.svg';
+import Link from 'next/link';
 
 interface TableCardProps {
   title: string;
@@ -40,6 +40,7 @@ interface TableCardProps {
     title: string;
   }[];
   searchKeys?: string[];
+  pathName?: string;
 }
 
 export type Payment = {
@@ -102,7 +103,7 @@ function getCellHeaderComp<T>(
             </Button>
           );
         },
-        cell: ({ row }) => <div className='lowercase'>{row.getValue(id)}</div>,
+        cell: ({ row }) => <div className='lowercase'>{row?.getValue(id)}</div>,
       } satisfies ColumnDef<T>;
   }
 }
@@ -112,7 +113,8 @@ function buildColumns(
     name: string;
     type?: 'string' | 'number';
     title: string;
-  }[]
+  }[],
+  pathName?: string
 ) {
   const columns: ColumnDef<unknown>[] = [
     {
@@ -148,9 +150,13 @@ function buildColumns(
     header: 'Actions',
     enableSorting: false,
     enableHiding: false,
-    cell: () => {
-      // const id = row.getValue('id');
-      return <Button variant='link'>View Details</Button>;
+    cell: ({ row }) => {
+      return (
+        // @ts-expect-error - id is always present
+        <Link href={`/${pathName}/${row?.original?.id}`}>
+          <Button variant='link'>View Details</Button>
+        </Link>
+      );
     },
   } satisfies ColumnDef<unknown>);
 
@@ -163,6 +169,7 @@ export function TableCard({
   data,
   columnKeys,
   searchKeys = ['email'],
+  pathName,
 }: TableCardProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -171,7 +178,10 @@ export function TableCard({
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
-  const columns = React.useMemo(() => buildColumns(columnKeys), [columnKeys]);
+  const columns = React.useMemo(
+    () => buildColumns(columnKeys, pathName),
+    [columnKeys, pathName]
+  );
   const [search, setSearch] = React.useState('');
 
   const table = useReactTable({
@@ -244,7 +254,7 @@ export function TableCard({
               ))}
             </TableHeader>
             <TableBody>
-              {table.getRowModel().rows?.length ? (
+              {table && table?.getRowModel?.()?.rows?.length ? (
                 table.getRowModel().rows.map((row) => (
                   <TableRow
                     key={row.id}

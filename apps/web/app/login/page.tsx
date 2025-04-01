@@ -1,3 +1,4 @@
+/* eslint-disable react/no-children-prop */
 'use client';
 import { Button } from '@workspace/ui/components/button';
 import { Input } from '@workspace/ui/components/input';
@@ -7,9 +8,41 @@ import imageFile from '@/assets/svgs/back.svg';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useForm } from '@workspace/ui/lib/react-hook-form';
+import { z } from 'zod';
+import { useMutation } from '@tanstack/react-query';
+import { loginUser } from '@/services/auth';
+import { FieldInfo } from '@workspace/ui/components/field-info';
+
+const formSchema = z.object({
+  email: z.string().email('Please enter a valid email'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
 
 export default function LoginPage() {
   const router = useRouter();
+
+  const form = useForm({
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+    validators: {
+      onSubmit: formSchema,
+      onChange: formSchema,
+    },
+    onSubmit: async ({ value }) => {
+      loginMutation.mutate(value);
+    },
+  });
+
+  const loginMutation = useMutation({
+    mutationFn: loginUser,
+    onSuccess: () => {
+      router.push('/d');
+    },
+  });
+
   return (
     <div className='flex h-svh'>
       <div className='flex flex-1 bg-slate-600 overflow-hidden relative justify-center items-center'>
@@ -25,7 +58,14 @@ export default function LoginPage() {
         />
       </div>
       <div className='flex flex-1 max-w-[650px] flex-col items-center gap-5 pt-[100px] bg-white'>
-        <div className='flex flex-col items-center gap-4 w-[450px] px-[56px]'>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            void form.handleSubmit();
+          }}
+          className='flex flex-col items-center gap-4 w-[450px] px-[56px]'
+        >
           <h1 className='text-2xl font-bold text-primary'>Sign In</h1>
           <p className='text-center text-sm text-muted-foreground'>
             Welcome Back! <br />
@@ -36,21 +76,41 @@ export default function LoginPage() {
             <Label htmlFor='email' className='text-sm text-muted-foreground'>
               Email Address
             </Label>
-            <Input
-              id='email'
-              className='w-full text-[14px] h-[48px]'
-              placeholder='Enter Your Email'
+            <form.Field
+              name='email'
+              children={(field) => (
+                <>
+                  <Input
+                    id='email'
+                    className='w-full text-[14px] h-[48px]'
+                    placeholder='Enter Your Email'
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                  />
+                  <FieldInfo field={field} />
+                </>
+              )}
             />
           </div>
           <div className='w-full'>
-            <Label htmlFor='email' className='text-sm text-muted-foreground'>
+            <Label htmlFor='password' className='text-sm text-muted-foreground'>
               Enter Password
             </Label>
-            <PasswordInput
-              className='w-full text-[14px] h-[48px]'
-              placeholder='Enter Your Password'
+            <form.Field
+              name='password'
+              children={(field) => (
+                <>
+                  <PasswordInput
+                    className='w-full text-[14px] h-[48px]'
+                    placeholder='Enter Your Password'
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                  />
+                  <FieldInfo field={field} />
+                </>
+              )}
             />
-            <div className='flex  justify-end w-full mt-2'>
+            <div className='flex justify-end w-full mt-2'>
               <Link href='/reset-password'>
                 <p className='text-sm hover:underline text-primary'>
                   Forgot Password?
@@ -58,15 +118,21 @@ export default function LoginPage() {
               </Link>
             </div>
           </div>
-          <Button
-            className='w-full h-[48px] font-medium mt-10'
-            onClick={() => {
-              router.push('/d');
-            }}
-          >
-            Sign In
-          </Button>
-        </div>
+          <form.Subscribe
+            selector={(state) => [state.canSubmit, state.isSubmitting]}
+            children={([canSubmit, isSubmitting]) => (
+              <Button
+                type='submit'
+                className='w-full h-[48px] font-medium mt-10'
+                disabled={!canSubmit || loginMutation.isPending}
+              >
+                {loginMutation.isPending || isSubmitting
+                  ? 'Signing in...'
+                  : 'Sign In'}
+              </Button>
+            )}
+          />
+        </form>
       </div>
     </div>
   );

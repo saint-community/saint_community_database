@@ -1,11 +1,11 @@
 'use client';
+import { AddNewMemberSheet } from '@/components/AddNewMember';
 import { ChurchChart } from '@/components/church-graph';
 import { ListLinkSection } from '@/components/ListLinkSection';
 import { TableCard } from '@/components/TableCard';
 import { Church, ListCheck, User, User2, Users2 } from 'lucide-react';
 
 export default function Page() {
-  const onAddAChurch = () => {};
   return (
     <div className='flex-1 flex p-6 w-full flex-col gap-6'>
       <div className='flex gap-6'>
@@ -47,8 +47,7 @@ export default function Page() {
       <div className=''>
         <TableCard
           title='Churches List'
-          action={onAddAChurch}
-          actionTitle='Add a Church'
+          action={<AddNewMemberSheet />}
           data={data}
           columnKeys={[
             {
@@ -65,6 +64,7 @@ export default function Page() {
             },
           ]}
           searchKeys={['location']}
+          pathName='d/members'
         />
       </div>
     </div>
