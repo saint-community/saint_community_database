@@ -18,43 +18,49 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const path = request.nextUrl.searchParams.get('path');
+  let path = request.url.split('?')?.[1]?.split('=')?.[1];
 
   if (!path) {
     return NextResponse.json({ error: 'Path is required' }, { status: 400 });
   }
 
+  path = path.replace(/%2F/g, '/');
+
   const body = await request.json();
 
   const headers = Object.fromEntries(request.headers.entries());
 
-  const response = await axios.post(`${URL}${path}`, body.data, { headers });
+  const response = await axios.post(`${URL}${path}`, body, { headers });
 
   return NextResponse.json(response.data);
 }
 
 export async function PUT(request: NextRequest) {
-  const path = request.nextUrl.searchParams.get('path');
+  let path = request.url.split('?')?.[1]?.split('=')?.[1];
 
   if (!path) {
     return NextResponse.json({ error: 'Path is required' }, { status: 400 });
   }
+
+  path = path.replace(/%2F/g, '/');
 
   const body = await request.json();
 
   const headers = Object.fromEntries(request.headers.entries());
 
-  const response = await axios.put(`${URL}${path}`, body.data, { headers });
+  const response = await axios.put(`${URL}${path}`, body, { headers });
 
   return NextResponse.json(response.data);
 }
 
 export async function DELETE(request: NextRequest) {
-  const path = request.nextUrl.searchParams.get('path');
+  let path = request.url.split('?')?.[1]?.split('=')?.[1];
 
   if (!path) {
     return NextResponse.json({ error: 'Path is required' }, { status: 400 });
   }
+
+  path = path.replace(/%2F/g, '/');
 
   const headers = Object.fromEntries(request.headers.entries());
 

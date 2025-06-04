@@ -27,6 +27,8 @@ import {
   AvatarImage,
 } from '@workspace/ui/components/avatar';
 import Link from 'next/link';
+import { useMe } from '@/hooks/useMe';
+import { useRouter } from 'next/navigation';
 
 // Menu items.
 const mainItems = [
@@ -80,6 +82,8 @@ const otherItems = [
 ];
 
 export function AppSidebar() {
+  const { data } = useMe();
+  const router = useRouter();
   return (
     <Sidebar className='h-dvh'>
       <SidebarContent>
@@ -97,10 +101,8 @@ export function AppSidebar() {
                 <AvatarImage src='https://github.com/shadcn.png' alt='@user' />
                 <AvatarFallback>CN</AvatarFallback>
               </Avatar>
-              <b className='text-[19px] font-medium m-0 p-0'>
-                Kanyinsola Sanni
-              </b>
-              <p className='text-sm m-0 p-0'>kanyin2020@gmail.com</p>
+              <b className='text-[19px] font-medium m-0 p-0'>{data?.name}</b>
+              <p className='text-sm m-0 p-0'>{data?.email}</p>
             </div>
           </SidebarHeader>
           <SidebarGroupContent>
@@ -131,7 +133,15 @@ export function AppSidebar() {
                     asChild
                     className='rounded-none px-4 h-[56px]'
                   >
-                    <Link href={item.url}>
+                    <Link
+                      href={item.url}
+                      onClick={() => {
+                        if (item.isSignOut) {
+                          localStorage.clear();
+                          location.reload();
+                        }
+                      }}
+                    >
                       <item.icon size={24} className='stroke-[#B91507]' />
                       <span className='text-sm'>{item.title}</span>
                     </Link>
