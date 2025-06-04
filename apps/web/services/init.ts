@@ -15,7 +15,7 @@ ApiCaller.interceptors.request.use(async (config) => {
   const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
 
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    config.headers.Authorization = `Bearer ${token.trim()}`;
   }
   return config;
 });

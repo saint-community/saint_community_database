@@ -1,6 +1,7 @@
 export const STORAGE_KEYS = {
   TOKEN: 'token',
   IS_AUTHENTICATED: 'isAuthenticated',
+  USER: 'user',
 };
 
 export const QUERY_PATHS = {

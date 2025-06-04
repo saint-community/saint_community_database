@@ -14,7 +14,8 @@ export async function loginUser(body: {
 
   if (!data.error) {
     localStorage.setItem(STORAGE_KEYS.IS_AUTHENTICATED, 'true');
-    localStorage.setItem(STORAGE_KEYS.TOKEN, data.message);
+    localStorage.setItem(STORAGE_KEYS.TOKEN, data.token);
+    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(data.data));
   }
 
   return data;

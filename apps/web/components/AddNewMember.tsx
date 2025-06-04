@@ -19,6 +19,13 @@ import {
   SelectValue,
 } from '@workspace/ui/components/select';
 import { FieldInfo } from '@workspace/ui/components/field-info';
+import { useChurchesOption } from '@/hooks/churches';
+import { useDepartmentsOption } from '@/hooks/departments';
+import { useFellowshipsOption } from '@/hooks/fellowships';
+import { useCellsOption } from '@/hooks/cell';
+import { useMutation } from '@tanstack/react-query';
+import { createWorker } from '@/services/workers';
+import { useWorkers } from '@/hooks/workers';
 
 const formSchema = z.object({
   fullName: z.string().min(2, {
@@ -72,11 +79,6 @@ const formSchema = z.object({
 });
 
 // Temporary data for dropdowns - replace with actual data from your backend
-const churches = [
-  { id: '1', name: 'Church 1' },
-  { id: '2', name: 'Church 2' },
-  { id: '3', name: 'Church 3' },
-];
 
 const fellowships = [
   { id: '1', name: 'Fellowship 1' },
@@ -90,12 +92,6 @@ const cells = [
   { id: '3', name: 'Cell 3' },
 ];
 
-const departments = [
-  { id: '1', name: 'Department 1' },
-  { id: '2', name: 'Department 2' },
-  { id: '3', name: 'Department 3' },
-];
-
 const genders = [
   { id: 'male', name: 'Male' },
   { id: 'female', name: 'Female' },
@@ -103,6 +99,25 @@ const genders = [
 
 export function AddNewMemberSheet() {
   const [open, setOpen] = useState(false);
+  const { data: churches } = useChurchesOption();
+  const { data: departments } = useDepartmentsOption();
+  const { data: fellowships } = useFellowshipsOption();
+  const { data: cells } = useCellsOption();
+  const { refetch } = useWorkers();
+
+  const mutation = useMutation({
+    mutationFn: createWorker,
+    onSuccess: () => {
+      // toast.success('Fellowship created successfully');
+      setOpen(false);
+      refetch();
+      form.reset();
+    },
+    onError: () => {
+      // toast.error('Failed to create fellowship');
+    },
+  });
+
   const form = useForm({
     defaultValues: {
       fullName: '',
@@ -125,6 +140,29 @@ export function AddNewMemberSheet() {
     onSubmit: async ({ value }) => {
       console.log(value);
       // Handle form submission here
+
+      mutation.mutate({
+        church_id: Number(value.church),
+        fellowship_id: Number(value.fellowship),
+        cell_id: Number(value.cell),
+        first_name: value.fullName.split(' ')[0] || '',
+        last_name: value.fullName.split(' ')[1] || '',
+        dob: value.dateOfBirth.toISOString().split('T')[0],
+        gender: value.gender,
+        status: 'worker',
+        phone_number: value.phoneNumber,
+        email: value.email,
+        facebook_username: '',
+        twitter_username: '',
+        instagram_username: '',
+        house_address: value.homeAddress,
+        work_address: value.workAddress,
+        member_since: value.dateJoinedChurch.toISOString().split('T')[0],
+        worker_since: value.dateJoinedChurch.toISOString().split('T')[0],
+        active: true,
+        prayer_group_id: 1,
+        // department_id: Number(value.department),
+      });
     },
     onSubmitInvalid(props) {
       console.log(props);
@@ -249,11 +287,16 @@ export function AddNewMemberSheet() {
                     <SelectValue placeholder='Select a church' />
                   </SelectTrigger>
                   <SelectContent>
-                    {churches.map((church) => (
-                      <SelectItem key={church.id} value={church.id}>
-                        {church.name}
-                      </SelectItem>
-                    ))}
+                    {churches?.map(
+                      (church: { value: string; label: string }) => (
+                        <SelectItem
+                          key={church.value}
+                          value={`${church.value}`}
+                        >
+                          {church.label}
+                        </SelectItem>
+                      )
+                    )}
                   </SelectContent>
                 </Select>
                 <FieldInfo field={field} />
@@ -276,11 +319,16 @@ export function AddNewMemberSheet() {
                     <SelectValue placeholder='Select a fellowship' />
                   </SelectTrigger>
                   <SelectContent>
-                    {fellowships.map((fellowship) => (
-                      <SelectItem key={fellowship.id} value={fellowship.id}>
-                        {fellowship.name}
-                      </SelectItem>
-                    ))}
+                    {fellowships?.map(
+                      (fellowship: { value: string; label: string }) => (
+                        <SelectItem
+                          key={fellowship.value}
+                          value={`${fellowship.value}`}
+                        >
+                          {fellowship.label}
+                        </SelectItem>
+                      )
+                    )}
                   </SelectContent>
                 </Select>
                 <FieldInfo field={field} />
@@ -303,9 +351,9 @@ export function AddNewMemberSheet() {
                     <SelectValue placeholder='Select a cell' />
                   </SelectTrigger>
                   <SelectContent>
-                    {cells.map((cell) => (
-                      <SelectItem key={cell.id} value={cell.id}>
-                        {cell.name}
+                    {cells?.map((cell: { value: string; label: string }) => (
+                      <SelectItem key={cell.value} value={`${cell.value}`}>
+                        {cell.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -383,11 +431,16 @@ export function AddNewMemberSheet() {
                     <SelectValue placeholder='Select a department' />
                   </SelectTrigger>
                   <SelectContent>
-                    {departments.map((department) => (
-                      <SelectItem key={department.id} value={department.id}>
-                        {department.name}
-                      </SelectItem>
-                    ))}
+                    {departments?.map(
+                      (department: { value: string; label: string }) => (
+                        <SelectItem
+                          key={department.value}
+                          value={`${department.value}`}
+                        >
+                          {department.label}
+                        </SelectItem>
+                      )
+                    )}
                   </SelectContent>
                 </Select>
                 <FieldInfo field={field} />

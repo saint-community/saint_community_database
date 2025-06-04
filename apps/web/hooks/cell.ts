@@ -22,3 +22,15 @@ export const useCellById = (id: string) => {
 //     queryFn: () => getCellByFellowshipId(fellowshipId),
 //   });
 // };
+
+export const useCellsOption = () => {
+  return useQuery({
+    queryKey: [QUERY_PATHS.CELLS, 'option'],
+    queryFn: () => getCells(),
+    select: (data) =>
+      data.map((cell: { id: string; name: string }) => ({
+        value: cell.id,
+        label: cell.name,
+      })),
+  });
+};

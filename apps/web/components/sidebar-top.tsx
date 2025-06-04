@@ -9,9 +9,11 @@ import {
   AvatarImage,
 } from '@workspace/ui/components/avatar';
 import { getRouteNameFromPath } from './app-sidebar';
+import { useMe } from '@/hooks/useMe';
 
 export const SideBarTop = () => {
   const pathname = usePathname();
+  const { data } = useMe();
 
   return (
     <div className='bg-white flex-row flex items-center w-full justify-between'>
@@ -28,8 +30,8 @@ export const SideBarTop = () => {
             <AvatarFallback>A</AvatarFallback>
           </Avatar>
           <div>
-            <p className='text-lg font-medium'>Admin</p>
-            <p className='text-[#705C2F] text-xs'>test@gmail.com</p>
+            <p className='text-lg font-medium'>{data?.name}</p>
+            <p className='text-[#705C2F] text-xs'>{data?.email}</p>
           </div>
         </div>
       </div>
