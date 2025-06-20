@@ -8,7 +8,7 @@ export const getChurches = async () => {
 
 export const createChurch = async (body: {
   name: string;
-  country: string;
+  // country: string;
   state: string;
   address: string;
   church: boolean;
@@ -30,7 +30,7 @@ export const updateChurch = async (
   id: string,
   body: {
     name: string;
-    country: string;
+    // country: string;
     state: string;
     address: string;
     active: boolean;

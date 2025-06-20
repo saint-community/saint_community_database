@@ -4,6 +4,8 @@ import { Input } from '@workspace/ui/components/input';
 import React, { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { generateWorkerForm } from '@/services/workers';
+import { toast } from '@workspace/ui/lib/sonner';
+import { useMe } from '@/hooks/useMe';
 
 interface IList {
   title: string;
@@ -13,14 +15,17 @@ interface IList {
 
 export const ListLinkSection = ({ list }: { list: IList[] }) => {
   const [generatedLink, setGeneratedLink] = useState('');
+  const { data } = useMe();
 
   const mutation = useMutation({
     mutationFn: generateWorkerForm,
     onSuccess: (data) => {
       setGeneratedLink(data.link);
+      toast.success('Link generated successfully');
     },
     onError: (error) => {
       console.error('Failed to generate link:', error);
+      toast.error('Failed to generate link');
     },
   });
 
@@ -50,13 +55,17 @@ export const ListLinkSection = ({ list }: { list: IList[] }) => {
           />
           <Button
             className='absolute top-0 right-0 h-[42px]'
-            onClick={() =>
-              mutation.mutate({
-                church_id: 1,
-                fellowship_id: 1,
-                cell_id: 1,
-              })
-            }
+            onClick={() => {
+              if (data?.church_id) {
+                mutation.mutate({
+                  church_id: data?.church_id || 1,
+                  fellowship_id: data?.fellowship_id,
+                  cell_id: data?.cell_id,
+                });
+              } else {
+                toast.error('Cannot generate link');
+              }
+            }}
             disabled={mutation.isPending}
           >
             {mutation.isPending ? 'Generating...' : 'Generate'}

@@ -3,6 +3,7 @@ import { Poppins, Geist_Mono, Abhaya_Libre } from 'next/font/google';
 
 import '@workspace/ui/globals.css';
 import { Providers } from '@/components/providers';
+import { Toaster } from '@workspace/ui/components/sonner';
 
 const fontSans = Poppins({
   subsets: ['latin'],
@@ -47,6 +48,7 @@ export default function RootLayout({
         className={`${fontSans.variable} ${fontMono.variable} ${fontSerif.variable} ${fontSans600.variable} ${fontSans500.variable} ${fontSans300.variable} font-sans antialiased`}
       >
         <Providers>{children}</Providers>
+        <Toaster position='top-right' richColors />
       </body>
     </html>
   );

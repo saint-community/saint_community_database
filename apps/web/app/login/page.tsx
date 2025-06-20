@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
 import { loginUser } from '@/services/auth';
 import { FieldInfo } from '@workspace/ui/components/field-info';
+import { toast } from '@workspace/ui/lib/sonner';
 
 const formSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -39,7 +40,11 @@ export default function LoginPage() {
   const loginMutation = useMutation({
     mutationFn: loginUser,
     onSuccess: () => {
+      toast.success('Login successful');
       router.push('/d');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'An error occurred');
     },
   });
 

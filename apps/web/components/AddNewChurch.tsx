@@ -12,14 +12,6 @@ import { SquarePlus } from 'lucide-react';
 import { useState } from 'react';
 import { DatePicker } from '@workspace/ui/components/date-picker';
 import { FieldInfo } from '@workspace/ui/components/field-info';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@workspace/ui/components/select';
-import { COUNTRIES } from '@/utils/constants';
 import { createChurch } from '@/services/churches';
 import { useMutation } from '@tanstack/react-query';
 
@@ -33,12 +25,12 @@ const formSchema = z.object({
   address: z.string().min(5, {
     message: 'Address must be at least 5 characters.',
   }),
-  country: z.string().min(2, {
-    message: 'Country is required',
-  }),
-  pastorName: z.string().min(2, {
-    message: 'Pastor name must be at least 2 characters.',
-  }),
+  // country: z.string().min(2, {
+  //   message: 'Country is required',
+  // }),
+  // pastorName: z.string().min(2, {
+  //   message: 'Pastor name must be at least 2 characters.',
+  // }),
   dateStarted: z.date().refine(
     (date) => {
       const parsedDate = new Date(date);
@@ -68,8 +60,8 @@ export function AddNewChurchSheet() {
       churchName: '',
       location: '',
       address: '',
-      country: '',
-      pastorName: '',
+      // country: '',
+      // pastorName: '',
       dateStarted: new Date(),
     },
     validators: {
@@ -80,7 +72,7 @@ export function AddNewChurchSheet() {
       console.log(value);
       mutation.mutate({
         name: value.churchName,
-        country: value.country,
+        // country: value.country,
         state: value.location,
         address: value.address,
         church: true,
@@ -167,7 +159,7 @@ export function AddNewChurchSheet() {
           />
         </div>
 
-        <div className='space-y-2'>
+        {/* <div className='space-y-2'>
           <Label htmlFor='country'>Country</Label>
           <form.Field
             name='country'
@@ -192,9 +184,9 @@ export function AddNewChurchSheet() {
               </>
             )}
           />
-        </div>
+        </div> */}
 
-        <div className='space-y-2'>
+        {/* <div className='space-y-2'>
           <Label htmlFor='pastorName'>Name of Pastor</Label>
           <form.Field
             name='pastorName'
@@ -210,7 +202,7 @@ export function AddNewChurchSheet() {
               </>
             )}
           />
-        </div>
+        </div> */}
 
         <div className='space-y-2'>
           <Label htmlFor='dateStarted'>Date Started</Label>
