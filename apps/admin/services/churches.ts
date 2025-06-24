@@ -8,10 +8,11 @@ export const getChurches = async () => {
 
 export const createChurch = async (body: {
   name: string;
-  // country: string;
+  country: string;
   state: string;
   address: string;
-  church: boolean;
+  active: boolean;
+  start_date: string;
 }) => {
   const { data } = await ApiCaller.post(QUERY_PATHS.CHURCH_CREATE, {
     ...body,

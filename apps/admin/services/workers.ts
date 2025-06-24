@@ -58,7 +58,9 @@ export const updateWorker = async (id: string, body: Worker) => {
 };
 
 export const generateWorkerForm = async (body: FormGenerateRequest) => {
-  const { data } = await ApiCaller.post(QUERY_PATHS.WORKER_FORM_GENERATE, body);
+  const { data } = await ApiCaller.get(QUERY_PATHS.WORKER_FORM_GENERATE, {
+    params: body,
+  });
   return data || {};
 };
 

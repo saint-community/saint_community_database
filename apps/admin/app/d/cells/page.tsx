@@ -1,17 +1,18 @@
 'use client';
-import { AddNewFellowshipSheet } from '@/components/AddNewFellowship';
+import { AddNewCellSheet } from '@/components/AddNewCell';
 import { ChurchChart } from '@/components/church-graph';
 import { ListLinkSection } from '@/components/ListLinkSection';
 import { TableCard } from '@/components/TableCard';
-import { useFellowships } from '@/hooks/fellowships';
+import { User, User2, Users2 } from 'lucide-react';
 import { useStatistics } from '@/hooks/statistics';
-import { ListCheck, User, User2, Users2 } from 'lucide-react';
+import { useCells } from '@/hooks/cell';
 
 export default function Page() {
-  const { data: fellowships } = useFellowships();
   const { data: stats } = useStatistics();
+  const { data: pages, fetchNextPage, hasNextPage } = useCells();
+  const cells = pages?.pages.flatMap((page) => page.data) || [];
 
-  console.log({ fellowships });
+  console.log(pages);
 
   return (
     <div className='flex-1 flex p-6 w-full flex-col gap-6'>
@@ -22,11 +23,6 @@ export default function Page() {
         <div className='flex-1 min-w-[400px]'>
           <ListLinkSection
             list={[
-              {
-                title: 'Fellowships/PCF Coordinators:',
-                value: stats?.fellowships || 0,
-                icon: <ListCheck size={24} className='stroke-red-500' />,
-              },
               {
                 title: 'Cell Leaders:',
                 value: stats?.workers || 0,
@@ -49,8 +45,8 @@ export default function Page() {
       <div className=''>
         <TableCard
           title='Churches List'
-          action={<AddNewFellowshipSheet />}
-          data={fellowships || []}
+          action={<AddNewCellSheet />}
+          data={cells}
           columnKeys={[
             {
               name: 'name',
@@ -61,12 +57,14 @@ export default function Page() {
               title: 'Address',
             },
             {
-              name: 'cordinator_id',
-              title: 'Cordinator',
+              name: 'leader_id',
+              title: 'Leader',
             },
           ]}
           searchKeys={['name']}
-          pathName='d/fellowships'
+          pathName='d/cells'
+          onNextPage={fetchNextPage}
+          hasNextPage={hasNextPage}
         />
       </div>
     </div>

@@ -23,8 +23,9 @@ import { useWorkerOption } from '@/hooks/workers';
 import { useChurchesOption } from '@/hooks/churches';
 import { useFellowshipsOption } from '@/hooks/fellowships';
 import { createCell } from '@/services/cell';
-import { useMutation } from '@tanstack/react-query';
-import { useCells } from '@/hooks/cell';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMe } from '@/hooks/useMe';
+import { QUERY_PATHS } from '@/utils/constants';
 
 const formSchema = z.object({
   church_id: z.string().min(1, {
@@ -58,16 +59,21 @@ const formSchema = z.object({
 
 export function AddNewCellSheet() {
   const [open, setOpen] = useState(false);
+  const { data: user } = useMe();
   const { data: churches } = useChurchesOption();
   const { data: workers } = useWorkerOption();
   const { data: fellowships } = useFellowshipsOption();
-  const { refetch } = useCells();
+  const queryClient = useQueryClient();
+  const lockChurchSelect = !!user?.church_id && user?.role !== 'admin';
+  const lockFellowshipSelect = !!user?.fellowship_id && user?.role !== 'admin';
 
   const { mutate } = useMutation({
     mutationFn: createCell,
     onSuccess: () => {
       setOpen(false);
-      refetch();
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_PATHS.CELLS],
+      });
       form.reset();
     },
     onError: () => {
@@ -77,8 +83,8 @@ export function AddNewCellSheet() {
 
   const form = useForm({
     defaultValues: {
-      church_id: '',
-      fellowship_id: '',
+      church_id: user?.church_id?.toString() || '',
+      fellowship_id: user?.fellowship_id?.toString() || '',
       cellName: '',
       location: '',
       address: '',
@@ -90,8 +96,8 @@ export function AddNewCellSheet() {
       onChange: formSchema,
     },
     onSubmit: async ({ value }) => {
-      console.log(value);
-      // Handle form submission here
+      const startDate = value.dateStarted.toISOString()?.split('T')[0];
+
       mutate({
         church_id: Number(value.church_id),
         fellowship_id: Number(value.fellowship_id),
@@ -100,6 +106,7 @@ export function AddNewCellSheet() {
         leader_id: Number(value.leader_id),
         active: true,
         meeting_days: 1,
+        start_date: startDate || '',
       });
     },
     onSubmitInvalid(props) {
@@ -152,6 +159,7 @@ export function AddNewCellSheet() {
                 <Select
                   value={field.state.value}
                   onValueChange={field.handleChange}
+                  disabled={lockChurchSelect}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder='Select a church' />
@@ -184,6 +192,7 @@ export function AddNewCellSheet() {
                 <Select
                   value={field.state.value}
                   onValueChange={field.handleChange}
+                  disabled={lockFellowshipSelect}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder='Select a fellowship' />

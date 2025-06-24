@@ -11,26 +11,15 @@ import { Modal } from '@workspace/ui/components/modal';
 import { SquarePlus } from 'lucide-react';
 import { useState } from 'react';
 import { DatePicker } from '@workspace/ui/components/date-picker';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@workspace/ui/components/select';
 import { FieldInfo } from '@workspace/ui/components/field-info';
-import { useChurchesOption } from '@/hooks/churches';
-import { useMutation } from '@tanstack/react-query';
-import { createFellowship } from '@/services/fellowships';
-import { useWorkerOption } from '@/hooks/workers';
-import { useFellowships } from '@/hooks/fellowships';
+import { createChurch } from '@/services/churches';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from '@workspace/ui/lib/sonner';
+import { QUERY_PATHS } from '@/utils/constants';
 
 const formSchema = z.object({
-  church_id: z.string().min(1, {
-    message: 'Please select a church.',
-  }),
-  fellowshipName: z.string().min(2, {
-    message: 'Fellowship name must be at least 2 characters.',
+  churchName: z.string().min(2, {
+    message: 'Church name must be at least 2 characters.',
   }),
   location: z.string().min(2, {
     message: 'Location must be at least 2 characters.',
@@ -38,9 +27,12 @@ const formSchema = z.object({
   address: z.string().min(5, {
     message: 'Address must be at least 5 characters.',
   }),
-  leader_id: z.string().min(1, {
-    message: 'Please select a leader.',
-  }),
+  // country: z.string().min(2, {
+  //   message: 'Country is required',
+  // }),
+  // pastorName: z.string().min(2, {
+  //   message: 'Pastor name must be at least 2 characters.',
+  // }),
   dateStarted: z.date().refine(
     (date) => {
       const parsedDate = new Date(date);
@@ -52,33 +44,30 @@ const formSchema = z.object({
   ),
 });
 
-export function AddNewFellowshipSheet() {
+export function AddNewChurchSheet() {
   const [open, setOpen] = useState(false);
-  const { data: churches } = useChurchesOption();
-  const { data: workers } = useWorkerOption();
-  const { refetch } = useFellowships();
-  // const toast = useToast();
+  const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: createFellowship,
+    mutationFn: createChurch,
     onSuccess: () => {
-      // toast.success('Fellowship created successfully');
       setOpen(false);
-      refetch();
-      form.reset();
+      toast.success('Church created successfully');
+      queryClient.invalidateQueries({ queryKey: [QUERY_PATHS.CHURCHES] });
     },
-    onError: () => {
-      // toast.error('Failed to create fellowship');
+    onError: (error) => {
+      console.log(error);
+      toast.error('Failed to create church');
     },
   });
 
   const form = useForm({
     defaultValues: {
-      church_id: '',
-      fellowshipName: '',
+      churchName: '',
       location: '',
       address: '',
-      leader_id: '',
+      // country: '',
+      // pastorName: '',
       dateStarted: new Date(),
     },
     validators: {
@@ -87,14 +76,15 @@ export function AddNewFellowshipSheet() {
     },
     onSubmit: async ({ value }) => {
       console.log(value);
-      // Handle form submission here
       mutation.mutate({
-        church_id: Number(value.church_id),
-        name: value.fellowshipName,
+        name: value.churchName,
+        country: 'Nigeria',
+        state: value.location,
         address: value.address,
-        cordinator_id: Number(value.leader_id),
         active: true,
+        start_date: value.dateStarted.toISOString()?.split('T')[0] || '',
       });
+      // Handle form submission here
     },
     onSubmitInvalid(props) {
       console.log(props);
@@ -106,12 +96,12 @@ export function AddNewFellowshipSheet() {
       trigger={
         <Button className='text-sm h-[44px]'>
           <SquarePlus size={30} />
-          Add new fellowship
+          Add new church
         </Button>
       }
       open={open}
       setOpen={setOpen}
-      title='Create new fellowship'
+      title='Create new church'
       description=''
     >
       <form
@@ -123,48 +113,16 @@ export function AddNewFellowshipSheet() {
         className='flex-1 w-full space-y-4 p-4 md:px-0'
       >
         <div className='space-y-2'>
-          <Label htmlFor='church'>Church</Label>
+          <Label htmlFor='churchName'>Church Name</Label>
           <form.Field
-            name='church_id'
-            children={(field) => (
-              <>
-                <Select
-                  value={field.state.value}
-                  onValueChange={field.handleChange}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder='Select a church' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {churches?.map(
-                      (church: { value: string; label: string }) => (
-                        <SelectItem
-                          key={church.value}
-                          value={`${church.value}`}
-                        >
-                          {church.label}
-                        </SelectItem>
-                      )
-                    )}
-                  </SelectContent>
-                </Select>
-                <FieldInfo field={field} />
-              </>
-            )}
-          />
-        </div>
-
-        <div className='space-y-2'>
-          <Label htmlFor='fellowshipName'>Fellowship Name</Label>
-          <form.Field
-            name='fellowshipName'
+            name='churchName'
             children={(field) => (
               <>
                 <Input
-                  id='fellowshipName'
+                  id='churchName'
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder='Enter fellowship name'
+                  placeholder='Enter church name'
                 />
                 <FieldInfo field={field} />
               </>
@@ -191,7 +149,7 @@ export function AddNewFellowshipSheet() {
         </div>
 
         <div className='space-y-2'>
-          <Label htmlFor='address'>Fellowship Address</Label>
+          <Label htmlFor='address'>Church Address</Label>
           <form.Field
             name='address'
             children={(field) => (
@@ -200,7 +158,7 @@ export function AddNewFellowshipSheet() {
                   id='address'
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder='Enter fellowship address'
+                  placeholder='Enter church address'
                 />
                 <FieldInfo field={field} />
               </>
@@ -208,37 +166,50 @@ export function AddNewFellowshipSheet() {
           />
         </div>
 
-        <div className='space-y-2'>
-          <Label htmlFor='leader_id'>Name of Leader</Label>
+        {/* <div className='space-y-2'>
+          <Label htmlFor='country'>Country</Label>
           <form.Field
-            name='leader_id'
+            name='country'
             children={(field) => (
               <>
                 <Select
                   value={field.state.value}
-                  onValueChange={field.handleChange}
+                  onValueChange={(e) => field.handleChange(e)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder='Select a leader' />
+                    <SelectValue placeholder='Select a country' />
                   </SelectTrigger>
                   <SelectContent>
-                    {workers?.map(
-                      (worker: { value: string; label: string }) => (
-                        <SelectItem
-                          key={worker.value}
-                          value={`${worker.value}`}
-                        >
-                          {worker.label}
-                        </SelectItem>
-                      )
-                    )}
+                    {COUNTRIES.map((country) => (
+                      <SelectItem key={country} value={country}>
+                        {country}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FieldInfo field={field} />
               </>
             )}
           />
-        </div>
+        </div> */}
+
+        {/* <div className='space-y-2'>
+          <Label htmlFor='pastorName'>Name of Pastor</Label>
+          <form.Field
+            name='pastorName'
+            children={(field) => (
+              <>
+                <Input
+                  id='pastorName'
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder='Enter pastor name'
+                />
+                <FieldInfo field={field} />
+              </>
+            )}
+          />
+        </div> */}
 
         <div className='space-y-2'>
           <Label htmlFor='dateStarted'>Date Started</Label>
@@ -262,7 +233,7 @@ export function AddNewFellowshipSheet() {
             selector={(state) => [state.canSubmit, state.isSubmitting]}
             children={([canSubmit, isSubmitting]) => (
               <Button type='submit' className='w-full' disabled={!canSubmit}>
-                {isSubmitting ? '...' : 'Add Fellowship'}
+                {isSubmitting ? '...' : 'Add Church'}
               </Button>
             )}
           />

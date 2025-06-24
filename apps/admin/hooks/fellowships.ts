@@ -2,10 +2,10 @@ import { getFellowshipById, getFellowships } from '@/services/fellowships';
 import { QUERY_PATHS } from '@/utils/constants';
 import { useQuery } from '@tanstack/react-query';
 
-export const useFellowships = () => {
+export const useFellowships = (churchId?: string) => {
   return useQuery({
-    queryKey: [QUERY_PATHS.FELLOWSHIPS],
-    queryFn: () => getFellowships(),
+    queryKey: [QUERY_PATHS.FELLOWSHIPS, churchId],
+    queryFn: () => getFellowships(churchId),
   });
 };
 

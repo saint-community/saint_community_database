@@ -1,8 +1,12 @@
 import { QUERY_PATHS } from '@/utils/constants';
 import { ApiCaller } from './init';
 
-export const getCells = async () => {
-  const { data } = await ApiCaller.get(QUERY_PATHS.CELLS);
+export const getCells = async (page: number) => {
+  const { data } = await ApiCaller.get(QUERY_PATHS.CELLS, {
+    params: {
+      page,
+    },
+  });
   return data?.data || [];
 };
 
@@ -14,6 +18,7 @@ export const createCell = async (body: {
   address: string;
   active: boolean;
   meeting_days: number;
+  start_date?: string;
 }) => {
   const { data } = await ApiCaller.post(QUERY_PATHS.CELL_CREATE, {
     ...body,

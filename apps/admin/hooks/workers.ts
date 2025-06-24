@@ -30,7 +30,7 @@ export const useWorkerOption = () => {
     queryKey: [QUERY_PATHS.WORKERS],
     queryFn: () => getWorkers(),
     select: (data) => {
-      return data.map(
+      return data?.data?.map(
         (worker: {
           id: string;
           first_name: string;

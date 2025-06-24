@@ -1,8 +1,12 @@
 import { QUERY_PATHS } from '@/utils/constants';
 import { ApiCaller } from './init';
 
-export const getFellowships = async () => {
-  const { data } = await ApiCaller.get(QUERY_PATHS.FELLOWSHIPS);
+export const getFellowships = async (churchId?: string) => {
+  const { data } = await ApiCaller.get(QUERY_PATHS.FELLOWSHIPS, {
+    params: {
+      ...(churchId && { church_id: churchId }),
+    },
+  });
   return data?.data || [];
 };
 
@@ -12,6 +16,7 @@ export const createFellowship = async (body: {
   cordinator_id: number;
   address: string;
   active: boolean;
+  start_date: string;
 }) => {
   const { data } = await ApiCaller.post(QUERY_PATHS.FELLOWSHIP_CREATE, {
     ...body,

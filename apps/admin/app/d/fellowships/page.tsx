@@ -1,15 +1,19 @@
 'use client';
-import { AddNewCellSheet } from '@/components/AddNewCell';
+import { AddNewFellowshipSheet } from '@/components/AddNewFellowship';
 import { ChurchChart } from '@/components/church-graph';
 import { ListLinkSection } from '@/components/ListLinkSection';
 import { TableCard } from '@/components/TableCard';
-import { User, User2, Users2 } from 'lucide-react';
+import { useFellowships } from '@/hooks/fellowships';
 import { useStatistics } from '@/hooks/statistics';
-import { useCells } from '@/hooks/cell';
+import { useMe } from '@/hooks/useMe';
+import { ListCheck, User, User2, Users2 } from 'lucide-react';
 
 export default function Page() {
+  const { data: user } = useMe();
+  const { data: fellowships } = useFellowships(user?.church_id?.toString());
   const { data: stats } = useStatistics();
-  const { data: cells } = useCells();
+
+  console.log({ fellowships });
 
   return (
     <div className='flex-1 flex p-6 w-full flex-col gap-6'>
@@ -20,6 +24,11 @@ export default function Page() {
         <div className='flex-1 min-w-[400px]'>
           <ListLinkSection
             list={[
+              {
+                title: 'Fellowships/PCF Coordinators:',
+                value: stats?.fellowships || 0,
+                icon: <ListCheck size={24} className='stroke-red-500' />,
+              },
               {
                 title: 'Cell Leaders:',
                 value: stats?.workers || 0,
@@ -42,8 +51,8 @@ export default function Page() {
       <div className=''>
         <TableCard
           title='Churches List'
-          action={<AddNewCellSheet />}
-          data={cells || []}
+          action={<AddNewFellowshipSheet />}
+          data={fellowships || []}
           columnKeys={[
             {
               name: 'name',
@@ -54,12 +63,12 @@ export default function Page() {
               title: 'Address',
             },
             {
-              name: 'leader_id',
-              title: 'Leader',
+              name: 'cordinator_id',
+              title: 'Cordinator',
             },
           ]}
           searchKeys={['name']}
-          pathName='d/cells'
+          pathName='d/fellowships'
         />
       </div>
     </div>

@@ -41,6 +41,9 @@ interface TableCardProps {
   }[];
   searchKeys?: string[];
   pathName?: string;
+  hasNextPage?: boolean;
+  onNextPage?: () => void;
+  isLoading?: boolean;
 }
 
 export type Payment = {
@@ -170,6 +173,9 @@ export function TableCard({
   columnKeys,
   searchKeys = ['email'],
   pathName,
+  hasNextPage,
+  onNextPage,
+  isLoading,
 }: TableCardProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -301,8 +307,12 @@ export function TableCard({
             <Button
               variant='outline'
               size='sm'
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
+              onClick={() => {
+                onNextPage?.();
+                table.nextPage();
+              }}
+              // disabled={!table.getCanNextPage()}
+              disabled={isLoading || !hasNextPage}
             >
               Next
             </Button>
