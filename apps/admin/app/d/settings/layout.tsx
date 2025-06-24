@@ -2,46 +2,15 @@
 import Link from 'next/link';
 import { cn } from '@workspace/ui/lib/utils';
 import { ScrollArea } from '@workspace/ui/components/scroll-area';
-import { Settings, IdCard, Bell, ChevronRight } from 'lucide-react';
+import { Settings, IdCard, ChevronRight } from 'lucide-react';
 import { usePathname } from 'next/navigation';
+import { useMe } from '@/hooks/useMe';
+import { ROLES } from '@/utils/constants';
 
 // export const metadata: Metadata = {
 //   title: 'Settings',
 //   description: 'Manage your account settings and preferences.',
 // };
-
-const sidebarNavItems = [
-  {
-    title: 'General',
-    href: '/d/settings/general',
-    icon: Settings,
-  },
-  {
-    title: 'Manage Users',
-    href: '/d/settings/users',
-    icon: IdCard,
-  },
-  {
-    title: 'Notifications',
-    href: '/d/settings/notifications',
-    icon: Bell,
-  },
-  //   {
-  //     title: 'Security',
-  //     href: '/d/settings/security',
-  //     icon: Shield,
-  //   },
-  //   {
-  //     title: 'Billing',
-  //     href: '/d/settings/billing',
-  //     icon: CreditCard,
-  //   },
-  //   {
-  //     title: 'Help & Support',
-  //     href: '/d/settings/help',
-  //     icon: HelpCircle,
-  //   },
-];
 
 export default function SettingsLayout({
   children,
@@ -49,6 +18,45 @@ export default function SettingsLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { data: user } = useMe();
+  const hideUsers = !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
+
+  const sidebarNavItems = [
+    {
+      title: 'General',
+      href: '/d/settings/general',
+      icon: Settings,
+    },
+    ...(!hideUsers
+      ? [
+          {
+            title: 'Manage Users',
+            href: '/d/settings/users',
+            icon: IdCard,
+          },
+        ]
+      : []),
+    // {
+    //   title: 'Notifications',
+    //   href: '/d/settings/notifications',
+    //   icon: Bell,
+    // },
+    //   {
+    //     title: 'Security',
+    //     href: '/d/settings/security',
+    //     icon: Shield,
+    //   },
+    //   {
+    //     title: 'Billing',
+    //     href: '/d/settings/billing',
+    //     icon: CreditCard,
+    //   },
+    //   {
+    //     title: 'Help & Support',
+    //     href: '/d/settings/help',
+    //     icon: HelpCircle,
+    //   },
+  ];
 
   return (
     <div className='flex h-full'>

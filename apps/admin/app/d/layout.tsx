@@ -10,8 +10,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { data, isLoading } = useMe();
   const router = useRouter();
 
-  console.log({ data });
-
   useEffect(() => {
     if (!data && !isLoading) {
       router.push('/login');

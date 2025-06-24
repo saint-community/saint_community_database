@@ -31,17 +31,22 @@ export interface FormGenerateRequest {
   cell_id?: number;
 }
 
-export const getWorkers = async () => {
-  const { data } = await ApiCaller.get(QUERY_PATHS.WORKERS);
+export const getWorkers = async (churchId?: string, page?: number) => {
+  const { data } = await ApiCaller.get(QUERY_PATHS.WORKERS, {
+    params: {
+      ...(churchId && { church_id: churchId }),
+      ...(page && { page }),
+    },
+  });
 
-  return data?.data || [];
+  return data;
 };
 
 export const getWorkerById = async (id: string) => {
   const { data } = await ApiCaller.get(
-    QUERY_PATHS.WORKER_DETAIL.replace(':worker_id', id)
+    QUERY_PATHS.WORKER_DETAIL.replace(':id', id)
   );
-  return data || {};
+  return data?.data;
 };
 
 export const createWorker = async (body: Worker) => {
@@ -51,7 +56,7 @@ export const createWorker = async (body: Worker) => {
 
 export const updateWorker = async (id: string, body: Worker) => {
   const { data } = await ApiCaller.put(
-    QUERY_PATHS.WORKER_UPDATE.replace(':worker_id', id),
+    QUERY_PATHS.WORKER_UPDATE.replace(':id', id),
     body
   );
   return data || {};

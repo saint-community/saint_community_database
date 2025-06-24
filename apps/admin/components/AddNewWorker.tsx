@@ -26,6 +26,8 @@ import { useCellsOption } from '@/hooks/cell';
 import { useMutation } from '@tanstack/react-query';
 import { createWorker } from '@/services/workers';
 import { useWorkers } from '@/hooks/workers';
+import { useMe } from '@/hooks/useMe';
+import { ROLES } from '@/utils/constants';
 
 const formSchema = z.object({
   fullName: z.string().min(2, {
@@ -83,13 +85,28 @@ const genders = [
   { id: 'female', name: 'Female' },
 ];
 
-export function AddNewMemberSheet() {
+export function AddNewWorkerSheet() {
   const [open, setOpen] = useState(false);
   const { data: churches } = useChurchesOption();
   const { data: departments } = useDepartmentsOption();
   const { data: fellowships } = useFellowshipsOption();
   const { data: cells } = useCellsOption();
   const { refetch } = useWorkers();
+  const { data: user } = useMe();
+
+  const lockChurchSelect =
+    !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
+  const lockFellowshipSelect =
+    !!user &&
+    ![ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_PASTOR].includes(user?.role);
+  const lockCellSelect =
+    !!user &&
+    ![
+      ROLES.ADMIN,
+      ROLES.PASTOR,
+      ROLES.CHURCH_PASTOR,
+      ROLES.FELLOWSHIP_LEADER,
+    ].includes(user?.role);
 
   const mutation = useMutation({
     mutationFn: createWorker,
@@ -110,9 +127,9 @@ export function AddNewMemberSheet() {
       email: '',
       gender: '',
       phoneNumber: '',
-      church: '',
-      fellowship: '',
-      cell: '',
+      church: user?.church_id?.toString() || '',
+      fellowship: user?.fellowship_id?.toString() || '',
+      cell: user?.cell_id?.toString() || '',
       homeAddress: '',
       workAddress: '',
       dateOfBirth: new Date(),
@@ -160,12 +177,12 @@ export function AddNewMemberSheet() {
       trigger={
         <Button className='text-sm h-[44px]'>
           <SquarePlus size={30} />
-          Add new member
+          Add new worker
         </Button>
       }
       open={open}
       setOpen={setOpen}
-      title='Create new member'
+      title='Create new worker'
       description=''
     >
       <form
@@ -268,6 +285,7 @@ export function AddNewMemberSheet() {
                 <Select
                   value={field.state.value}
                   onValueChange={field.handleChange}
+                  disabled={lockChurchSelect}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder='Select a church' />
@@ -300,6 +318,7 @@ export function AddNewMemberSheet() {
                 <Select
                   value={field.state.value}
                   onValueChange={field.handleChange}
+                  disabled={lockFellowshipSelect}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder='Select a fellowship' />
@@ -332,6 +351,7 @@ export function AddNewMemberSheet() {
                 <Select
                   value={field.state.value}
                   onValueChange={field.handleChange}
+                  disabled={lockCellSelect}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder='Select a cell' />
@@ -457,7 +477,7 @@ export function AddNewMemberSheet() {
             selector={(state) => [state.canSubmit, state.isSubmitting]}
             children={([canSubmit, isSubmitting]) => (
               <Button type='submit' className='w-full' disabled={!canSubmit}>
-                {isSubmitting ? '...' : 'Add Member'}
+                {isSubmitting ? '...' : 'Add Worker'}
               </Button>
             )}
           />

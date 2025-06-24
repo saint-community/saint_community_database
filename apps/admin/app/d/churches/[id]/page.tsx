@@ -125,21 +125,18 @@ export default function ChurchDetailPage() {
             label='Name of Pastor'
             value={currentData.pastor}
             onEdit={(value) => handleEdit('pastor', value)}
-            isEditing={!!editedData}
           />
 
           <FormField
             label='Church Location'
             value={currentData.location}
             onEdit={(value) => handleEdit('location', value)}
-            isEditing={!!editedData}
           />
 
           <FormField
             label='Church Address'
             value={currentData.address}
             onEdit={(value) => handleEdit('address', value)}
-            isEditing={!!editedData}
           />
 
           <div className='pt-8 flex justify-center gap-6'>
@@ -189,10 +186,9 @@ interface FormFieldProps {
   label: string;
   value: string;
   onEdit: (value: string) => void;
-  isEditing: boolean;
 }
 
-function FormField({ label, value, onEdit, isEditing }: FormFieldProps) {
+function FormField({ label, value, onEdit }: FormFieldProps) {
   const [isFieldEditing, setIsFieldEditing] = useState(false);
 
   return (

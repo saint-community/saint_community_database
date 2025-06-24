@@ -12,8 +12,6 @@ export default function Page() {
   const { data: pages, fetchNextPage, hasNextPage } = useCells();
   const cells = pages?.pages.flatMap((page) => page.data) || [];
 
-  console.log(pages);
-
   return (
     <div className='flex-1 flex p-6 w-full flex-col gap-6'>
       <div className='flex gap-6'>
@@ -44,7 +42,7 @@ export default function Page() {
       </div>
       <div className=''>
         <TableCard
-          title='Churches List'
+          title='Cells List'
           action={<AddNewCellSheet />}
           data={cells}
           columnKeys={[

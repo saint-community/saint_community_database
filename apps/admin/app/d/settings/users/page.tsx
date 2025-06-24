@@ -12,39 +12,19 @@ import {
 import { Input } from '@workspace/ui/components/input';
 import { Button } from '@workspace/ui/components/button';
 import { Card } from '@workspace/ui/components/card';
-
-interface Member {
-  id: number;
-  name: string;
-  gender: string;
-  fellowship: string;
-  cell: string;
-  status: string;
-}
+import { useAccounts } from '@/hooks/auth';
 
 export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Mock data - replace with actual data fetching
-  const members: Member[] = [
-    {
-      id: 1,
-      name: 'Samni Kanyinsola',
-      gender: 'M',
-      fellowship: 'Barracks',
-      cell: 'Kobili',
-      status: 'Consistent',
-    },
-    // Add more mock data as needed
-  ];
+  const { data: accounts } = useAccounts();
 
   const handleRemoveMember = (id: number) => {
     // Implement remove functionality
     console.log('Removing member:', id);
   };
 
-  const filteredMembers = members.filter((member) =>
-    Object.values(member).some((value) =>
+  const filteredMembers = accounts?.filter((account: any) =>
+    Object.values(account).some((value: any) =>
       value.toString().toLowerCase().includes(searchQuery.toLowerCase())
     )
   );
@@ -56,16 +36,16 @@ export default function UsersPage() {
 
       <Card className='p-4'>
         <div className='flex items-center justify-between mb-4'>
-          <h2 className='text-xl font-semibold'>Members</h2>
+          <h2 className='text-xl font-semibold'>Users</h2>
           <div className='flex items-center gap-2'>
             <Input
               type='search'
-              placeholder='Church, Fellowship...'
+              placeholder='Search users'
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className='max-w-[300px]'
             />
-            <Button variant='outline'>Filter</Button>
+            <Button variant='outline'>Add new user</Button>
           </div>
         </div>
 
@@ -82,7 +62,7 @@ export default function UsersPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredMembers.map((member, index) => (
+            {filteredMembers?.map((member: any, index: number) => (
               <TableRow key={member.id}>
                 <TableCell>{index + 1}</TableCell>
                 <TableCell>{member.name}</TableCell>
@@ -117,7 +97,8 @@ export default function UsersPage() {
         </Table>
 
         <div className='flex items-center justify-between mt-4'>
-          <p className='text-sm text-red-600'>Changes have been saved!</p>
+          <div className='flex items-center gap-2' />
+          {/* <p className='text-sm text-red-600'>Changes have been saved!</p> */}
           <div className='flex items-center gap-2'>
             <Button variant='outline' size='sm'>
               &lt;

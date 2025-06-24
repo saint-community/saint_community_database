@@ -4,6 +4,7 @@ import * as React from 'react';
 import {
   ColumnDef,
   ColumnFiltersState,
+  Row,
   SortingState,
   VisibilityState,
   flexRender,
@@ -38,6 +39,7 @@ interface TableCardProps {
     name: string;
     type?: 'string' | 'number';
     title: string;
+    compoundKey?: string;
   }[];
   searchKeys?: string[];
   pathName?: string;
@@ -53,10 +55,23 @@ export type Payment = {
   email: string;
 };
 
+function getCompoundKeyValue(row: Row<unknown>, compoundKey?: string) {
+  const keys = compoundKey?.split(',') || [];
+
+  const values = [];
+
+  for (const key of keys) {
+    values.push((row.original as any)[key]);
+  }
+
+  return values.join(' ');
+}
+
 function getCellHeaderComp<T>(
   type: 'string' | 'number',
   id: string,
-  title: string
+  title: string,
+  compoundKey?: string
 ) {
   switch (type) {
     case 'string':
@@ -88,7 +103,13 @@ function getCellHeaderComp<T>(
             </Button>
           );
         },
-        cell: ({ row }) => <div className='lowercase'>{row.getValue(id)}</div>,
+        cell: ({ row }) => (
+          <div className={compoundKey ? 'capitalize' : 'lowercase'}>
+            {compoundKey
+              ? getCompoundKeyValue(row, compoundKey)
+              : row.getValue(id)}
+          </div>
+        ),
       } satisfies ColumnDef<T>;
     case 'number':
       return {
@@ -116,6 +137,7 @@ function buildColumns(
     name: string;
     type?: 'string' | 'number';
     title: string;
+    compoundKey?: string;
   }[],
   pathName?: string
 ) {
@@ -144,8 +166,8 @@ function buildColumns(
     },
   ];
 
-  data?.forEach(({ name, title, type = 'string' }) => {
-    columns.push(getCellHeaderComp(type, name, title));
+  data?.forEach(({ name, title, type = 'string', compoundKey }) => {
+    columns.push(getCellHeaderComp(type, name, title, compoundKey));
   });
 
   columns.push({

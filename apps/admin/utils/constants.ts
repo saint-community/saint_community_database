@@ -36,7 +36,7 @@ export const QUERY_PATHS = {
   WORKERS: '/api/workers',
   WORKER_DETAIL: '/api/worker/:id',
   WORKER_CREATE: '/api/workers/create',
-  WORKER_UPDATE: '/api/workers/update?worker_id=:id',
+  WORKER_UPDATE: '/api/workers/update/:id',
   WORKER_FORM_GENERATE: '/api/worker/form/generate',
   WORKER_FORM_DETAIL: '/api/worker/form/:token',
 
@@ -72,3 +72,11 @@ export const COUNTRIES = Array.from(
     'Other',
   ])
 );
+
+export const ROLES = {
+  ADMIN: 'admin',
+  PASTOR: 'pastor',
+  CHURCH_PASTOR: 'church_pastor',
+  FELLOWSHIP_LEADER: 'fellowship_leader',
+  CELL_LEADER: 'cell_leader',
+};

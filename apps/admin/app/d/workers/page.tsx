@@ -1,17 +1,16 @@
 'use client';
-import { AddNewFellowshipSheet } from '@/components/AddNewFellowship';
+import { AddNewWorkerSheet } from '@/components/AddNewWorker';
 import { ChurchChart } from '@/components/church-graph';
 import { ListLinkSection } from '@/components/ListLinkSection';
 import { TableCard } from '@/components/TableCard';
-import { useFellowships } from '@/hooks/fellowships';
 import { useStatistics } from '@/hooks/statistics';
-import { useMe } from '@/hooks/useMe';
-import { ListCheck, User, User2, Users2 } from 'lucide-react';
+import { useWorkers } from '@/hooks/workers';
+import { Church, ListCheck, User, User2, Users2 } from 'lucide-react';
 
 export default function Page() {
-  const { data: user } = useMe();
-  const { data: fellowships } = useFellowships(user?.church_id?.toString());
+  const { data: workers, fetchNextPage, hasNextPage } = useWorkers();
   const { data: stats } = useStatistics();
+  const workersData = workers?.pages.flatMap((page) => page.data?.data) || [];
 
   return (
     <div className='flex-1 flex p-6 w-full flex-col gap-6'>
@@ -23,23 +22,28 @@ export default function Page() {
           <ListLinkSection
             list={[
               {
+                title: 'Pastors',
+                value: 30,
+                icon: <Church size={24} className='stroke-red-500' />,
+              },
+              {
                 title: 'Fellowships/PCF Coordinators:',
-                value: stats?.fellowships || 0,
+                value: 400,
                 icon: <ListCheck size={24} className='stroke-red-500' />,
               },
               {
                 title: 'Cell Leaders:',
-                value: stats?.workers || 0,
+                value: 500,
                 icon: <Users2 size={24} className='stroke-red-500' />,
               },
               {
                 title: 'Workers-In-Training:',
-                value: stats?.workers || 0,
+                value: stats?.workers,
                 icon: <User size={24} className='stroke-red-500' />,
               },
               {
-                title: 'Total members:',
-                value: stats?.members || 0,
+                title: 'Members:',
+                value: 5000,
                 icon: <User2 size={24} className='stroke-red-500' />,
               },
             ]}
@@ -48,25 +52,28 @@ export default function Page() {
       </div>
       <div className=''>
         <TableCard
-          title='Fellowships List'
-          action={<AddNewFellowshipSheet />}
-          data={fellowships || []}
+          title='Workers List'
+          action={<AddNewWorkerSheet />}
+          data={workersData}
           columnKeys={[
             {
               name: 'name',
               title: 'Name',
+              compoundKey: 'first_name,last_name',
             },
             {
-              name: 'address',
-              title: 'Address',
+              name: 'email',
+              title: 'Email',
             },
             {
-              name: 'cordinator_id',
-              title: 'Cordinator',
+              name: 'status',
+              title: 'Status',
             },
           ]}
-          searchKeys={['name']}
-          pathName='d/fellowships'
+          searchKeys={['email']}
+          pathName='d/workers'
+          onNextPage={fetchNextPage}
+          hasNextPage={hasNextPage}
         />
       </div>
     </div>

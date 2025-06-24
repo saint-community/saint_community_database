@@ -1,4 +1,5 @@
 'use client';
+import { useMe } from '@/hooks/useMe';
 import { Button } from '@workspace/ui/components/button';
 import {
   Card,
@@ -12,8 +13,20 @@ import { Input } from '@workspace/ui/components/input';
 import { Label } from '@workspace/ui/components/label';
 import { Separator } from '@workspace/ui/components/separator';
 import { Pencil } from 'lucide-react';
+import { useState } from 'react';
 
 export default function GeneralSettingsPage() {
+  const { data: user } = useMe();
+  const [name, setName] = useState(user?.name);
+
+  const onCancel = () => {
+    setName(user?.name);
+  };
+
+  const onSave = () => {
+    console.log('save');
+  };
+
   return (
     <div className='space-y-6 bg-white p-6'>
       <div>
@@ -36,7 +49,12 @@ export default function GeneralSettingsPage() {
               <div className='grid gap-2'>
                 <Label htmlFor='name'>Full Name</Label>
                 <div className='relative'>
-                  <Input id='name' defaultValue='Sanni Kanyinsola' />
+                  <Input
+                    id='name'
+                    defaultValue={user?.name}
+                    onChange={(e) => setName(e.target.value)}
+                    value={name}
+                  />
                   <Button
                     size='icon'
                     variant='ghost'
@@ -52,7 +70,8 @@ export default function GeneralSettingsPage() {
                   <Input
                     id='email'
                     type='email'
-                    defaultValue='sannyk250@gmail.com'
+                    defaultValue={user?.email}
+                    disabled
                   />
                   <Button
                     size='icon'
@@ -66,7 +85,12 @@ export default function GeneralSettingsPage() {
               <div className='grid gap-2'>
                 <Label htmlFor='phone'>Phone Number</Label>
                 <div className='relative'>
-                  <Input id='phone' defaultValue='2348123789900' />
+                  <Input
+                    id='phone'
+                    defaultValue={user?.phone}
+                    autoComplete='off'
+                    aria-autocomplete='none'
+                  />
                   <Button
                     size='icon'
                     variant='ghost'
@@ -78,25 +102,19 @@ export default function GeneralSettingsPage() {
               </div>
               <div className='grid gap-2'>
                 <Label htmlFor='current-password'>Create a New Password</Label>
-                <Input
-                  id='current-password'
-                  type='password'
-                  defaultValue='********'
-                />
+                <Input id='current-password' type='password' />
               </div>
               <div className='grid gap-2'>
                 <Label htmlFor='new-password'>Conform New Password</Label>
-                <Input
-                  id='new-password'
-                  type='password'
-                  defaultValue='********'
-                />
+                <Input id='new-password' type='password' />
               </div>
             </div>
           </CardContent>
           <CardFooter className='flex justify-between'>
-            <Button variant='outline'>Cancel</Button>
-            <Button>Save</Button>
+            <Button variant='outline' onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button onClick={onSave}>Save</Button>
           </CardFooter>
         </Card>
       </div>

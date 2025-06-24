@@ -25,7 +25,7 @@ import { createFellowship } from '@/services/fellowships';
 import { useWorkerOption } from '@/hooks/workers';
 import { useMe } from '@/hooks/useMe';
 import { toast } from '@workspace/ui/lib/sonner';
-import { QUERY_PATHS } from '@/utils/constants';
+import { QUERY_PATHS, ROLES } from '@/utils/constants';
 
 const formSchema = z.object({
   church_id: z.string().min(1, {
@@ -61,7 +61,8 @@ export function AddNewFellowshipSheet() {
   const { data: churches } = useChurchesOption();
   const { data: workers } = useWorkerOption();
 
-  const lockChurchSelect = !!user?.church_id && user?.role !== 'admin';
+  const lockChurchSelect =
+    !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
 
   const mutation = useMutation({
     mutationFn: createFellowship,

@@ -28,39 +28,8 @@ import {
 } from '@workspace/ui/components/avatar';
 import Link from 'next/link';
 import { useMe } from '@/hooks/useMe';
-import { useRouter } from 'next/navigation';
-
-// Menu items.
-const mainItems = [
-  {
-    title: 'Dashboard',
-    url: '/d',
-    icon: LayoutDashboard,
-  },
-  {
-    title: 'Churches',
-    url: '/d/churches',
-    icon: Church,
-  },
-  {
-    title: 'Fellowships/PCF',
-    url: '/d/fellowships',
-    icon: ListCheck,
-  },
-  {
-    title: 'Cells',
-    url: '/d/cells',
-    icon: Users2,
-  },
-  {
-    title: 'Members',
-    url: '/d/members',
-    icon: User2,
-  },
-];
-
-export const getRouteNameFromPath = (pathname: string) =>
-  mainItems.find((m) => m.url === pathname)?.title;
+import { ROLES } from '@/utils/constants';
+import { useMemo } from 'react';
 
 const otherItems = [
   {
@@ -83,7 +52,71 @@ const otherItems = [
 
 export function AppSidebar() {
   const { data } = useMe();
-  const router = useRouter();
+  const hideChurch =
+    !!data && ![ROLES.ADMIN, ROLES.PASTOR].includes(data?.role);
+
+  const hideFellowship =
+    !!data &&
+    ![ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_PASTOR].includes(data?.role);
+
+  const hideCells =
+    !!data &&
+    ![
+      ROLES.ADMIN,
+      ROLES.PASTOR,
+      ROLES.CHURCH_PASTOR,
+      ROLES.FELLOWSHIP_LEADER,
+    ].includes(data?.role);
+
+  // Menu items.
+  const mainItems = useMemo(() => {
+    const items = [
+      {
+        title: 'Dashboard',
+        url: '/d',
+        icon: LayoutDashboard,
+      },
+      ...(!hideChurch
+        ? [
+            {
+              title: 'Churches',
+              url: '/d/churches',
+              icon: Church,
+            },
+          ]
+        : []),
+      ...(!hideFellowship
+        ? [
+            {
+              title: 'Fellowships/PCF',
+              url: '/d/fellowships',
+              icon: ListCheck,
+            },
+          ]
+        : []),
+      ...(!hideCells
+        ? [
+            {
+              title: 'Cells',
+              url: '/d/cells',
+              icon: Users2,
+            },
+          ]
+        : []),
+      {
+        title: 'Workers in Training',
+        url: '/d/workers',
+        icon: User2,
+      },
+      {
+        title: 'Members',
+        url: '/d/members',
+        icon: User2,
+      },
+    ];
+
+    return items;
+  }, [hideChurch, hideFellowship, hideCells]);
   return (
     <Sidebar className='h-dvh'>
       <SidebarContent>

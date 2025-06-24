@@ -8,30 +8,29 @@ import { useCellById } from '@/hooks/cell';
 import { CalendarIcon, Pencil, Users, Users2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useState } from 'react';
-import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
 import { updateCell } from '@/services/cell';
 
-const formSchema = z.object({
-  name: z.string().min(2, {
-    message: 'Cell name must be at least 2 characters.',
-  }),
-  leader: z.string().min(2, {
-    message: 'Leader name must be at least 2 characters.',
-  }),
-  church: z.string().min(2, {
-    message: 'Church is required',
-  }),
-  fellowship: z.string().min(2, {
-    message: 'Fellowship is required',
-  }),
-  location: z.string().min(2, {
-    message: 'Location must be at least 2 characters.',
-  }),
-  address: z.string().min(5, {
-    message: 'Address must be at least 5 characters.',
-  }),
-});
+// const formSchema = z.object({
+//   name: z.string().min(2, {
+//     message: 'Cell name must be at least 2 characters.',
+//   }),
+//   leader: z.string().min(2, {
+//     message: 'Leader name must be at least 2 characters.',
+//   }),
+//   church: z.string().min(2, {
+//     message: 'Church is required',
+//   }),
+//   fellowship: z.string().min(2, {
+//     message: 'Fellowship is required',
+//   }),
+//   location: z.string().min(2, {
+//     message: 'Location must be at least 2 characters.',
+//   }),
+//   address: z.string().min(5, {
+//     message: 'Address must be at least 5 characters.',
+//   }),
+// });
 
 export default function CellDetailPage() {
   const params = useParams();
@@ -65,12 +64,12 @@ export default function CellDetailPage() {
   }
 
   const cellData = {
-    name: cell.name || 'Kobiti',
-    leader: cell.leader_name || 'Seun Odunola',
-    church: cell.church_name || 'Surulere',
-    fellowship: cell.fellowship_name || 'Surulere',
-    location: cell.location || 'Kobiti',
-    address: cell.address || '4, Kobiti Street, off Agege motor road, Mushin',
+    name: cell.name,
+    leader: cell.leader_name,
+    church: cell.church_name,
+    fellowship: cell.fellowship_name,
+    location: cell.location,
+    address: cell.address,
     dateStarted: cell.date_started
       ? new Date(cell.date_started)
       : new Date('2022-10-22'),
@@ -130,35 +129,30 @@ export default function CellDetailPage() {
             label='Name of Cell Leader'
             value={currentData.leader}
             onEdit={(value) => handleEdit('leader', value)}
-            isEditing={!!editedData}
           />
 
           <FormField
             label='Church'
             value={currentData.church}
             onEdit={(value) => handleEdit('church', value)}
-            isEditing={!!editedData}
           />
 
           <FormField
             label='Fellowship/PCF'
             value={currentData.fellowship}
             onEdit={(value) => handleEdit('fellowship', value)}
-            isEditing={!!editedData}
           />
 
           <FormField
             label='Location'
             value={currentData.location}
             onEdit={(value) => handleEdit('location', value)}
-            isEditing={!!editedData}
           />
 
           <FormField
             label='Address'
             value={currentData.address}
             onEdit={(value) => handleEdit('address', value)}
-            isEditing={!!editedData}
           />
 
           <div className='pt-8 flex justify-center gap-6'>
@@ -208,10 +202,9 @@ interface FormFieldProps {
   label: string;
   value: string;
   onEdit: (value: string) => void;
-  isEditing: boolean;
 }
 
-function FormField({ label, value, onEdit, isEditing }: FormFieldProps) {
+function FormField({ label, value, onEdit }: FormFieldProps) {
   const [isFieldEditing, setIsFieldEditing] = useState(false);
 
   return (

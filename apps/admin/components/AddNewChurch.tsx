@@ -15,7 +15,14 @@ import { FieldInfo } from '@workspace/ui/components/field-info';
 import { createChurch } from '@/services/churches';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@workspace/ui/lib/sonner';
-import { QUERY_PATHS } from '@/utils/constants';
+import { COUNTRIES, QUERY_PATHS } from '@/utils/constants';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@workspace/ui/components/select';
 
 const formSchema = z.object({
   churchName: z.string().min(2, {
@@ -27,9 +34,9 @@ const formSchema = z.object({
   address: z.string().min(5, {
     message: 'Address must be at least 5 characters.',
   }),
-  // country: z.string().min(2, {
-  //   message: 'Country is required',
-  // }),
+  country: z.string().min(2, {
+    message: 'Country is required',
+  }),
   // pastorName: z.string().min(2, {
   //   message: 'Pastor name must be at least 2 characters.',
   // }),
@@ -66,7 +73,7 @@ export function AddNewChurchSheet() {
       churchName: '',
       location: '',
       address: '',
-      // country: '',
+      country: 'Nigeria',
       // pastorName: '',
       dateStarted: new Date(),
     },
@@ -78,7 +85,7 @@ export function AddNewChurchSheet() {
       console.log(value);
       mutation.mutate({
         name: value.churchName,
-        country: 'Nigeria',
+        country: value.country,
         state: value.location,
         address: value.address,
         active: true,
@@ -166,7 +173,7 @@ export function AddNewChurchSheet() {
           />
         </div>
 
-        {/* <div className='space-y-2'>
+        <div className='space-y-2'>
           <Label htmlFor='country'>Country</Label>
           <form.Field
             name='country'
@@ -191,7 +198,7 @@ export function AddNewChurchSheet() {
               </>
             )}
           />
-        </div> */}
+        </div>
 
         {/* <div className='space-y-2'>
           <Label htmlFor='pastorName'>Name of Pastor</Label>

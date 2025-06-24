@@ -25,7 +25,7 @@ import { useFellowshipsOption } from '@/hooks/fellowships';
 import { createCell } from '@/services/cell';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMe } from '@/hooks/useMe';
-import { QUERY_PATHS } from '@/utils/constants';
+import { QUERY_PATHS, ROLES } from '@/utils/constants';
 
 const formSchema = z.object({
   church_id: z.string().min(1, {
@@ -64,8 +64,11 @@ export function AddNewCellSheet() {
   const { data: workers } = useWorkerOption();
   const { data: fellowships } = useFellowshipsOption();
   const queryClient = useQueryClient();
-  const lockChurchSelect = !!user?.church_id && user?.role !== 'admin';
-  const lockFellowshipSelect = !!user?.fellowship_id && user?.role !== 'admin';
+  const lockChurchSelect =
+    !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
+  const lockFellowshipSelect =
+    !!user &&
+    ![ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_PASTOR].includes(user?.role);
 
   const { mutate } = useMutation({
     mutationFn: createCell,

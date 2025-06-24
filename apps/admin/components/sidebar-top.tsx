@@ -8,8 +8,8 @@ import {
   AvatarFallback,
   AvatarImage,
 } from '@workspace/ui/components/avatar';
-import { getRouteNameFromPath } from './app-sidebar';
 import { useMe } from '@/hooks/useMe';
+import { getRouteNameFromPath } from '@/utils/helper';
 
 export const SideBarTop = () => {
   const pathname = usePathname();

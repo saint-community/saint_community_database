@@ -8,27 +8,26 @@ import { useFellowshipById } from '@/hooks/fellowships';
 import { CalendarIcon, Pencil, Users, Users2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useState } from 'react';
-import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
 import { updateFellowship } from '@/services/fellowships';
 
-const formSchema = z.object({
-  name: z.string().min(2, {
-    message: 'Fellowship name must be at least 2 characters.',
-  }),
-  leader: z.string().min(2, {
-    message: 'Leader name must be at least 2 characters.',
-  }),
-  church: z.string().min(2, {
-    message: 'Church is required',
-  }),
-  location: z.string().min(2, {
-    message: 'Location must be at least 2 characters.',
-  }),
-  address: z.string().min(5, {
-    message: 'Address must be at least 5 characters.',
-  }),
-});
+// const formSchema = z.object({
+//   name: z.string().min(2, {
+//     message: 'Fellowship name must be at least 2 characters.',
+//   }),
+//   leader: z.string().min(2, {
+//     message: 'Leader name must be at least 2 characters.',
+//   }),
+//   church: z.string().min(2, {
+//     message: 'Church is required',
+//   }),
+//   location: z.string().min(2, {
+//     message: 'Location must be at least 2 characters.',
+//   }),
+//   address: z.string().min(5, {
+//     message: 'Address must be at least 5 characters.',
+//   }),
+// });
 
 export default function FellowshipDetailPage() {
   const params = useParams();
@@ -141,28 +140,24 @@ export default function FellowshipDetailPage() {
             label='Name of Leader'
             value={currentData.leader}
             onEdit={(value) => handleEdit('leader', value)}
-            isEditing={!!editedData}
           />
 
           <FormField
             label='Church'
             value={currentData.church}
             onEdit={(value) => handleEdit('church', value)}
-            isEditing={!!editedData}
           />
 
           <FormField
             label='Location'
             value={currentData.location}
             onEdit={(value) => handleEdit('location', value)}
-            isEditing={!!editedData}
           />
 
           <FormField
             label='Address'
             value={currentData.address}
             onEdit={(value) => handleEdit('address', value)}
-            isEditing={!!editedData}
           />
 
           <div className='pt-8 flex justify-center gap-6'>
@@ -212,10 +207,9 @@ interface FormFieldProps {
   label: string;
   value: string;
   onEdit: (value: string) => void;
-  isEditing: boolean;
 }
 
-function FormField({ label, value, onEdit, isEditing }: FormFieldProps) {
+function FormField({ label, value, onEdit }: FormFieldProps) {
   const [isFieldEditing, setIsFieldEditing] = useState(false);
 
   return (

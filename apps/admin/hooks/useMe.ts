@@ -12,6 +12,7 @@ interface User {
   name: string;
   role: 'admin' | 'user';
   updated_at: string | null;
+  phone?: string;
 }
 
 export const useMe = () => {

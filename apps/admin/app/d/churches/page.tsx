@@ -11,8 +11,6 @@ export default function Page() {
   const { data: churches } = useChurches();
   const { data: stats } = useStatistics();
 
-  console.log({ churches });
-
   return (
     <div className='flex-1 flex p-6 w-full flex-col gap-6'>
       <div className='flex gap-6'>

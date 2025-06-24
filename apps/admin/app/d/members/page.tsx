@@ -48,7 +48,7 @@ export default function Page() {
         <TableCard
           title='Churches List'
           action={<AddNewMemberSheet />}
-          data={data}
+          data={[]}
           columnKeys={[
             {
               name: 'name',
@@ -70,108 +70,3 @@ export default function Page() {
     </div>
   );
 }
-
-const data = [
-  {
-    id: 'tstss',
-    name: 'm5gr84i9',
-    location: 'success',
-    pastor: 'ken99',
-  },
-  {
-    id: 'tstss',
-    name: '3u1reuv4',
-    location: 'success',
-    pastor: 'Abe45',
-  },
-  {
-    id: 'tstss',
-    name: 'derv1ws0',
-    location: 'processing',
-    pastor: 'Monserrat44',
-  },
-  {
-    id: 'tstss',
-    name: '5kma53ae',
-    location: 'success',
-    pastor: 'Silas22',
-  },
-  {
-    id: 'tstss',
-    name: 'bhqecj4p',
-    location: 'failed',
-    pastor: 'carmella',
-  },
-  {
-    id: 'tstss',
-    name: '3u1reuv4',
-    location: 'success',
-    pastor: 'Abe45',
-  },
-  {
-    id: 'tstss',
-    name: 'derv1ws0',
-    location: 'processing',
-    pastor: 'Monserrat44',
-  },
-  {
-    id: 'tstss',
-    name: '5kma53ae',
-    location: 'success',
-    pastor: 'Silas22',
-  },
-  {
-    id: 'tstss',
-    name: 'bhqecj4p',
-    location: 'failed',
-    pastor: 'carmella',
-  },
-  {
-    id: 'tstss',
-    name: '3u1reuv4',
-    location: 'success',
-    pastor: 'Abe45',
-  },
-  {
-    id: 'tstss',
-    name: 'derv1ws0',
-    location: 'processing',
-    pastor: 'Monserrat44',
-  },
-  {
-    id: 'tstss',
-    name: '5kma53ae',
-    location: 'success',
-    pastor: 'Silas22',
-  },
-  {
-    id: 'tstss',
-    name: 'bhqecj4p',
-    location: 'failed',
-    pastor: 'carmella',
-  },
-  {
-    id: 'tstss',
-    name: '3u1reuv4',
-    location: 'success',
-    pastor: 'Abe45',
-  },
-  {
-    id: 'tstss',
-    name: 'derv1ws0',
-    location: 'processing',
-    pastor: 'Monserrat44',
-  },
-  {
-    id: 'tstss',
-    name: '5kma53ae',
-    location: 'success',
-    pastor: 'Silas22',
-  },
-  {
-    id: 'tstss',
-    name: 'bhqecj4p',
-    location: 'failed',
-    pastor: 'carmella',
-  },
-];

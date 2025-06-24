@@ -30,7 +30,7 @@ export const useCellsOption = () => {
     queryKey: [QUERY_PATHS.CELLS, 'option'],
     queryFn: () => getCells(1),
     select: (data) =>
-      data.map((cell: { id: string; name: string }) => ({
+      data?.data?.map((cell: { id: string; name: string }) => ({
         value: cell.id,
         label: cell.name,
       })),
