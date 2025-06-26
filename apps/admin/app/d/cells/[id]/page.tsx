@@ -125,11 +125,11 @@ export default function CellDetailPage() {
 
         {/* Cell Details Form */}
         <div className='space-y-5 mx-auto'>
-          <FormField
+          {/* <FormField
             label='Name of Cell Leader'
             value={currentData.leader}
             onEdit={(value) => handleEdit('leader', value)}
-          />
+          /> */}
 
           <FormField
             label='Church'
