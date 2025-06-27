@@ -10,19 +10,28 @@ import { useEffect, useState } from 'react';
 import { updateWorker } from '@/services/workers';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from '@workspace/ui/lib/sonner';
+import { useChurchesOption } from '@/hooks/churches';
+import { useFellowshipsOption } from '@/hooks/fellowships';
+import { useCellsOption } from '@/hooks/cell';
+import { useDepartmentsOption } from '@/hooks/departments';
+import { FormSelectField } from '@/components/forms';
 
 export default function MemberDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const { data, isLoading } = useWorkerById(id);
+  const { data: churches } = useChurchesOption();
+  const { data: fellowships } = useFellowshipsOption();
+  const { data: cells } = useCellsOption();
+  const { data: departments } = useDepartmentsOption();
   const [member, setMember] = useState<any>({
     first_name: '',
     last_name: '',
     gender: '',
-    church_name: '',
-    fellowship_name: '',
-    cell_name: '',
-    department_name: '',
+    church_id: '',
+    fellowship_id: '',
+    cell_id: '',
+    department_id: '',
   });
 
   useEffect(() => {
@@ -45,7 +54,10 @@ export default function MemberDetailPage() {
   });
 
   const handleSave = () => {
-    mutation.mutate(member);
+    mutation.mutate({
+      ...member,
+      active: true,
+    });
   };
 
   const handleCancel = () => {
@@ -69,10 +81,9 @@ export default function MemberDetailPage() {
     );
   }
 
-  const onChange =
-    (name: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
-      setMember((prev: any) => ({ ...prev, [name]: e.target.value }));
-    };
+  const onChange = (name: string) => (value: any) => {
+    setMember((prev: any) => ({ ...prev, [name]: value }));
+  };
 
   return (
     <div className='flex-1 flex p-6 w-full flex-col gap-6'>
@@ -110,6 +121,44 @@ export default function MemberDetailPage() {
             <span className='text-lg font-bold text-[#7C6846]'>
               {member.member_since
                 ? new Date(member.member_since).toLocaleDateString('en-GB', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })
+                : '--'}
+            </span>
+          </div>
+          {/* worker since Card */}
+          <div className='bg-[#fff] rounded-lg p-4 flex-1 flex flex-col items-start shadow-sm min-w-[200px]'>
+            <div className='flex items-center gap-2 mb-2'>
+              <span>
+                {/* Calendar Icon */}
+                <svg width='20' height='20' fill='none' viewBox='0 0 24 24'>
+                  <rect
+                    x='3'
+                    y='5'
+                    width='18'
+                    height='16'
+                    rx='2'
+                    stroke='#E11D48'
+                    strokeWidth='2'
+                  />
+                  <path
+                    d='M16 3v4M8 3v4'
+                    stroke='#E11D48'
+                    strokeWidth='2'
+                    strokeLinecap='round'
+                  />
+                  <path d='M3 9h18' stroke='#E11D48' strokeWidth='2' />
+                </svg>
+              </span>
+              <span className='text-xs text-gray-500 font-medium'>
+                Worker since
+              </span>
+            </div>
+            <span className='text-lg font-bold text-[#7C6846]'>
+              {member.worker_since
+                ? new Date(member.worker_since).toLocaleDateString('en-GB', {
                     day: 'numeric',
                     month: 'short',
                     year: 'numeric',
@@ -166,37 +215,61 @@ export default function MemberDetailPage() {
             value={member.full_name}
             onChange={onChange('full_name')}
           />
-          <FormField label='Gender' value={member.gender} dropdown />
-          <FormField
+          <FormSelectField
+            label='Gender'
+            value={member.gender}
+            onEdit={onChange('gender')}
+            options={[
+              {
+                value: 'male',
+                label: 'Male',
+              },
+              {
+                value: 'female',
+                label: 'Female',
+              },
+            ]}
+          />
+
+          <FormSelectField
             label='Church'
-            value={member.church_name}
-            dropdown
-            onChange={onChange('church')}
+            value={`${member.church_id}`}
+            onEdit={onChange('church_id')}
+            options={churches}
           />
-          <FormField
+
+          <FormSelectField
             label='Fellowship/PCF'
-            value={member.fellowship_name}
-            dropdown
-            onChange={onChange('fellowship')}
+            value={`${member.fellowship_id}`}
+            onEdit={onChange('fellowship_id')}
+            options={fellowships}
           />
-          <FormField
+
+          <FormSelectField
             label='Cell'
-            value={member.cell_name}
-            dropdown
-            onChange={onChange('cell')}
+            value={`${member.cell_id}`}
+            onEdit={onChange('cell_id')}
+            options={cells}
           />
-          <FormField
+          <FormSelectField
             label='Department'
-            value={member.department}
-            dropdown
-            onChange={onChange('department')}
+            value={`${member.department_id}`}
+            onEdit={onChange('department_id')}
+            options={departments}
           />
-          <FormField
-            label='Role'
-            value={member.role}
-            dropdown
-            onChange={onChange('role')}
+
+          <FormSelectField
+            label='Assign a Role'
+            value={member.status}
+            onEdit={onChange('status')}
+            options={[
+              {
+                value: 'worker',
+                label: 'Worker',
+              },
+            ]}
           />
+
           <FormField
             label='Phone Number'
             value={member.phone_number}

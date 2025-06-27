@@ -15,6 +15,7 @@ import { Card } from '@workspace/ui/components/card';
 import { useAccounts } from '@/hooks/auth';
 import { Trash } from 'lucide-react';
 import { Badge } from '@workspace/ui/components/badge';
+import { AddNewAdmin } from '@/components/AddNewAdmin';
 
 export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -62,7 +63,7 @@ export default function UsersPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className='max-w-[300px]'
             />
-            <Button variant='outline'>Add new user</Button>
+            <AddNewAdmin />
           </div>
         </div>
 
