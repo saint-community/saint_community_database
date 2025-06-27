@@ -1,12 +1,26 @@
 import { getWorkerById, getWorkers, getWorkerForm } from '@/services/workers';
 import { QUERY_PATHS } from '@/utils/constants';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useQuery,
+} from '@tanstack/react-query';
 
-export const useWorkers = (churchId?: string) => {
+export const useWorkers = (churchId?: string, page: number = 1) => {
+  return useQuery({
+    queryKey: [QUERY_PATHS.WORKERS, churchId, page],
+    queryFn: () => getWorkers(churchId, page),
+    // select: (data) => data.data,
+    placeholderData: keepPreviousData,
+  });
+};
+
+export const useInfiniteWorkers = (churchId?: string) => {
   return useInfiniteQuery({
     queryKey: [QUERY_PATHS.WORKERS, churchId],
-    queryFn: ({ pageParam = 1 }) => getWorkers(churchId, pageParam),
-    getNextPageParam: (lastPage) => lastPage.next_page_url,
+    queryFn: () => getWorkers(churchId),
+    getNextPageParam: (lastPage) =>
+      lastPage.next_page_url ? lastPage?.current_page + 1 : undefined,
     initialPageParam: 1,
   });
 };

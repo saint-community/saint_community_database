@@ -7,10 +7,12 @@ import {
   DialogTrigger,
 } from '@workspace/ui/components/dialog';
 import { Input } from '@workspace/ui/components/input';
-import { useWorkers } from '@/hooks/workers';
+import { useInfiniteWorkers } from '@/hooks/workers';
 import { useMemo, useState } from 'react';
 import { Badge } from '@workspace/ui/components/badge';
 import { formatDate } from 'date-fns';
+import { Button } from '@workspace/ui/components/button';
+import { Loader2 } from 'lucide-react';
 
 export function LeaderSelector({
   selectedWorker,
@@ -19,11 +21,12 @@ export function LeaderSelector({
   selectedWorker?: string;
   setSelectedWorker?: (worker: string) => void;
 }) {
-  const { data } = useWorkers();
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteWorkers();
   const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
-  const workers = data?.pages.flatMap((page) => page.data?.data);
+  const workers = data?.pages.flatMap((page) => page.data);
 
   const selectedWorkerData = useMemo(
     () =>
@@ -85,6 +88,19 @@ export function LeaderSelector({
               </div>
             ))}
           </div>
+          {isFetchingNextPage ? (
+            <Loader2 className='animate-spin self-center mt-4' />
+          ) : (
+            hasNextPage && (
+              <Button
+                onClick={() => fetchNextPage()}
+                className='self-center mt-4'
+                disabled={isFetchingNextPage}
+              >
+                Load more
+              </Button>
+            )
+          )}
         </div>
         {/* <DialogFooter className='sm:justify-start'>
           <DialogClose asChild>

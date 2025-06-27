@@ -6,10 +6,18 @@ import { useChurches } from '@/hooks/churches';
 import { AddNewChurchSheet } from '@/components/AddNewChurch';
 import { TableCard } from '@/components/TableCard';
 import { useStatistics } from '@/hooks/statistics';
+import { useMemo, useState } from 'react';
 
 export default function Page() {
-  const { data: churches } = useChurches();
+  const [page, setPage] = useState(1);
+  const { data } = useChurches(page);
   const { data: stats } = useStatistics();
+
+  const churches = data?.data || [];
+
+  const perPage = useMemo(() => {
+    return data?.per_page || 10;
+  }, [data]);
 
   return (
     <div className='flex-1 flex p-6 w-full flex-col gap-6'>
@@ -69,6 +77,12 @@ export default function Page() {
           ]}
           searchKeys={['name']}
           pathName='d/churches'
+          perPage={perPage}
+          onNextPage={() => setPage((prev) => prev + 1)}
+          hasNextPage={data?.next_page_url !== null}
+          onPreviousPage={() => setPage((prev) => prev - 1)}
+          hasPreviousPage={data?.prev_page_url !== null}
+          page={page}
         />
       </div>
     </div>

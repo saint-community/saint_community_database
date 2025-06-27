@@ -1,13 +1,13 @@
 import { getCellById, getCells } from '@/services/cell';
 import { QUERY_PATHS } from '@/utils/constants';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
-export const useCells = () => {
-  return useInfiniteQuery({
-    queryKey: [QUERY_PATHS.CELLS],
-    queryFn: ({ pageParam = 1 }) => getCells(pageParam),
-    getNextPageParam: (lastPage) => lastPage.next_page_url,
-    initialPageParam: 1,
+export const useCells = (page: number = 1) => {
+  return useQuery({
+    queryKey: [QUERY_PATHS.CELLS, page],
+    queryFn: () => getCells(page),
+    // select: (data) => data.data,
+    placeholderData: keepPreviousData,
   });
 };
 

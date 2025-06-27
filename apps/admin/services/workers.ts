@@ -39,7 +39,7 @@ export const getWorkers = async (churchId?: string, page?: number) => {
     },
   });
 
-  return data;
+  return data?.data;
 };
 
 export const getWorkerById = async (id: string) => {

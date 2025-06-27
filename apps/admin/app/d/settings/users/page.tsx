@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Table,
   TableBody,
@@ -13,10 +13,27 @@ import { Input } from '@workspace/ui/components/input';
 import { Button } from '@workspace/ui/components/button';
 import { Card } from '@workspace/ui/components/card';
 import { useAccounts } from '@/hooks/auth';
+import { Trash } from 'lucide-react';
+import { Badge } from '@workspace/ui/components/badge';
 
 export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState('');
-  const { data: accounts } = useAccounts();
+  const [page, setPage] = useState(1);
+  const { data } = useAccounts(page);
+
+  const accounts = data?.data || [];
+
+  console.log(data);
+
+  const totalPages = useMemo(() => {
+    const total = data?.total;
+    const perPage = data?.per_page;
+    return Math.ceil(total / perPage);
+  }, [data]);
+
+  const currentPage = useMemo(() => {
+    return data?.current_page;
+  }, [data]);
 
   const handleRemoveMember = (id: number) => {
     // Implement remove functionality
@@ -25,7 +42,7 @@ export default function UsersPage() {
 
   const filteredMembers = accounts?.filter((account: any) =>
     Object.values(account).some((value: any) =>
-      value.toString().toLowerCase().includes(searchQuery.toLowerCase())
+      value?.toString()?.toLowerCase()?.includes(searchQuery.toLowerCase())
     )
   );
 
@@ -54,10 +71,8 @@ export default function UsersPage() {
             <TableRow>
               <TableHead>S/N</TableHead>
               <TableHead>Name</TableHead>
-              <TableHead>Gender</TableHead>
-              <TableHead>Fellowship/PCF</TableHead>
-              <TableHead>Cell</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Role</TableHead>
               <TableHead>Action</TableHead>
             </TableRow>
           </TableHeader>
@@ -66,29 +81,20 @@ export default function UsersPage() {
               <TableRow key={member.id}>
                 <TableCell>{index + 1}</TableCell>
                 <TableCell>{member.name}</TableCell>
-                <TableCell>{member.gender}</TableCell>
-                <TableCell>{member.fellowship}</TableCell>
-                <TableCell>{member.cell}</TableCell>
+                <TableCell className='text-sm'>{member.email}</TableCell>
                 <TableCell>
-                  <span
-                    className={`px-2 py-1 rounded-full text-sm ${
-                      member.status === 'Consistent'
-                        ? 'bg-green-100 text-green-800'
-                        : member.status === 'Inconsistent'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-red-100 text-red-800'
-                    }`}
-                  >
-                    {member.status}
-                  </span>
+                  <Badge className='text-xs' variant='secondary'>
+                    {member.role?.replace('_', ' ')}
+                  </Badge>
                 </TableCell>
+
                 <TableCell>
                   <Button
                     variant='destructive'
                     size='sm'
                     onClick={() => handleRemoveMember(member.id)}
                   >
-                    Remove mem.
+                    <Trash />
                   </Button>
                 </TableCell>
               </TableRow>
@@ -100,11 +106,23 @@ export default function UsersPage() {
           <div className='flex items-center gap-2' />
           {/* <p className='text-sm text-red-600'>Changes have been saved!</p> */}
           <div className='flex items-center gap-2'>
-            <Button variant='outline' size='sm'>
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={() => setPage((prev) => prev - 1)}
+              disabled={data?.prev_page_url === null}
+            >
               &lt;
             </Button>
-            <span className='text-sm'>Page 1 of 3</span>
-            <Button variant='outline' size='sm'>
+            <span className='text-sm'>
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={() => setPage((prev) => prev + 1)}
+              disabled={data?.next_page_url === null}
+            >
               &gt;
             </Button>
           </div>

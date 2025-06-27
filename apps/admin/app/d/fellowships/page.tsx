@@ -7,11 +7,20 @@ import { useFellowships } from '@/hooks/fellowships';
 import { useStatistics } from '@/hooks/statistics';
 import { useMe } from '@/hooks/useMe';
 import { ListCheck, User, User2, Users2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 export default function Page() {
   const { data: user } = useMe();
-  const { data: fellowships } = useFellowships(user?.church_id?.toString());
+  const [page, setPage] = useState(1);
+  const { data } = useFellowships(user?.church_id?.toString(), page);
+
+  const fellowships = data?.data || [];
+
   const { data: stats } = useStatistics();
+
+  const perPage = useMemo(() => {
+    return data?.per_page || 10;
+  }, [data]);
 
   return (
     <div className='flex-1 flex p-6 w-full flex-col gap-6'>
@@ -50,7 +59,7 @@ export default function Page() {
         <TableCard
           title='Fellowships List'
           action={<AddNewFellowshipSheet />}
-          data={fellowships || []}
+          data={fellowships}
           columnKeys={[
             {
               name: 'name',
@@ -60,13 +69,15 @@ export default function Page() {
               name: 'address',
               title: 'Address',
             },
-            {
-              name: 'cordinator_id',
-              title: 'Cordinator',
-            },
           ]}
           searchKeys={['name']}
           pathName='d/fellowships'
+          perPage={perPage}
+          onNextPage={() => setPage((prev) => prev + 1)}
+          hasNextPage={data?.next_page_url !== null}
+          onPreviousPage={() => setPage((prev) => prev - 1)}
+          hasPreviousPage={data?.prev_page_url !== null}
+          page={page}
         />
       </div>
     </div>

@@ -63,9 +63,13 @@ export const logoutUser = async () => {
   localStorage.removeItem(STORAGE_KEYS.TOKEN);
 };
 
-export const getAccounts = async () => {
-  const { data } = await ApiCaller.get(QUERY_PATHS.ACCOUNTS);
-  return data || [];
+export const getAccounts = async (page: number) => {
+  const { data } = await ApiCaller.get(QUERY_PATHS.ACCOUNTS, {
+    params: {
+      page,
+    },
+  });
+  return data?.data;
 };
 
 export const getAccountById = async (id: string) => {

@@ -1,11 +1,12 @@
 import { getAccountById, getAccounts } from '@/services/auth';
 import { QUERY_PATHS } from '@/utils/constants';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
-export const useAccounts = () => {
+export const useAccounts = (page: number = 1) => {
   return useQuery({
-    queryKey: [QUERY_PATHS.ACCOUNTS],
-    queryFn: () => getAccounts(),
+    queryKey: [QUERY_PATHS.ACCOUNTS, page],
+    queryFn: () => getAccounts(page),
+    placeholderData: keepPreviousData,
   });
 };
 

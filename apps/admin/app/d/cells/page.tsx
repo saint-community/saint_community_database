@@ -6,11 +6,18 @@ import { TableCard } from '@/components/TableCard';
 import { User, User2, Users2 } from 'lucide-react';
 import { useStatistics } from '@/hooks/statistics';
 import { useCells } from '@/hooks/cell';
+import { useMemo, useState } from 'react';
 
 export default function Page() {
   const { data: stats } = useStatistics();
-  const { data: pages, fetchNextPage, hasNextPage } = useCells();
-  const cells = pages?.pages.flatMap((page) => page.data) || [];
+  const [page, setPage] = useState(1);
+  const { data } = useCells(page);
+
+  const cells = data?.data || [];
+
+  const perPage = useMemo(() => {
+    return data?.per_page || 10;
+  }, [data]);
 
   return (
     <div className='flex-1 flex p-6 w-full flex-col gap-6'>
@@ -44,7 +51,7 @@ export default function Page() {
         <TableCard
           title='Cells List'
           action={<AddNewCellSheet />}
-          data={cells}
+          data={cells || []}
           columnKeys={[
             {
               name: 'name',
@@ -61,8 +68,12 @@ export default function Page() {
           ]}
           searchKeys={['name']}
           pathName='d/cells'
-          onNextPage={fetchNextPage}
-          hasNextPage={hasNextPage}
+          perPage={perPage}
+          onNextPage={() => setPage((prev) => prev + 1)}
+          hasNextPage={data?.next_page_url !== null}
+          onPreviousPage={() => setPage((prev) => prev - 1)}
+          hasPreviousPage={data?.prev_page_url !== null}
+          page={page}
         />
       </div>
     </div>

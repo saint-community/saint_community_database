@@ -4,13 +4,24 @@ import { ChurchChart } from '@/components/church-graph';
 import { ListLinkSection } from '@/components/ListLinkSection';
 import { TableCard } from '@/components/TableCard';
 import { useStatistics } from '@/hooks/statistics';
+import { useMe } from '@/hooks/useMe';
 import { useWorkers } from '@/hooks/workers';
 import { Church, ListCheck, User, User2, Users2 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 export default function Page() {
-  const { data: workers, fetchNextPage, hasNextPage } = useWorkers();
+  const { data: user } = useMe();
+  const [page, setPage] = useState(1);
+  const { data: workers } = useWorkers(user?.church_id?.toString(), page);
   const { data: stats } = useStatistics();
-  const workersData = workers?.pages.flatMap((page) => page.data?.data) || [];
+
+  console.log(workers);
+
+  const workersData = workers?.data || [];
+
+  const perPage = useMemo(() => {
+    return workers?.per_page || 10;
+  }, [workers]);
 
   return (
     <div className='flex-1 flex p-6 w-full flex-col gap-6'>
@@ -72,8 +83,12 @@ export default function Page() {
           ]}
           searchKeys={['email']}
           pathName='d/workers'
-          onNextPage={fetchNextPage}
-          hasNextPage={hasNextPage}
+          perPage={perPage}
+          onNextPage={() => setPage((prev) => prev + 1)}
+          hasNextPage={workers?.next_page_url !== null}
+          onPreviousPage={() => setPage((prev) => prev - 1)}
+          hasPreviousPage={workers?.prev_page_url !== null}
+          page={page}
         />
       </div>
     </div>

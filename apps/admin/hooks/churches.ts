@@ -1,11 +1,13 @@
 import { getChurchById, getChurches } from '@/services/churches';
 import { QUERY_PATHS } from '@/utils/constants';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
-export const useChurches = () => {
+export const useChurches = (page: number = 1) => {
   return useQuery({
-    queryKey: [QUERY_PATHS.CHURCHES],
-    queryFn: () => getChurches(),
+    queryKey: [QUERY_PATHS.CHURCHES, page],
+    queryFn: () => getChurches(page),
+    // select: (data) => data.data,
+    placeholderData: keepPreviousData,
   });
 };
 
@@ -22,7 +24,7 @@ export const useChurchesOption = () => {
     queryKey: [QUERY_PATHS.CHURCHES],
     queryFn: () => getChurches(),
     select: (data) => {
-      return data.map((church: { id: string; name: string }) => ({
+      return data?.data?.map((church: { id: string; name: string }) => ({
         label: church.name,
         value: church.id,
       }));

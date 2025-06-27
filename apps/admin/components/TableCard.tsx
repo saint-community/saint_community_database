@@ -10,7 +10,6 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from '@workspace/ui/components/react-table';
@@ -46,6 +45,10 @@ interface TableCardProps {
   hasNextPage?: boolean;
   onNextPage?: () => void;
   isLoading?: boolean;
+  perPage?: number;
+  page?: number;
+  hasPreviousPage?: boolean;
+  onPreviousPage?: () => void;
 }
 
 export type Payment = {
@@ -198,6 +201,10 @@ export function TableCard({
   hasNextPage,
   onNextPage,
   isLoading,
+  perPage,
+  page,
+  hasPreviousPage,
+  onPreviousPage,
 }: TableCardProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -218,16 +225,21 @@ export function TableCard({
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    manualPagination: true,
+    rowCount: perPage || 10,
     state: {
       sorting,
       columnFilters,
       columnVisibility,
       rowSelection,
+      pagination: {
+        pageIndex: page || 1,
+        pageSize: perPage || 10,
+      },
     },
   });
 
@@ -321,8 +333,12 @@ export function TableCard({
             <Button
               variant='outline'
               size='sm'
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
+              onClick={() => {
+                onPreviousPage?.();
+                table.previousPage();
+              }}
+              // disabled={!table.getCanPreviousPage()}
+              disabled={isLoading || !hasPreviousPage}
             >
               Previous
             </Button>
