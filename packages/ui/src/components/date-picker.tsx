@@ -15,9 +15,11 @@ import {
 export function DatePicker({
   value,
   onChange,
+  className,
 }: {
   value: Date;
   onChange: (date: Date | undefined) => void;
+  className?: string;
 }) {
   return (
     <Popover>
@@ -26,7 +28,8 @@ export function DatePicker({
           variant={'outline'}
           className={cn(
             'w-full justify-start text-left font-normal bg-white',
-            !value && 'text-muted-foreground'
+            !value && 'text-muted-foreground',
+            className
           )}
         >
           <CalendarIcon />
