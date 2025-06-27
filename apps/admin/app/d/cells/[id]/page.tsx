@@ -10,6 +10,11 @@ import { format } from 'date-fns';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { updateCell } from '@/services/cell';
+import { FormSelectField } from '@/components/forms';
+import { useChurchesOption } from '@/hooks/churches';
+import { useFellowshipsOption } from '@/hooks/fellowships';
+import { LeaderSelector } from '@/components/WorkerSelector';
+import { Label } from '@workspace/ui/components/label';
 
 // const formSchema = z.object({
 //   name: z.string().min(2, {
@@ -37,6 +42,8 @@ export default function CellDetailPage() {
   const id = params.id as string;
   const { data: cell, isLoading, refetch } = useCellById(id);
   const [editedData, setEditedData] = useState<any>(null);
+  const { data: churches } = useChurchesOption();
+  const { data: fellowships } = useFellowshipsOption();
 
   const mutation = useMutation({
     mutationFn: (data: any) => updateCell(id, data),
@@ -65,13 +72,13 @@ export default function CellDetailPage() {
 
   const cellData = {
     name: cell.name,
-    leader: cell.leader_name,
-    church: cell.church_name,
-    fellowship: cell.fellowship_name,
+    leader_id: cell.leader_id,
+    church_id: cell.church_id.toString(),
+    fellowship_id: cell.fellowship_id.toString(),
     location: cell.location,
     address: cell.address,
-    dateStarted: cell.date_started
-      ? new Date(cell.date_started)
+    dateStarted: cell.start_date
+      ? new Date(cell.start_date)
       : new Date('2022-10-22'),
     workersInTraining: 5,
     members: 50,
@@ -125,22 +132,28 @@ export default function CellDetailPage() {
 
         {/* Cell Details Form */}
         <div className='space-y-5 mx-auto'>
-          <FormField
-            label='Name of Cell Leader'
-            value={currentData.leader}
-            onEdit={(value) => handleEdit('leader', value)}
-          />
+          <div className='space-y-2'>
+            <Label className='block text-sm font-medium'>Name of Leader</Label>
 
-          <FormField
+            <LeaderSelector
+              selectedWorker={currentData.leader_id}
+              setSelectedWorker={(worker) => {
+                handleEdit('leader_id', worker);
+              }}
+            />
+          </div>
+          <FormSelectField
             label='Church'
-            value={currentData.church}
-            onEdit={(value) => handleEdit('church', value)}
+            value={currentData.church_id}
+            onEdit={(value) => handleEdit('church_id', value)}
+            options={churches}
           />
 
-          <FormField
+          <FormSelectField
             label='Fellowship/PCF'
-            value={currentData.fellowship}
-            onEdit={(value) => handleEdit('fellowship', value)}
+            value={currentData.fellowship_id}
+            onEdit={(value) => handleEdit('fellowship_id', value)}
+            options={fellowships}
           />
 
           <FormField

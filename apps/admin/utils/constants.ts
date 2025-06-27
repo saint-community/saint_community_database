@@ -18,19 +18,19 @@ export const QUERY_PATHS = {
   CHURCHES: '/api/churches',
   CHURCH_DETAIL: '/api/church/:id',
   CHURCH_CREATE: '/api/church/create',
-  CHURCH_UPDATE: '/api/church/update?church_id=:id',
+  CHURCH_UPDATE: '/api/church/update/:id',
 
   // fellowship
   FELLOWSHIPS: '/api/fellowships',
   FELLOWSHIP_DETAIL: '/api/fellowship/:id',
   FELLOWSHIP_CREATE: '/api/fellowship/create',
-  FELLOWSHIP_UPDATE: '/api/fellowship/update?fellowship_id=:id',
+  FELLOWSHIP_UPDATE: '/api/fellowship/update/:id',
 
   // cells
   CELLS: '/api/cells',
   CELL_DETAIL: '/api/cell/:id',
   CELL_CREATE: '/api/cell/create',
-  CELL_UPDATE: '/api/cell/update?cell_id=:id',
+  CELL_UPDATE: '/api/cell/update/:id',
 
   // workers
   WORKERS: '/api/workers',

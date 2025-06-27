@@ -47,8 +47,8 @@ export default function ChurchDetailPage() {
     pastor: church.pastorName,
     location: church.state,
     address: church.address,
-    dateStarted: church.dateStarted
-      ? new Date(church.dateStarted)
+    dateStarted: church.start_date
+      ? new Date(church.start_date)
       : new Date('2022-10-22'),
     lma: 15,
     leaders: 15,
@@ -121,11 +121,11 @@ export default function ChurchDetailPage() {
 
         {/* Church Details Form */}
         <div className='space-y-6 max-w-3xl mx-auto'>
-          <FormField
+          {/* <FormField
             label='Name of Pastor'
             value={currentData.pastor}
             onEdit={(value) => handleEdit('pastor', value)}
-          />
+          /> */}
 
           <FormField
             label='Church Location'

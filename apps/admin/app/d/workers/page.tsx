@@ -15,8 +15,6 @@ export default function Page() {
   const { data: workers } = useWorkers(user?.church_id?.toString(), page);
   const { data: stats } = useStatistics();
 
-  console.log(workers);
-
   const workersData = workers?.data || [];
 
   const perPage = useMemo(() => {

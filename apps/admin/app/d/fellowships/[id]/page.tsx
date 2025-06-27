@@ -2,14 +2,17 @@
 
 import { Card, CardContent } from '@workspace/ui/components/card';
 import { Button } from '@workspace/ui/components/button';
-import { Input } from '@workspace/ui/components/input';
 import { useParams } from 'next/navigation';
 import { useFellowshipById } from '@/hooks/fellowships';
-import { CalendarIcon, Pencil, Users, Users2 } from 'lucide-react';
+import { CalendarIcon, Users, Users2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { updateFellowship } from '@/services/fellowships';
+import { LeaderSelector } from '@/components/WorkerSelector';
+import { Label } from '@workspace/ui/components/label';
+import { useChurchesOption } from '@/hooks/churches';
+import { FormSelectField, FormField } from '@/components/forms';
 
 // const formSchema = z.object({
 //   name: z.string().min(2, {
@@ -34,6 +37,7 @@ export default function FellowshipDetailPage() {
   const id = params.id as string;
   const { data: fellowship, isLoading, refetch } = useFellowshipById(id);
   const [editedData, setEditedData] = useState<any>(null);
+  const { data: churches } = useChurchesOption();
 
   const mutation = useMutation({
     mutationFn: (data: any) => updateFellowship(id, data),
@@ -60,15 +64,16 @@ export default function FellowshipDetailPage() {
     );
   }
 
+  console.log(fellowship);
+
   const fellowshipData = {
     name: fellowship.name,
-    leader: fellowship.cordinator_name,
-    church: fellowship.church_name,
+    cordinator_id: fellowship.cordinator_id,
+    church_id: fellowship.church_id.toString(),
     location: fellowship.location,
-    address:
-      fellowship.address || '4, Kobiti Street, off Agege motor road, Mushin',
-    dateStarted: fellowship.date_started
-      ? new Date(fellowship.date_started)
+    address: fellowship.address || '',
+    dateStarted: fellowship.start_date
+      ? new Date(fellowship.start_date)
       : new Date('2022-10-22'),
     cellLeaders: 15,
     workersInTraining: 150,
@@ -95,10 +100,11 @@ export default function FellowshipDetailPage() {
 
     mutation.mutate({
       name: editedData.name,
-      cordinator_name: editedData.leader,
-      church_name: editedData.church,
+      cordinator_id: editedData.cordinator_id,
+      church_id: editedData.church_id,
       location: editedData.location,
       address: editedData.address,
+      start_date: editedData.start_date,
     });
   };
 
@@ -136,16 +142,22 @@ export default function FellowshipDetailPage() {
 
         {/* Fellowship Details Form */}
         <div className='space-y-6 max-w-2xl mx-auto'>
-          <FormField
-            label='Name of Leader'
-            value={currentData.leader}
-            onEdit={(value) => handleEdit('leader', value)}
-          />
+          <div className='space-y-2'>
+            <Label className='block text-sm font-medium'>Name of Leader</Label>
 
-          <FormField
+            <LeaderSelector
+              selectedWorker={currentData.cordinator_id}
+              setSelectedWorker={(worker) => {
+                handleEdit('cordinator_id', worker);
+              }}
+            />
+          </div>
+
+          <FormSelectField
             label='Church'
-            value={currentData.church}
-            onEdit={(value) => handleEdit('church', value)}
+            value={currentData.church_id}
+            onEdit={(value) => handleEdit('church_id', value)}
+            options={churches}
           />
 
           <FormField
@@ -200,40 +212,5 @@ function StatCard({ icon, label, value }: StatCardProps) {
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-interface FormFieldProps {
-  label: string;
-  value: string;
-  onEdit: (value: string) => void;
-}
-
-function FormField({ label, value, onEdit }: FormFieldProps) {
-  const [isFieldEditing, setIsFieldEditing] = useState(false);
-
-  return (
-    <div className='space-y-2'>
-      <label className='block text-sm font-medium'>{label}</label>
-      <div className='relative'>
-        <div className='relative'>
-          <Input
-            value={value}
-            className='w-full border-gray-300 rounded-md pr-10'
-            readOnly={!isFieldEditing}
-            onChange={(e) => onEdit(e.target.value)}
-          />
-          <span
-            className='absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer'
-            onClick={() => setIsFieldEditing(!isFieldEditing)}
-          >
-            <Pencil
-              size={18}
-              className={`${isFieldEditing ? 'text-green-500' : 'text-red-500'}`}
-            />
-          </span>
-        </div>
-      </div>
-    </div>
   );
 }

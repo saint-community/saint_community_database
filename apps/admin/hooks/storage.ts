@@ -22,7 +22,8 @@ const getItem = (key: string, canExpire: boolean = false) => {
   const item = localStorage.getItem(key);
   if (item) {
     const parsedItem = JSON.parse(item);
-    if (canExpire && parsedItem.expiresAt < Date.now()) {
+
+    if (canExpire && new Date(parsedItem.expiresAt) < new Date()) {
       localStorage.removeItem(key);
       return null;
     }
