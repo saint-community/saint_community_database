@@ -164,6 +164,7 @@ export function AddNewWorkerSheet() {
         worker_since: value.dateJoinedChurch.toISOString().split('T')[0],
         active: true,
         prayer_group_id: 1,
+        department_id: value.department ? Number(value.department) : undefined,
         // department_id: Number(value.department),
       });
     },

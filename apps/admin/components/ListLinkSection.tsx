@@ -6,6 +6,8 @@ import { useMutation } from '@tanstack/react-query';
 import { generateWorkerForm } from '@/services/workers';
 import { toast } from '@workspace/ui/lib/sonner';
 import { useMe } from '@/hooks/useMe';
+import { CheckIcon, Copy, Loader2, PartyPopper } from 'lucide-react';
+import { useLocalStorage } from '@/hooks/storage';
 
 interface IList {
   title: string;
@@ -13,14 +15,22 @@ interface IList {
   icon: React.ReactNode;
 }
 
+const baseUrl = `${window.location.protocol}//${window.location.host}`;
+
 export const ListLinkSection = ({ list }: { list: IList[] }) => {
-  const [generatedLink, setGeneratedLink] = useState('');
   const { data } = useMe();
+  const [copied, setCopied] = useState(false);
+  const [generatedLink, setGeneratedLink] = useLocalStorage(
+    'generatedLink',
+    true
+  );
 
   const mutation = useMutation({
     mutationFn: generateWorkerForm,
-    onSuccess: (data) => {
-      setGeneratedLink(data.link);
+    onSuccess: ({ data }) => {
+      const link = `${baseUrl}/register?token=${data.token}`;
+      console.log({ link });
+      setGeneratedLink(link, new Date(data.expires_at));
       toast.success('Link generated successfully');
     },
     onError: (error) => {
@@ -46,16 +56,26 @@ export const ListLinkSection = ({ list }: { list: IList[] }) => {
       </Card>
       <Card className='bg-white px-5 py-4'>
         <p>Generate Registration Link</p>
-        <div className='mt-2 h-[42px] relative'>
+        <div className='mt-2 h-[42px] relative flex items-center gap-1'>
           <Input
-            value={generatedLink}
-            placeholder='bit.ly/1212'
+            value={generatedLink || ''}
+            placeholder=''
             className='h-[42px]'
             readOnly
           />
           <Button
-            className='absolute top-0 right-0 h-[42px]'
+            className='h-[42px]'
             onClick={() => {
+              if (generatedLink) {
+                navigator.clipboard.writeText(generatedLink);
+                toast.success('Link copied to clipboard');
+                setCopied(true);
+                setTimeout(() => {
+                  setCopied(false);
+                }, 2000);
+                return;
+              }
+
               if (data?.church_id) {
                 mutation.mutate({
                   church_id: data?.church_id || 1,
@@ -68,7 +88,17 @@ export const ListLinkSection = ({ list }: { list: IList[] }) => {
             }}
             disabled={mutation.isPending}
           >
-            {mutation.isPending ? 'Generating...' : 'Generate'}
+            {generatedLink ? (
+              copied ? (
+                <CheckIcon />
+              ) : (
+                <Copy />
+              )
+            ) : mutation.isPending ? (
+              <Loader2 className='animate-spin' />
+            ) : (
+              <PartyPopper />
+            )}
           </Button>
         </div>
       </Card>

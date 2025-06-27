@@ -35,10 +35,11 @@ export const QUERY_PATHS = {
   // workers
   WORKERS: '/api/workers',
   WORKER_DETAIL: '/api/worker/:id',
-  WORKER_CREATE: '/api/workers/create',
-  WORKER_UPDATE: '/api/workers/update/:id',
+  WORKER_CREATE: '/api/worker/create',
+  WORKER_UPDATE: '/api/worker/update/:id',
   WORKER_FORM_GENERATE: '/api/worker/form/generate',
   WORKER_FORM_DETAIL: '/api/worker/form/:token',
+  WORKER_APPROVE: '/api/worker/approve/:id',
 
   // departments
   DEPARTMENTS: '/api/departments',

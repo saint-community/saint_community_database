@@ -21,7 +21,7 @@ export interface Worker {
   worker_since?: string;
   active: boolean;
   prayer_group_id?: number;
-  // department_id?: number;
+  department_id?: number;
 }
 
 export interface FormGenerateRequest {

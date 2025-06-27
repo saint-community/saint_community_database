@@ -22,10 +22,10 @@ import { FieldInfo } from '@workspace/ui/components/field-info';
 import { useChurchesOption } from '@/hooks/churches';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createFellowship } from '@/services/fellowships';
-import { useWorkerOption } from '@/hooks/workers';
 import { useMe } from '@/hooks/useMe';
 import { toast } from '@workspace/ui/lib/sonner';
 import { QUERY_PATHS, ROLES } from '@/utils/constants';
+import { LeaderSelector } from './WorkerSelector';
 
 const formSchema = z.object({
   church_id: z.string().min(1, {
@@ -59,7 +59,6 @@ export function AddNewFellowshipSheet() {
   const queryClient = useQueryClient();
   const { data: user } = useMe();
   const { data: churches } = useChurchesOption();
-  const { data: workers } = useWorkerOption();
 
   const lockChurchSelect =
     !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
@@ -220,30 +219,17 @@ export function AddNewFellowshipSheet() {
 
         <div className='space-y-2'>
           <Label htmlFor='leader_id'>Name of Leader</Label>
+
           <form.Field
             name='leader_id'
             children={(field) => (
               <>
-                <Select
-                  value={field.state.value}
-                  onValueChange={field.handleChange}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder='Select a leader' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {workers?.map(
-                      (worker: { value: string; label: string }) => (
-                        <SelectItem
-                          key={worker.value}
-                          value={`${worker.value}`}
-                        >
-                          {worker.label}
-                        </SelectItem>
-                      )
-                    )}
-                  </SelectContent>
-                </Select>
+                <LeaderSelector
+                  selectedWorker={field.state.value}
+                  setSelectedWorker={(worker) => {
+                    field.handleChange(`${worker}`);
+                  }}
+                />
                 <FieldInfo field={field} />
               </>
             )}
