@@ -1,11 +1,12 @@
 import { QUERY_PATHS } from '@/utils/constants';
 import { ApiCaller } from './init';
 
-export const getFellowships = async (churchId?: string, page: number = 1) => {
+export const getFellowships = async (churchId?: string, page: number = 1, filterBy?: string) => {
   const { data } = await ApiCaller.get(QUERY_PATHS.FELLOWSHIPS, {
     params: {
       page,
       ...(churchId && { church_id: churchId }),
+      ...(filterBy && { filter_by: filterBy }),
     },
   });
   return data?.data || [];

@@ -31,11 +31,12 @@ export interface FormGenerateRequest {
   cell_id?: number;
 }
 
-export const getWorkers = async (churchId?: string, page?: number) => {
+export const getWorkers = async (churchId?: string, page?: number, filterBy?: string) => {
   const { data } = await ApiCaller.get(QUERY_PATHS.WORKERS, {
     params: {
       ...(churchId && { church_id: churchId }),
       ...(page && { page }),
+      ...(filterBy && { filter_by: filterBy }),
     },
   });
 
