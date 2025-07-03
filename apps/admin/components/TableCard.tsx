@@ -15,7 +15,6 @@ import {
 } from '@workspace/ui/components/react-table';
 import { ArrowUpDown, ListFilter } from 'lucide-react';
 import { Button } from '@workspace/ui/components/button';
-import { Checkbox } from '@workspace/ui/components/checkbox';
 import { Input } from '@workspace/ui/components/input';
 import {
   Table,
@@ -49,6 +48,7 @@ interface TableCardProps {
   page?: number;
   hasPreviousPage?: boolean;
   onPreviousPage?: () => void;
+  totalPages?: number;
 }
 
 export type Payment = {
@@ -145,28 +145,28 @@ function buildColumns(
   pathName?: string
 ) {
   const columns: ColumnDef<unknown>[] = [
-    {
-      id: 'select',
-      header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && 'indeterminate')
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label='Select all'
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label='Select row'
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
+    // {
+    //   id: 'select',
+    //   header: ({ table }) => (
+    //     <Checkbox
+    //       checked={
+    //         table.getIsAllPageRowsSelected() ||
+    //         (table.getIsSomePageRowsSelected() && 'indeterminate')
+    //       }
+    //       onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+    //       aria-label='Select all'
+    //     />
+    //   ),
+    //   cell: ({ row }) => (
+    //     <Checkbox
+    //       checked={row.getIsSelected()}
+    //       onCheckedChange={(value) => row.toggleSelected(!!value)}
+    //       aria-label='Select row'
+    //     />
+    //   ),
+    //   enableSorting: false,
+    //   enableHiding: false,
+    // },
   ];
 
   data?.forEach(({ name, title, type = 'string', compoundKey }) => {
@@ -205,6 +205,7 @@ export function TableCard({
   page,
   hasPreviousPage,
   onPreviousPage,
+  totalPages,
 }: TableCardProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -326,8 +327,7 @@ export function TableCard({
         </div>
         <div className='flex items-center justify-end space-x-2 py-4'>
           <div className='flex-1 text-sm text-muted-foreground'>
-            {table.getFilteredSelectedRowModel().rows.length} of{' '}
-            {table.getFilteredRowModel().rows.length} row(s) selected.
+            Page {page} of {totalPages || '∞'}
           </div>
           <div className='space-x-2'>
             <Button

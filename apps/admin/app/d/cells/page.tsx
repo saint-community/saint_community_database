@@ -74,6 +74,7 @@ export default function Page() {
           onPreviousPage={() => setPage((prev) => prev - 1)}
           hasPreviousPage={data?.prev_page_url !== null}
           page={page}
+          totalPages={data?.last_page}
         />
       </div>
     </div>
