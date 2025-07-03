@@ -25,8 +25,11 @@ import { toast } from '@workspace/ui/lib/sonner';
 import { Suspense } from 'react';
 
 const formSchema = z.object({
-  fullName: z.string().min(2, {
-    message: 'Full name must be at least 2 characters.',
+  firstName: z.string().min(2, {
+    message: 'First name must be at least 2 characters.',
+  }),
+   lastName: z.string().min(2, {
+    message: 'Surname must be at least 2 characters.',
   }),
   email: z.string().email({
     message: 'Please enter a valid email address.',
@@ -193,16 +196,34 @@ function RegisterPageMain() {
         className='flex-1 w-full space-y-4 p-4 md:px-0'
       >
         <div className='space-y-2'>
-          <Label htmlFor='fullName'>Full Name</Label>
+          <Label htmlFor='firstName'>First Name</Label>
           <form.Field
             name='fullName'
             children={(field) => (
               <>
                 <Input
-                  id='fullName'
+                  id='firstName'
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder='Enter full name'
+                  placeholder='Enter first name'
+                  className='h-[48px]'
+                />
+                <FieldInfo field={field} />
+              </>
+            )}
+          />
+        </div>
+        <div className='space-y-2'>
+          <Label htmlFor='lastName'>Surname</Label>
+          <form.Field
+            name='lastName'
+            children={(field) => (
+              <>
+                <Input
+                  id='lastName'
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder='Enter surname'
                   className='h-[48px]'
                 />
                 <FieldInfo field={field} />
