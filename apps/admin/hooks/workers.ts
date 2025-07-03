@@ -6,10 +6,18 @@ import {
   useQuery,
 } from '@tanstack/react-query';
 
-export const useWorkers = (churchId?: string, page: number = 1) => {
+export const useWorkers = (
+  {
+    church_id,
+    page,
+  }: {
+    page: number;
+    church_id?: string;
+  } = {} as any
+) => {
   return useQuery({
-    queryKey: [QUERY_PATHS.WORKERS, churchId, page],
-    queryFn: () => getWorkers(churchId, page),
+    queryKey: [QUERY_PATHS.WORKERS, church_id, page],
+    queryFn: () => getWorkers({ church_id, page }),
     // select: (data) => data.data,
     placeholderData: keepPreviousData,
   });
@@ -18,7 +26,7 @@ export const useWorkers = (churchId?: string, page: number = 1) => {
 export const useInfiniteWorkers = (churchId?: string) => {
   return useInfiniteQuery({
     queryKey: [QUERY_PATHS.WORKERS, churchId],
-    queryFn: () => getWorkers(churchId),
+    queryFn: () => getWorkers({ church_id: churchId }),
     getNextPageParam: (lastPage) =>
       lastPage.next_page_url ? lastPage?.current_page + 1 : undefined,
     initialPageParam: 1,
@@ -44,7 +52,7 @@ export const useWorkerForm = (token: string) => {
 export const useWorkerOption = () => {
   return useQuery({
     queryKey: [QUERY_PATHS.WORKERS],
-    queryFn: () => getWorkers(),
+    queryFn: () => getWorkers({ church_id: '' }),
     select: (data) => {
       return data?.data?.map(
         (worker: {

@@ -19,10 +19,11 @@ export const useChurchById = (id: string) => {
   });
 };
 
-export const useChurchesOption = () => {
+export const useChurchesOption = (enabled: boolean = true) => {
   return useQuery({
     queryKey: [QUERY_PATHS.CHURCHES],
     queryFn: () => getChurches(),
+    enabled,
     select: (data) => {
       return data?.data?.map((church: { id: string; name: string }) => ({
         label: church.name,

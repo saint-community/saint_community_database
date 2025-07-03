@@ -2,14 +2,14 @@
 'use client';
 
 import { Button } from '@workspace/ui/components/button';
-import { useForm } from '@workspace/ui/lib/react-hook-form';
+import { useForm, useStore } from '@workspace/ui/lib/react-hook-form';
 import { z } from 'zod';
 import { Input } from '@workspace/ui/components/input';
 import { Textarea } from '@workspace/ui/components/textarea';
 import { Label } from '@workspace/ui/components/label';
 import { Modal } from '@workspace/ui/components/modal';
 import { SquarePlus } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { DatePicker } from '@workspace/ui/components/date-picker';
 import {
   Select,
@@ -60,28 +60,6 @@ const formSchema = z.object({
 export function AddNewCellSheet() {
   const [open, setOpen] = useState(false);
   const { data: user } = useMe();
-  const { data: churches } = useChurchesOption();
-  const { data: fellowships } = useFellowshipsOption();
-  const queryClient = useQueryClient();
-  const lockChurchSelect =
-    !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
-  const lockFellowshipSelect =
-    !!user &&
-    ![ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_PASTOR].includes(user?.role);
-
-  const { mutate } = useMutation({
-    mutationFn: createCell,
-    onSuccess: () => {
-      setOpen(false);
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_PATHS.CELLS],
-      });
-      form.reset();
-    },
-    onError: () => {
-      console.log('Error');
-    },
-  });
 
   const form = useForm({
     defaultValues: {
@@ -113,6 +91,55 @@ export function AddNewCellSheet() {
     },
     onSubmitInvalid(props) {
       console.log(props);
+    },
+  });
+
+  const lockChurchSelect =
+    !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
+  const { data: churches } = useChurchesOption(!lockChurchSelect);
+  const churchId = useStore(form.store, (state) => state.values.church_id);
+  const { data: fellowships } = useFellowshipsOption(churchId);
+  const queryClient = useQueryClient();
+
+  const lockFellowshipSelect =
+    !!user &&
+    ![ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_PASTOR].includes(user?.role);
+
+  const churchOptions = useMemo(() => {
+    if (lockChurchSelect) {
+      return [
+        {
+          value: user?.church_id?.toString(),
+          label: user?.church_name || '',
+        },
+      ];
+    }
+    return churches;
+  }, [user, churches, lockChurchSelect]);
+
+  const fellowshipOptions = useMemo(() => {
+    if (lockFellowshipSelect) {
+      return [
+        {
+          value: user?.fellowship_id?.toString(),
+          label: user?.fellowship_name || '',
+        },
+      ];
+    }
+    return fellowships;
+  }, [user, fellowships, lockFellowshipSelect]);
+
+  const { mutate } = useMutation({
+    mutationFn: createCell,
+    onSuccess: () => {
+      setOpen(false);
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_PATHS.CELLS],
+      });
+      form.reset();
+    },
+    onError: () => {
+      console.log('Error');
     },
   });
 
@@ -167,7 +194,7 @@ export function AddNewCellSheet() {
                     <SelectValue placeholder='Select a church' />
                   </SelectTrigger>
                   <SelectContent>
-                    {churches?.map(
+                    {churchOptions?.map(
                       (church: { value: string; label: string }) => (
                         <SelectItem
                           key={church.value}
@@ -200,14 +227,20 @@ export function AddNewCellSheet() {
                     <SelectValue placeholder='Select a fellowship' />
                   </SelectTrigger>
                   <SelectContent>
-                    {fellowships?.map(
-                      (fellowship: { value: string; label: string }) => (
-                        <SelectItem
-                          key={fellowship.value}
-                          value={`${fellowship.value}`}
-                        >
-                          {fellowship.label}
-                        </SelectItem>
+                    {fellowshipOptions?.length === 0 ? (
+                      <SelectItem value='empty' disabled>
+                        No fellowship found
+                      </SelectItem>
+                    ) : (
+                      fellowshipOptions?.map(
+                        (fellowship: { value: string; label: string }) => (
+                          <SelectItem
+                            key={fellowship.value}
+                            value={`${fellowship.value}`}
+                          >
+                            {fellowship.label}
+                          </SelectItem>
+                        )
                       )
                     )}
                   </SelectContent>

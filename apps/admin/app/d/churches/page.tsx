@@ -7,9 +7,16 @@ import { AddNewChurchSheet } from '@/components/AddNewChurch';
 import { TableCard } from '@/components/TableCard';
 import { useStatistics } from '@/hooks/statistics';
 import { useMemo, useState } from 'react';
+import { useMe } from '@/hooks/useMe';
+import { ROLES } from '@/utils/constants';
 
 export default function Page() {
   const [page, setPage] = useState(1);
+  const { data: user } = useMe();
+  const isAdmin = user?.role === ROLES.ADMIN || user?.role === ROLES.PASTOR;
+
+  console.log({ isAdmin });
+
   const { data } = useChurches(page);
   const { data: stats } = useStatistics();
 

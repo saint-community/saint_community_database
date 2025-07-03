@@ -1,4 +1,5 @@
 import { getCellById, getCells } from '@/services/cell';
+import { getFellowshipById } from '@/services/fellowships';
 import { QUERY_PATHS } from '@/utils/constants';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
@@ -25,12 +26,12 @@ export const useCellById = (id: string) => {
 //   });
 // };
 
-export const useCellsOption = () => {
+export const useCellsOption = (fellowshipId?: string) => {
   return useQuery({
-    queryKey: [QUERY_PATHS.CELLS, 'option'],
-    queryFn: () => getCells(1),
+    queryKey: [QUERY_PATHS.CELLS, 'option', fellowshipId],
+    queryFn: () => getFellowshipById(fellowshipId || ''),
     select: (data) =>
-      data?.data?.map((cell: { id: string; name: string }) => ({
+      data?.cells?.map((cell: { id: string; name: string }) => ({
         value: cell.id,
         label: cell.name,
       })),

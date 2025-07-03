@@ -9,7 +9,7 @@ import { Textarea } from '@workspace/ui/components/textarea';
 import { Label } from '@workspace/ui/components/label';
 import { Modal } from '@workspace/ui/components/modal';
 import { SquarePlus } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { DatePicker } from '@workspace/ui/components/date-picker';
 import {
   Select,
@@ -58,25 +58,6 @@ export function AddNewFellowshipSheet() {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
   const { data: user } = useMe();
-  const { data: churches } = useChurchesOption();
-
-  const lockChurchSelect =
-    !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
-
-  const mutation = useMutation({
-    mutationFn: createFellowship,
-    onSuccess: () => {
-      toast.success('Fellowship created successfully');
-      setOpen(false);
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_PATHS.FELLOWSHIPS, user?.church_id?.toString()],
-      });
-      form.reset();
-    },
-    onError: () => {
-      toast.error('Failed to create fellowship');
-    },
-  });
 
   const form = useForm({
     defaultValues: {
@@ -106,6 +87,39 @@ export function AddNewFellowshipSheet() {
     onSubmitInvalid(props) {
       console.log(props);
       toast.error('Please fill in all fields');
+    },
+  });
+
+  const lockChurchSelect =
+    !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
+  console.log(lockChurchSelect);
+
+  const { data: churches } = useChurchesOption(!lockChurchSelect);
+
+  const churchOptions = useMemo(() => {
+    if (lockChurchSelect) {
+      return [
+        {
+          value: user?.church_id?.toString(),
+          label: user?.church_name || '',
+        },
+      ];
+    }
+    return churches;
+  }, [user, churches, lockChurchSelect]);
+
+  const mutation = useMutation({
+    mutationFn: createFellowship,
+    onSuccess: () => {
+      toast.success('Fellowship created successfully');
+      setOpen(false);
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_PATHS.FELLOWSHIPS, user?.church_id?.toString()],
+      });
+      form.reset();
+    },
+    onError: () => {
+      toast.error('Failed to create fellowship');
     },
   });
 
@@ -145,7 +159,7 @@ export function AddNewFellowshipSheet() {
                     <SelectValue placeholder='Select a church' />
                   </SelectTrigger>
                   <SelectContent>
-                    {churches?.map(
+                    {churchOptions?.map(
                       (church: { value: string; label: string }) => (
                         <SelectItem
                           key={church.value}

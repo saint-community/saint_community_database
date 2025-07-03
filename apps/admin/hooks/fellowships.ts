@@ -1,3 +1,4 @@
+import { getChurchById } from '@/services/churches';
 import { getFellowshipById, getFellowships } from '@/services/fellowships';
 import { QUERY_PATHS } from '@/utils/constants';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
@@ -25,12 +26,12 @@ export const useFellowshipById = (id: string) => {
 //   });
 // };
 
-export const useFellowshipsOption = () => {
+export const useFellowshipsOption = (churchId?: string) => {
   return useQuery({
-    queryKey: [QUERY_PATHS.FELLOWSHIPS],
-    queryFn: () => getFellowships(),
+    queryKey: [QUERY_PATHS.FELLOWSHIPS, churchId],
+    queryFn: () => getChurchById(churchId || ''),
     select: (data) =>
-      data?.data?.map((fellowship: { id: string; name: string }) => ({
+      data?.fellowships?.map((fellowship: { id: string; name: string }) => ({
         value: fellowship.id,
         label: fellowship.name,
       })),

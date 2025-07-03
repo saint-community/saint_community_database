@@ -13,6 +13,9 @@ interface User {
   role: 'admin' | 'user';
   updated_at: string | null;
   phone?: string;
+  church_name?: string;
+  fellowship_name?: string;
+  cell_name?: string;
 }
 
 export const useMe = () => {

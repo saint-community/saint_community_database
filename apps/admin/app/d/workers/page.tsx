@@ -6,13 +6,18 @@ import { TableCard } from '@/components/TableCard';
 import { useStatistics } from '@/hooks/statistics';
 import { useMe } from '@/hooks/useMe';
 import { useWorkers } from '@/hooks/workers';
+import { ROLES } from '@/utils/constants';
 import { Church, ListCheck, User, User2, Users2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 export default function Page() {
   const { data: user } = useMe();
+  const isAdmin = user?.role === ROLES.ADMIN || user?.role === ROLES.PASTOR;
   const [page, setPage] = useState(1);
-  const { data: workers } = useWorkers(user?.church_id?.toString(), page);
+  const { data: workers } = useWorkers({
+    church_id: user?.church_id?.toString() || '',
+    page,
+  });
   const { data: stats } = useStatistics();
 
   const workersData = workers?.data || [];

@@ -2,14 +2,14 @@
 'use client';
 
 import { Button } from '@workspace/ui/components/button';
-import { useForm } from '@workspace/ui/lib/react-hook-form';
+import { useForm, useStore } from '@workspace/ui/lib/react-hook-form';
 import { z } from 'zod';
 import { Input } from '@workspace/ui/components/input';
 import { Textarea } from '@workspace/ui/components/textarea';
 import { Label } from '@workspace/ui/components/label';
 import { Modal } from '@workspace/ui/components/modal';
 import { SquarePlus } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { DatePicker } from '@workspace/ui/components/date-picker';
 import {
   Select,
@@ -87,39 +87,7 @@ const genders = [
 
 export function AddNewWorkerSheet() {
   const [open, setOpen] = useState(false);
-  const { data: churches } = useChurchesOption();
-  const { data: departments } = useDepartmentsOption();
-  const { data: fellowships } = useFellowshipsOption();
-  const { data: cells } = useCellsOption();
-  const { refetch } = useWorkers();
   const { data: user } = useMe();
-
-  const lockChurchSelect =
-    !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
-  const lockFellowshipSelect =
-    !!user &&
-    ![ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_PASTOR].includes(user?.role);
-  const lockCellSelect =
-    !!user &&
-    ![
-      ROLES.ADMIN,
-      ROLES.PASTOR,
-      ROLES.CHURCH_PASTOR,
-      ROLES.FELLOWSHIP_LEADER,
-    ].includes(user?.role);
-
-  const mutation = useMutation({
-    mutationFn: createWorker,
-    onSuccess: () => {
-      // toast.success('Fellowship created successfully');
-      setOpen(false);
-      refetch();
-      form.reset();
-    },
-    onError: () => {
-      // toast.error('Failed to create fellowship');
-    },
-  });
 
   const form = useForm({
     defaultValues: {
@@ -170,6 +138,77 @@ export function AddNewWorkerSheet() {
     },
     onSubmitInvalid(props) {
       console.log(props);
+    },
+  });
+
+  const lockChurchSelect =
+    !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
+  const { data: churches } = useChurchesOption(!lockChurchSelect);
+  const { data: departments } = useDepartmentsOption();
+  const churchId = useStore(form.store, (state) => state.values.church);
+  const { data: fellowships } = useFellowshipsOption(churchId);
+  const fellowshipId = useStore(form.store, (state) => state.values.fellowship);
+  const { data: cells } = useCellsOption(fellowshipId);
+  const { refetch } = useWorkers();
+
+  const lockFellowshipSelect =
+    !!user &&
+    ![ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_PASTOR].includes(user?.role);
+  const lockCellSelect =
+    !!user &&
+    ![
+      ROLES.ADMIN,
+      ROLES.PASTOR,
+      ROLES.CHURCH_PASTOR,
+      ROLES.FELLOWSHIP_LEADER,
+    ].includes(user?.role);
+
+  const churchOptions = useMemo(() => {
+    if (lockChurchSelect) {
+      return [
+        {
+          value: user?.church_id?.toString(),
+          label: user?.church_name || '',
+        },
+      ];
+    }
+    return churches;
+  }, [user, churches, lockChurchSelect]);
+
+  const fellowshipOptions = useMemo(() => {
+    if (lockFellowshipSelect) {
+      return [
+        {
+          value: user?.fellowship_id?.toString(),
+          label: user?.fellowship_name || '',
+        },
+      ];
+    }
+    return fellowships;
+  }, [user, fellowships, lockFellowshipSelect]);
+
+  const cellOptions = useMemo(() => {
+    if (lockCellSelect) {
+      return [
+        {
+          value: user?.cell_id?.toString(),
+          label: user?.cell_name || '',
+        },
+      ];
+    }
+    return cells;
+  }, [user, cells, lockCellSelect]);
+
+  const mutation = useMutation({
+    mutationFn: createWorker,
+    onSuccess: () => {
+      // toast.success('Fellowship created successfully');
+      setOpen(false);
+      refetch();
+      form.reset();
+    },
+    onError: () => {
+      // toast.error('Failed to create fellowship');
     },
   });
 
@@ -281,6 +320,12 @@ export function AddNewWorkerSheet() {
           <Label htmlFor='church'>Church</Label>
           <form.Field
             name='church'
+            listeners={{
+              onChange: () => {
+                form.setFieldValue('fellowship', '');
+                form.setFieldValue('cell', '');
+              },
+            }}
             children={(field) => (
               <>
                 <Select
@@ -292,7 +337,7 @@ export function AddNewWorkerSheet() {
                     <SelectValue placeholder='Select a church' />
                   </SelectTrigger>
                   <SelectContent>
-                    {churches?.map(
+                    {churchOptions?.map(
                       (church: { value: string; label: string }) => (
                         <SelectItem
                           key={church.value}
@@ -314,6 +359,11 @@ export function AddNewWorkerSheet() {
           <Label htmlFor='fellowship'>Fellowship</Label>
           <form.Field
             name='fellowship'
+            listeners={{
+              onChange: () => {
+                form.setFieldValue('cell', '');
+              },
+            }}
             children={(field) => (
               <>
                 <Select
@@ -325,14 +375,20 @@ export function AddNewWorkerSheet() {
                     <SelectValue placeholder='Select a fellowship' />
                   </SelectTrigger>
                   <SelectContent>
-                    {fellowships?.map(
-                      (fellowship: { value: string; label: string }) => (
-                        <SelectItem
-                          key={fellowship.value}
-                          value={`${fellowship.value}`}
-                        >
-                          {fellowship.label}
-                        </SelectItem>
+                    {fellowshipOptions?.length === 0 ? (
+                      <SelectItem value='empty' disabled>
+                        No fellowship found
+                      </SelectItem>
+                    ) : (
+                      fellowshipOptions?.map(
+                        (fellowship: { value: string; label: string }) => (
+                          <SelectItem
+                            key={fellowship.value}
+                            value={`${fellowship.value}`}
+                          >
+                            {fellowship.label}
+                          </SelectItem>
+                        )
                       )
                     )}
                   </SelectContent>
@@ -358,11 +414,19 @@ export function AddNewWorkerSheet() {
                     <SelectValue placeholder='Select a cell' />
                   </SelectTrigger>
                   <SelectContent>
-                    {cells?.map((cell: { value: string; label: string }) => (
-                      <SelectItem key={cell.value} value={`${cell.value}`}>
-                        {cell.label}
+                    {cellOptions?.length === 0 ? (
+                      <SelectItem value='empty' disabled>
+                        No cell found
                       </SelectItem>
-                    ))}
+                    ) : (
+                      cellOptions?.map(
+                        (cell: { value: string; label: string }) => (
+                          <SelectItem key={cell.value} value={`${cell.value}`}>
+                            {cell.label}
+                          </SelectItem>
+                        )
+                      )
+                    )}
                   </SelectContent>
                 </Select>
                 <FieldInfo field={field} />
