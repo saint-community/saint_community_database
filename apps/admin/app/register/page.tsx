@@ -161,7 +161,7 @@ function RegisterPageMain() {
         member_since: value.dateJoinedChurch.toISOString().split('T')[0],
         worker_since: value.dateJoinedChurch.toISOString().split('T')[0],
         active: true,
-        prayer_group_id: Number(value.prayerGroup),
+        prayer_group_id: value.prayerGroup,
         department_id: value.department ? Number(value.department) : undefined,
       });
     },

@@ -146,7 +146,7 @@ export function AddNewMemberSheet() {
         member_since: value.dateJoinedChurch.toISOString().split('T')[0],
         worker_since: value.dateJoinedChurch.toISOString().split('T')[0],
         active: true,
-        prayer_group_id: 1,
+        prayer_group_id: '1',
         // department_id: Number(value.department),
       });
     },
