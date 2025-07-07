@@ -20,8 +20,10 @@ export interface Worker {
   member_since?: string;
   worker_since?: string;
   active: boolean;
-  prayer_group_id?: number;
+  prayer_group_id?: string;
   department_id?: number;
+  country?: string;
+  state?: string;
 }
 
 export interface FormGenerateRequest {

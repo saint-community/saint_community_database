@@ -27,7 +27,9 @@ import { useMutation } from '@tanstack/react-query';
 import { createWorker } from '@/services/workers';
 import { useWorkers } from '@/hooks/workers';
 import { useMe } from '@/hooks/useMe';
-import { ROLES } from '@/utils/constants';
+import { COUNTRIES, ROLES } from '@/utils/constants';
+import { usePrayerGroupOption } from '@/hooks/prayer_groups';
+import { toast } from '@workspace/ui/lib/sonner';
 
 const formSchema = z.object({
   fullName: z.string().min(2, {
@@ -78,6 +80,15 @@ const formSchema = z.object({
       message: 'Please enter a valid date.',
     }
   ),
+  prayerGroup: z.string().min(1, {
+    message: 'Please select a prayer group.',
+  }),
+  country: z.string().min(2, {
+    message: 'Country is required',
+  }),
+  state: z.string().min(1, {
+    message: 'State is required',
+  }),
 });
 
 const genders = [
@@ -85,7 +96,13 @@ const genders = [
   { id: 'female', name: 'Female' },
 ];
 
-export function AddNewWorkerSheet() {
+export function AddNewWorkerSheet({
+  page,
+  church_id,
+}: {
+  page?: number;
+  church_id?: number;
+}) {
   const [open, setOpen] = useState(false);
   const { data: user } = useMe();
 
@@ -103,6 +120,9 @@ export function AddNewWorkerSheet() {
       dateOfBirth: new Date(),
       department: '',
       dateJoinedChurch: new Date(),
+      prayerGroup: '',
+      country: 'Nigeria',
+      state: '',
     },
     validators: {
       onSubmit: formSchema,
@@ -131,9 +151,10 @@ export function AddNewWorkerSheet() {
         member_since: value.dateJoinedChurch.toISOString().split('T')[0],
         worker_since: value.dateJoinedChurch.toISOString().split('T')[0],
         active: true,
-        prayer_group_id: 1,
+        prayer_group_id: value.prayerGroup,
         department_id: value.department ? Number(value.department) : undefined,
-        // department_id: Number(value.department),
+        country: value.country,
+        state: value.state,
       });
     },
     onSubmitInvalid(props) {
@@ -149,7 +170,11 @@ export function AddNewWorkerSheet() {
   const { data: fellowships } = useFellowshipsOption(churchId);
   const fellowshipId = useStore(form.store, (state) => state.values.fellowship);
   const { data: cells } = useCellsOption(fellowshipId);
-  const { refetch } = useWorkers();
+  const { refetch } = useWorkers({
+    church_id: church_id?.toString() || '',
+    page,
+  });
+  const { data: prayerGroups } = usePrayerGroupOption();
 
   const lockFellowshipSelect =
     !!user &&
@@ -202,13 +227,15 @@ export function AddNewWorkerSheet() {
   const mutation = useMutation({
     mutationFn: createWorker,
     onSuccess: () => {
-      // toast.success('Fellowship created successfully');
+      toast.success('Worker created successfully');
       setOpen(false);
       refetch();
       form.reset();
     },
-    onError: () => {
-      // toast.error('Failed to create fellowship');
+    onError: (error: any) => {
+      const errorMessage =
+        error.response?.data?.message || 'Failed to create worker';
+      toast.error(errorMessage);
     },
   });
 
@@ -472,6 +499,51 @@ export function AddNewWorkerSheet() {
         </div>
 
         <div className='space-y-2'>
+          <Label htmlFor='state'>State</Label>
+          <form.Field
+            name='state'
+            children={(field) => (
+              <>
+                <Input
+                  id='state'
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder='Enter state'
+                />
+                <FieldInfo field={field} />
+              </>
+            )}
+          />
+        </div>
+
+        <div className='space-y-2'>
+          <Label htmlFor='country'>Country</Label>
+          <form.Field
+            name='country'
+            children={(field) => (
+              <>
+                <Select
+                  value={field.state.value}
+                  onValueChange={(e) => field.handleChange(e)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder='Select a country' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COUNTRIES.map((country) => (
+                      <SelectItem key={country} value={country}>
+                        {country}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldInfo field={field} />
+              </>
+            )}
+          />
+        </div>
+
+        <div className='space-y-2'>
           <Label htmlFor='dateOfBirth'>Date of Birth</Label>
           <br />
           <form.Field
@@ -521,6 +593,38 @@ export function AddNewWorkerSheet() {
         </div>
 
         <div className='space-y-2'>
+          <Label htmlFor='prayerGroup'>Prayer Group</Label>
+          <form.Field
+            name='prayerGroup'
+            children={(field) => (
+              <>
+                <Select
+                  value={field.state.value}
+                  onValueChange={field.handleChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder='Select a prayer group' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {prayerGroups?.map(
+                      (prayerGroup: { value: string; label: string }) => (
+                        <SelectItem
+                          key={prayerGroup.value}
+                          value={`${prayerGroup.value}`}
+                        >
+                          {prayerGroup.label}
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
+                <FieldInfo field={field} />
+              </>
+            )}
+          />
+        </div>
+
+        <div className='space-y-2'>
           <Label htmlFor='dateJoinedChurch'>Date Joined Church</Label>
           <br />
           <form.Field
@@ -539,9 +643,13 @@ export function AddNewWorkerSheet() {
 
         <div className='w-full mt-4'>
           <form.Subscribe
-            selector={(state) => [state.canSubmit, state.isSubmitting]}
+            selector={(state) => [state.canSubmit, mutation.isPending]}
             children={([canSubmit, isSubmitting]) => (
-              <Button type='submit' className='w-full' disabled={!canSubmit}>
+              <Button
+                type='submit'
+                className='w-full'
+                disabled={!canSubmit || isSubmitting}
+              >
                 {isSubmitting ? '...' : 'Add Worker'}
               </Button>
             )}

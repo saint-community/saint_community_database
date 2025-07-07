@@ -66,7 +66,7 @@ export default function Page() {
       <div className=''>
         <TableCard
           title='Workers List'
-          action={<AddNewWorkerSheet />}
+          action={<AddNewWorkerSheet page={page} church_id={user?.church_id} />}
           data={workersData}
           columnKeys={[
             {

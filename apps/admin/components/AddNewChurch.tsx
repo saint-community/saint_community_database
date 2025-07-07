@@ -237,10 +237,14 @@ export function AddNewChurchSheet() {
 
         <div className='w-full mt-4'>
           <form.Subscribe
-            selector={(state) => [state.canSubmit, state.isSubmitting]}
-            children={([canSubmit, isSubmitting]) => (
-              <Button type='submit' className='w-full' disabled={!canSubmit}>
-                {isSubmitting ? '...' : 'Add Church'}
+            selector={(state) => [state.canSubmit, mutation.isPending]}
+            children={([canSubmit]) => (
+              <Button
+                type='submit'
+                className='w-full'
+                disabled={!canSubmit || mutation.isPending}
+              >
+                {mutation.isPending ? '...' : 'Add Church'}
               </Button>
             )}
           />

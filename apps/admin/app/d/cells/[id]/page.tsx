@@ -15,6 +15,9 @@ import { useChurchesOption } from '@/hooks/churches';
 import { useFellowshipsOption } from '@/hooks/fellowships';
 import { LeaderSelector } from '@/components/WorkerSelector';
 import { Label } from '@workspace/ui/components/label';
+import { useMe } from '@/hooks/useMe';
+import { MEETING_DAYS } from '@/utils/constants';
+import { DatePicker } from '@workspace/ui/components/date-picker';
 
 // const formSchema = z.object({
 //   name: z.string().min(2, {
@@ -43,7 +46,29 @@ export default function CellDetailPage() {
   const { data: cell, isLoading, refetch } = useCellById(id);
   const [editedData, setEditedData] = useState<any>(null);
   const { data: churches } = useChurchesOption();
-  const { data: fellowships } = useFellowshipsOption();
+  const { data: user, isAdmin } = useMe();
+
+  const cellData = {
+    name: cell?.name,
+    leader_id: cell?.leader_id,
+    church_id: cell?.church_id.toString(),
+    fellowship_id: cell?.fellowship_id.toString(),
+    location: cell?.location,
+    address: cell?.address,
+    dateStarted: cell?.start_date
+      ? new Date(cell?.start_date)
+      : new Date('2022-10-22'),
+    workersInTraining: cell?.workers?.length || 0,
+    members: cell?.members?.length || 0,
+    meeting_days: cell?.meeting_days.toString(),
+  };
+
+  const currentData = {
+    ...cellData,
+    ...(editedData || {}),
+  };
+
+  const { data: fellowships } = useFellowshipsOption(currentData.church_id);
 
   const mutation = useMutation({
     mutationFn: (data: any) => updateCell(id, data),
@@ -70,23 +95,7 @@ export default function CellDetailPage() {
     );
   }
 
-  const cellData = {
-    name: cell.name,
-    leader_id: cell.leader_id,
-    church_id: cell.church_id.toString(),
-    fellowship_id: cell.fellowship_id.toString(),
-    location: cell.location,
-    address: cell.address,
-    dateStarted: cell.start_date
-      ? new Date(cell.start_date)
-      : new Date('2022-10-22'),
-    workersInTraining: 5,
-    members: 50,
-  };
-
-  const currentData = editedData || cellData;
-
-  const handleEdit = (field: string, value: string) => {
+  const handleEdit = (field: string, value: string | Date | undefined) => {
     setEditedData({
       ...currentData,
       [field]: value,
@@ -132,6 +141,12 @@ export default function CellDetailPage() {
 
         {/* Cell Details Form */}
         <div className='space-y-5 mx-auto'>
+          <FormField
+            label='Cell Name'
+            value={currentData.name}
+            onEdit={(value) => handleEdit('name', value)}
+          />
+
           <div className='space-y-2'>
             <Label className='block text-sm font-medium'>Name of Leader</Label>
 
@@ -140,6 +155,7 @@ export default function CellDetailPage() {
               setSelectedWorker={(worker) => {
                 handleEdit('leader_id', worker);
               }}
+              churchId={isAdmin ? undefined : user?.church_id?.toString()}
             />
           </div>
           <FormSelectField
@@ -156,10 +172,11 @@ export default function CellDetailPage() {
             options={fellowships}
           />
 
-          <FormField
-            label='Location'
-            value={currentData.location}
-            onEdit={(value) => handleEdit('location', value)}
+          <FormSelectField
+            label='Meeting Days'
+            value={currentData.meeting_days}
+            onEdit={(value) => handleEdit('meeting_days', value)}
+            options={MEETING_DAYS}
           />
 
           <FormField
@@ -167,6 +184,14 @@ export default function CellDetailPage() {
             value={currentData.address}
             onEdit={(value) => handleEdit('address', value)}
           />
+
+          <div className='space-y-2'>
+            <Label className='block text-sm font-medium'>Date Started</Label>
+            <DatePicker
+              value={currentData.dateStarted}
+              onChange={(date) => handleEdit('dateStarted', date)}
+            />
+          </div>
 
           <div className='pt-8 flex justify-center gap-6'>
             <Button

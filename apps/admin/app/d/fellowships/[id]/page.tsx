@@ -13,6 +13,8 @@ import { LeaderSelector } from '@/components/WorkerSelector';
 import { Label } from '@workspace/ui/components/label';
 import { useChurchesOption } from '@/hooks/churches';
 import { FormSelectField, FormField } from '@/components/forms';
+import { useMe } from '@/hooks/useMe';
+import { DatePicker } from '@workspace/ui/components/date-picker';
 
 // const formSchema = z.object({
 //   name: z.string().min(2, {
@@ -38,6 +40,7 @@ export default function FellowshipDetailPage() {
   const { data: fellowship, isLoading, refetch } = useFellowshipById(id);
   const [editedData, setEditedData] = useState<any>(null);
   const { data: churches } = useChurchesOption();
+  const { data: user, isAdmin } = useMe();
 
   const mutation = useMutation({
     mutationFn: (data: any) => updateFellowship(id, data),
@@ -76,15 +79,18 @@ export default function FellowshipDetailPage() {
       ? new Date(fellowship.start_date)
       : new Date('2022-10-22'),
     cellLeaders: 15,
-    workersInTraining: 150,
-    members: 600,
+    workersInTraining: fellowship?.workers?.length || 0,
+    members: fellowship?.members?.length || 0,
   };
 
-  const currentData = editedData || fellowshipData;
+  const currentData = {
+    ...fellowshipData,
+    ...(editedData || {}),
+  };
 
   const formattedDate = format(currentData.dateStarted, 'do MMM. yyyy');
 
-  const handleEdit = (field: string, value: string) => {
+  const handleEdit = (field: string, value: string | Date | undefined) => {
     setEditedData({
       ...currentData,
       [field]: value,
@@ -104,7 +110,7 @@ export default function FellowshipDetailPage() {
       church_id: editedData.church_id,
       location: editedData.location,
       address: editedData.address,
-      start_date: editedData.start_date,
+      start_date: editedData.dateStarted,
     });
   };
 
@@ -142,6 +148,12 @@ export default function FellowshipDetailPage() {
 
         {/* Fellowship Details Form */}
         <div className='space-y-6 max-w-2xl mx-auto'>
+          <FormField
+            label='Fellowship Name'
+            value={currentData.name}
+            onEdit={(value) => handleEdit('name', value)}
+          />
+
           <div className='space-y-2'>
             <Label className='block text-sm font-medium'>Name of Leader</Label>
 
@@ -150,6 +162,7 @@ export default function FellowshipDetailPage() {
               setSelectedWorker={(worker) => {
                 handleEdit('cordinator_id', worker);
               }}
+              churchId={isAdmin ? undefined : user?.church_id?.toString()}
             />
           </div>
 
@@ -160,17 +173,24 @@ export default function FellowshipDetailPage() {
             options={churches}
           />
 
-          <FormField
+          {/* <FormField
             label='Location'
             value={currentData.location}
             onEdit={(value) => handleEdit('location', value)}
-          />
+          /> */}
 
           <FormField
             label='Address'
             value={currentData.address}
             onEdit={(value) => handleEdit('address', value)}
           />
+          <div className='space-y-2'>
+            <Label className='block text-sm font-medium'>Date Started</Label>
+            <DatePicker
+              value={currentData.dateStarted}
+              onChange={(date) => handleEdit('dateStarted', date)}
+            />
+          </div>
 
           <div className='pt-8 flex justify-center gap-6'>
             <Button

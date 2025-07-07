@@ -59,7 +59,7 @@ const formSchema = z.object({
 
 export function AddNewCellSheet() {
   const [open, setOpen] = useState(false);
-  const { data: user } = useMe();
+  const { data: user, isAdmin } = useMe();
 
   const form = useForm({
     defaultValues: {
@@ -129,7 +129,7 @@ export function AddNewCellSheet() {
     return fellowships;
   }, [user, fellowships, lockFellowshipSelect]);
 
-  const { mutate } = useMutation({
+  const { mutate, isPending } = useMutation({
     mutationFn: createCell,
     onSuccess: () => {
       setOpen(false);
@@ -316,6 +316,7 @@ export function AddNewCellSheet() {
                   setSelectedWorker={(worker) => {
                     field.handleChange(`${worker}`);
                   }}
+                  churchId={isAdmin ? undefined : user?.church_id?.toString()}
                 />
 
                 <FieldInfo field={field} />
@@ -339,15 +340,15 @@ export function AddNewCellSheet() {
         </div>
         <div className='w-full mt-4'>
           <form.Subscribe
-            selector={(state) => [state.canSubmit, state.isSubmitting]}
-            children={([canSubmit, isSubmitting]) => (
+            selector={(state) => [state.canSubmit, isPending]}
+            children={([canSubmit]) => (
               <Button
                 type='submit'
                 // onClick={() => form.handleSubmit()}
                 className='w-full'
-                disabled={!canSubmit}
+                disabled={!canSubmit || isPending}
               >
-                {isSubmitting ? '...' : 'Add Cell'}
+                {isPending ? '...' : 'Add Cell'}
               </Button>
             )}
           />

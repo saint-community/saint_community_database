@@ -15,16 +15,15 @@ import { useFellowshipsOption } from '@/hooks/fellowships';
 import { useCellsOption } from '@/hooks/cell';
 import { useDepartmentsOption } from '@/hooks/departments';
 import { FormSelectField } from '@/components/forms';
+import { usePrayerGroupOption } from '@/hooks/prayer_groups';
 
-export default function MemberDetailPage() {
+export default function WorkerDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const { data, isLoading } = useWorkerById(id);
   const { data: churches } = useChurchesOption();
-  const { data: fellowships } = useFellowshipsOption();
-  const { data: cells } = useCellsOption();
   const { data: departments } = useDepartmentsOption();
-  const [member, setMember] = useState<any>({
+  const [worker, setWorker] = useState<any>({
     first_name: '',
     last_name: '',
     gender: '',
@@ -32,13 +31,18 @@ export default function MemberDetailPage() {
     fellowship_id: '',
     cell_id: '',
     department_id: '',
+    prayer_group_id: '',
   });
+  const { data: fellowships } = useFellowshipsOption(worker.church_id);
+  const { data: cells } = useCellsOption(worker.fellowship_id);
+  const { data: prayerGroups } = usePrayerGroupOption();
 
   useEffect(() => {
     if (data) {
-      setMember({
+      setWorker({
         ...data,
         full_name: `${data.first_name} ${data.last_name}`,
+        prayer_group_id: data.prayer_group_id?.toString() || '',
       });
     }
   }, [data]);
@@ -55,13 +59,13 @@ export default function MemberDetailPage() {
 
   const handleSave = () => {
     mutation.mutate({
-      ...member,
+      ...worker,
       active: true,
     });
   };
 
   const handleCancel = () => {
-    setMember({
+    setWorker({
       ...data,
       full_name: `${data.first_name} ${data.last_name}`,
     });
@@ -73,7 +77,7 @@ export default function MemberDetailPage() {
     );
   }
 
-  if (!member) {
+  if (!worker) {
     return (
       <div className='flex justify-center items-center h-full'>
         Member not found
@@ -82,7 +86,7 @@ export default function MemberDetailPage() {
   }
 
   const onChange = (name: string) => (value: any) => {
-    setMember((prev: any) => ({ ...prev, [name]: value }));
+    setWorker((prev: any) => ({ ...prev, [name]: value }));
   };
 
   return (
@@ -119,8 +123,8 @@ export default function MemberDetailPage() {
               </span>
             </div>
             <span className='text-lg font-bold text-[#7C6846]'>
-              {member.member_since
-                ? new Date(member.member_since).toLocaleDateString('en-GB', {
+              {worker.member_since
+                ? new Date(worker.member_since).toLocaleDateString('en-GB', {
                     day: 'numeric',
                     month: 'short',
                     year: 'numeric',
@@ -157,8 +161,8 @@ export default function MemberDetailPage() {
               </span>
             </div>
             <span className='text-lg font-bold text-[#7C6846]'>
-              {member.worker_since
-                ? new Date(member.worker_since).toLocaleDateString('en-GB', {
+              {worker.worker_since
+                ? new Date(worker.worker_since).toLocaleDateString('en-GB', {
                     day: 'numeric',
                     month: 'short',
                     year: 'numeric',
@@ -191,8 +195,8 @@ export default function MemberDetailPage() {
               </span>
             </div>
             <span className='text-lg font-bold text-[#7C6846]'>
-              {member.dob
-                ? new Date(member.dob).toLocaleDateString('en-GB', {
+              {worker.dob
+                ? new Date(worker.dob).toLocaleDateString('en-GB', {
                     day: 'numeric',
                     month: 'short',
                     year: 'numeric',
@@ -205,19 +209,19 @@ export default function MemberDetailPage() {
 
       <Card className='bg-white p-8 rounded-lg flex-1'>
         <h2 className='text-2xl font-semibold text-red-500 mb-8 text-center'>
-          {member.first_name || 'Member Details'}
+          {worker.first_name || 'Worker Details'}
         </h2>
 
         {/* Member Details Form */}
         <div className='space-y-6 max-w-2xl mx-auto'>
           <FormField
             label='Full Name'
-            value={member.full_name}
+            value={worker.full_name}
             onChange={onChange('full_name')}
           />
           <FormSelectField
             label='Gender'
-            value={member.gender}
+            value={worker.gender}
             onEdit={onChange('gender')}
             options={[
               {
@@ -233,34 +237,34 @@ export default function MemberDetailPage() {
 
           <FormSelectField
             label='Church'
-            value={`${member.church_id}`}
+            value={`${worker.church_id}`}
             onEdit={onChange('church_id')}
             options={churches}
           />
 
           <FormSelectField
             label='Fellowship/PCF'
-            value={`${member.fellowship_id}`}
+            value={`${worker.fellowship_id}`}
             onEdit={onChange('fellowship_id')}
             options={fellowships}
           />
 
           <FormSelectField
             label='Cell'
-            value={`${member.cell_id}`}
+            value={`${worker.cell_id}`}
             onEdit={onChange('cell_id')}
             options={cells}
           />
           <FormSelectField
             label='Department'
-            value={`${member.department_id}`}
+            value={`${worker.department_id}`}
             onEdit={onChange('department_id')}
             options={departments}
           />
 
           <FormSelectField
             label='Assign a Role'
-            value={member.status}
+            value={worker.status}
             onEdit={onChange('status')}
             options={[
               {
@@ -272,18 +276,25 @@ export default function MemberDetailPage() {
 
           <FormField
             label='Phone Number'
-            value={member.phone_number}
+            value={worker.phone_number}
             onChange={onChange('phone_number')}
           />
           <FormField
             label='Home Address'
-            value={member.house_address}
+            value={worker.house_address}
             onChange={onChange('house_address')}
           />
           <FormField
             label='Work Address'
-            value={member.work_address}
+            value={worker.work_address}
             onChange={onChange('work_address')}
+          />
+
+          <FormSelectField
+            label='Prayer Group'
+            value={worker.prayer_group_id}
+            onEdit={onChange('prayer_group_id')}
+            options={prayerGroups}
           />
 
           <div className='pt-8 flex justify-center gap-6'>

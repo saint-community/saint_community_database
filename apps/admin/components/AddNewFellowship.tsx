@@ -57,7 +57,7 @@ const formSchema = z.object({
 export function AddNewFellowshipSheet() {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
-  const { data: user } = useMe();
+  const { data: user, isAdmin } = useMe();
 
   const form = useForm({
     defaultValues: {
@@ -243,6 +243,7 @@ export function AddNewFellowshipSheet() {
                   setSelectedWorker={(worker) => {
                     field.handleChange(`${worker}`);
                   }}
+                  churchId={isAdmin ? undefined : user?.church_id?.toString()}
                 />
                 <FieldInfo field={field} />
               </>
@@ -269,10 +270,14 @@ export function AddNewFellowshipSheet() {
 
         <div className='w-full mt-4'>
           <form.Subscribe
-            selector={(state) => [state.canSubmit, state.isSubmitting]}
-            children={([canSubmit, isSubmitting]) => (
-              <Button type='submit' className='w-full' disabled={!canSubmit}>
-                {isSubmitting ? '...' : 'Add Fellowship'}
+            selector={(state) => [state.canSubmit, mutation.isPending]}
+            children={([canSubmit]) => (
+              <Button
+                type='submit'
+                className='w-full'
+                disabled={!canSubmit || mutation.isPending}
+              >
+                {mutation.isPending ? '...' : 'Add Fellowship'}
               </Button>
             )}
           />

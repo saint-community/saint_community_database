@@ -17,12 +17,14 @@ import { Loader2 } from 'lucide-react';
 export function LeaderSelector({
   selectedWorker,
   setSelectedWorker,
+  churchId,
 }: {
   selectedWorker?: string;
   setSelectedWorker?: (worker: string) => void;
+  churchId?: string;
 }) {
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useInfiniteWorkers();
+    useInfiniteWorkers(churchId);
   const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 

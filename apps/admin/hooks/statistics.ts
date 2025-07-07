@@ -6,5 +6,6 @@ export const useStatistics = () => {
   return useQuery({
     queryKey: [QUERY_PATHS.STATISTICS],
     queryFn: () => getStatistics(),
+    retry: false,
   });
 };

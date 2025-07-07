@@ -1,5 +1,6 @@
-import { STORAGE_KEYS } from '@/utils/constants';
+import { ROLES, STORAGE_KEYS } from '@/utils/constants';
 import { useEffect, useState } from 'react';
+import { useStatistics } from './statistics';
 
 interface User {
   cell_id: number;
@@ -21,6 +22,7 @@ interface User {
 export const useMe = () => {
   const [data, setData] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { error, isLoading: isStatisticsLoading } = useStatistics();
 
   useEffect(() => {
     const user = localStorage.getItem(STORAGE_KEYS.USER);
@@ -28,5 +30,18 @@ export const useMe = () => {
     setIsLoading(false);
   }, []);
 
-  return { data, isLoading };
+  if (error) {
+    console.log({ error });
+    const isAuthError = (error as any)?.response?.status === 401;
+    if (isAuthError) {
+      console.log('Unauthorized');
+
+      localStorage.clear();
+      window.location.href = '/login';
+    }
+  }
+
+  const isAdmin = data?.role === ROLES.ADMIN || data?.role === ROLES.PASTOR;
+
+  return { data, isLoading: isLoading || isStatisticsLoading, isAdmin };
 };

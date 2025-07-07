@@ -16,3 +16,18 @@ export const usePrayerGroupById = (id: string) => {
     enabled: !!id,
   });
 };
+
+export const usePrayerGroupOption = () => {
+  return useQuery({
+    queryKey: [QUERY_PATHS.PRAYER_GROUPS, 'option'],
+    queryFn: () => getPrayerGroups(),
+    select: (data) => {
+      return data.map(
+        (prayerGroup: { id: string; day: string; schedule: string }) => ({
+          label: `${prayerGroup.day} - ${prayerGroup.schedule}`,
+          value: prayerGroup.id,
+        })
+      );
+    },
+  });
+};

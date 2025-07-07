@@ -10,6 +10,11 @@ import { format } from 'date-fns';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { updateChurch } from '@/services/churches';
+import { DatePicker } from '@workspace/ui/components/date-picker';
+import { FormSelectField } from '@/components/forms';
+import { COUNTRIES } from '@/utils/constants';
+import { Label } from '@workspace/ui/components/label';
+import { toast } from '@workspace/ui/lib/sonner';
 
 export default function ChurchDetailPage() {
   const params = useParams();
@@ -22,6 +27,7 @@ export default function ChurchDetailPage() {
     onSuccess: () => {
       refetch();
       setEditedData(null);
+      toast.success('Church updated successfully');
     },
     onError: (error) => {
       console.log(error);
@@ -52,15 +58,16 @@ export default function ChurchDetailPage() {
       : new Date('2022-10-22'),
     lma: 15,
     leaders: 15,
-    workers: 150,
-    members: 600,
+    workers: church?.workers?.length || 0,
+    members: church?.members?.length || 0,
+    country: church?.country,
   };
 
   const currentData = editedData || churchData;
 
   const formattedDate = format(currentData.dateStarted, 'do MMM. yyyy');
 
-  const handleEdit = (field: string, value: string) => {
+  const handleEdit = (field: string, value: string | Date | undefined) => {
     setEditedData({
       ...currentData,
       [field]: value,
@@ -79,6 +86,7 @@ export default function ChurchDetailPage() {
       pastorName: editedData.pastor,
       state: editedData.location,
       address: editedData.address,
+      start_date: editedData.dateStarted?.toISOString()?.split('T')[0],
     });
   };
 
@@ -121,6 +129,12 @@ export default function ChurchDetailPage() {
 
         {/* Church Details Form */}
         <div className='space-y-6 max-w-3xl mx-auto'>
+          <FormField
+            label='Church Name'
+            value={currentData.name}
+            onEdit={(value) => handleEdit('name', value)}
+          />
+
           {/* <FormField
             label='Name of Pastor'
             value={currentData.pastor}
@@ -128,16 +142,34 @@ export default function ChurchDetailPage() {
           /> */}
 
           <FormField
+            label='Church Address'
+            value={currentData.address}
+            onEdit={(value) => handleEdit('address', value)}
+          />
+
+          <FormField
             label='Church Location'
             value={currentData.location}
             onEdit={(value) => handleEdit('location', value)}
           />
 
-          <FormField
-            label='Church Address'
-            value={currentData.address}
-            onEdit={(value) => handleEdit('address', value)}
+          <FormSelectField
+            label='Country'
+            value={currentData.country}
+            onEdit={(value) => handleEdit('country', value)}
+            options={COUNTRIES.map((country) => ({
+              value: country,
+              label: country,
+            }))}
           />
+
+          <div className='space-y-2'>
+            <Label className='block text-sm font-medium'>Date Started</Label>
+            <DatePicker
+              value={currentData.dateStarted}
+              onChange={(date) => handleEdit('dateStarted', date)}
+            />
+          </div>
 
           <div className='pt-8 flex justify-center gap-6'>
             <Button

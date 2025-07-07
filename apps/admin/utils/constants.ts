@@ -81,3 +81,13 @@ export const ROLES = {
   FELLOWSHIP_LEADER: 'fellowship_leader',
   CELL_LEADER: 'cell_leader',
 };
+
+export const MEETING_DAYS = [
+  { value: '1', label: 'Sunday' },
+  { value: '2', label: 'Monday' },
+  { value: '3', label: 'Tuesday' },
+  { value: '4', label: 'Wednesday' },
+  { value: '5', label: 'Thursday' },
+  { value: '6', label: 'Friday' },
+  { value: '7', label: 'Saturday' },
+];
