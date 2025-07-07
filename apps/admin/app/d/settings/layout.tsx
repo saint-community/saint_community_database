@@ -19,7 +19,9 @@ export default function SettingsLayout({
 }) {
   const pathname = usePathname();
   const { data: user } = useMe();
-  const hideUsers = !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
+  const hideUsers =
+    !!user &&
+    ![ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_PASTOR].includes(user?.role);
 
   const sidebarNavItems = [
     {

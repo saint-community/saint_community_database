@@ -16,13 +16,17 @@ import { useAccounts } from '@/hooks/auth';
 import { Trash } from 'lucide-react';
 import { Badge } from '@workspace/ui/components/badge';
 import { AddNewAdmin } from '@/components/AddNewAdmin';
+import { ROLES } from '@/utils/constants';
+import { useMe } from '@/hooks/useMe';
 
 export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const { data } = useAccounts(page);
-
+  const { data: user } = useMe();
   const accounts = data?.data || [];
+
+  const isAdmin = !!user && [ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
 
   console.log(data);
 
@@ -63,7 +67,7 @@ export default function UsersPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className='max-w-[300px]'
             />
-            <AddNewAdmin />
+            {isAdmin && <AddNewAdmin />}
           </div>
         </div>
 
@@ -74,7 +78,7 @@ export default function UsersPage() {
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Role</TableHead>
-              <TableHead>Action</TableHead>
+              {isAdmin && <TableHead>Action</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -89,15 +93,17 @@ export default function UsersPage() {
                   </Badge>
                 </TableCell>
 
-                <TableCell>
-                  <Button
-                    variant='destructive'
-                    size='sm'
-                    onClick={() => handleRemoveMember(member.id)}
-                  >
-                    <Trash />
-                  </Button>
-                </TableCell>
+                {isAdmin && (
+                  <TableCell>
+                    <Button
+                      variant='destructive'
+                      size='sm'
+                      onClick={() => handleRemoveMember(member.id)}
+                    >
+                      <Trash />
+                    </Button>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
