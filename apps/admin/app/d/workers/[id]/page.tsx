@@ -6,7 +6,7 @@ import { Input } from '@workspace/ui/components/input';
 import { useParams } from 'next/navigation';
 import { useWorkerById } from '@/hooks/workers';
 import { Check, Pencil } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { updateWorker } from '@/services/workers';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from '@workspace/ui/lib/sonner';
@@ -16,6 +16,8 @@ import { useCellsOption } from '@/hooks/cell';
 import { useDepartmentsOption } from '@/hooks/departments';
 import { FormSelectField } from '@/components/forms';
 import { usePrayerGroupOption } from '@/hooks/prayer_groups';
+import { useMe } from '@/hooks/useMe';
+import { ROLES } from '@/utils/constants';
 
 export default function WorkerDetailPage() {
   const params = useParams();
@@ -35,7 +37,23 @@ export default function WorkerDetailPage() {
   });
   const { data: fellowships } = useFellowshipsOption(worker.church_id);
   const { data: cells } = useCellsOption(worker.fellowship_id);
+  const { data: user } = useMe();
   const { data: prayerGroups } = usePrayerGroupOption();
+
+  const lockChurchSelect =
+    !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
+
+  const lockFellowshipSelect =
+    !!user &&
+    ![ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_PASTOR].includes(user?.role);
+  const lockCellSelect =
+    !!user &&
+    ![
+      ROLES.ADMIN,
+      ROLES.PASTOR,
+      ROLES.CHURCH_PASTOR,
+      ROLES.FELLOWSHIP_LEADER,
+    ].includes(user?.role);
 
   useEffect(() => {
     if (data) {
@@ -46,6 +64,42 @@ export default function WorkerDetailPage() {
       });
     }
   }, [data]);
+
+  const churchOptions = useMemo(() => {
+    if (lockChurchSelect) {
+      return [
+        {
+          value: user?.church_id?.toString(),
+          label: user?.church_name || '',
+        },
+      ];
+    }
+    return churches;
+  }, [user, churches, lockChurchSelect]);
+
+  const fellowshipOptions = useMemo(() => {
+    if (lockFellowshipSelect) {
+      return [
+        {
+          value: user?.fellowship_id?.toString(),
+          label: user?.fellowship_name || '',
+        },
+      ];
+    }
+    return fellowships;
+  }, [user, fellowships, lockFellowshipSelect]);
+
+  const cellOptions = useMemo(() => {
+    if (lockCellSelect) {
+      return [
+        {
+          value: user?.cell_id?.toString(),
+          label: user?.cell_name || '',
+        },
+      ];
+    }
+    return cells;
+  }, [user, cells, lockCellSelect]);
 
   const mutation = useMutation({
     mutationFn: (data: any) => updateWorker(id, data),
@@ -239,21 +293,21 @@ export default function WorkerDetailPage() {
             label='Church'
             value={`${worker.church_id}`}
             onEdit={onChange('church_id')}
-            options={churches}
+            options={churchOptions}
           />
 
           <FormSelectField
             label='Fellowship/PCF'
             value={`${worker.fellowship_id}`}
             onEdit={onChange('fellowship_id')}
-            options={fellowships}
+            options={fellowshipOptions}
           />
 
           <FormSelectField
             label='Cell'
             value={`${worker.cell_id}`}
             onEdit={onChange('cell_id')}
-            options={cells}
+            options={cellOptions}
           />
           <FormSelectField
             label='Department'

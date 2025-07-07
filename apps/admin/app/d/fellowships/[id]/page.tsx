@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import { useFellowshipById } from '@/hooks/fellowships';
 import { CalendarIcon, Users, Users2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { updateFellowship } from '@/services/fellowships';
 import { LeaderSelector } from '@/components/WorkerSelector';
@@ -15,6 +15,7 @@ import { useChurchesOption } from '@/hooks/churches';
 import { FormSelectField, FormField } from '@/components/forms';
 import { useMe } from '@/hooks/useMe';
 import { DatePicker } from '@workspace/ui/components/date-picker';
+import { ROLES } from '@/utils/constants';
 
 // const formSchema = z.object({
 //   name: z.string().min(2, {
@@ -42,6 +43,21 @@ export default function FellowshipDetailPage() {
   const { data: churches } = useChurchesOption();
   const { data: user, isAdmin } = useMe();
 
+  const lockChurchSelect =
+    !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
+
+  const churchOptions = useMemo(() => {
+    if (lockChurchSelect) {
+      return [
+        {
+          value: user?.church_id?.toString(),
+          label: user?.church_name || '',
+        },
+      ];
+    }
+    return churches;
+  }, [user, churches, lockChurchSelect]);
+
   const mutation = useMutation({
     mutationFn: (data: any) => updateFellowship(id, data),
     onSuccess: () => {
@@ -66,8 +82,6 @@ export default function FellowshipDetailPage() {
       </div>
     );
   }
-
-  console.log(fellowship);
 
   const fellowshipData = {
     name: fellowship.name,
@@ -170,14 +184,8 @@ export default function FellowshipDetailPage() {
             label='Church'
             value={currentData.church_id}
             onEdit={(value) => handleEdit('church_id', value)}
-            options={churches}
+            options={churchOptions}
           />
-
-          {/* <FormField
-            label='Location'
-            value={currentData.location}
-            onEdit={(value) => handleEdit('location', value)}
-          /> */}
 
           <FormField
             label='Address'

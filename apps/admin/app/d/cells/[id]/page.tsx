@@ -7,7 +7,7 @@ import { useParams } from 'next/navigation';
 import { useCellById } from '@/hooks/cell';
 import { CalendarIcon, Pencil, Users, Users2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { updateCell } from '@/services/cell';
 import { FormSelectField } from '@/components/forms';
@@ -16,7 +16,7 @@ import { useFellowshipsOption } from '@/hooks/fellowships';
 import { LeaderSelector } from '@/components/WorkerSelector';
 import { Label } from '@workspace/ui/components/label';
 import { useMe } from '@/hooks/useMe';
-import { MEETING_DAYS } from '@/utils/constants';
+import { MEETING_DAYS, ROLES } from '@/utils/constants';
 import { DatePicker } from '@workspace/ui/components/date-picker';
 
 // const formSchema = z.object({
@@ -69,6 +69,37 @@ export default function CellDetailPage() {
   };
 
   const { data: fellowships } = useFellowshipsOption(currentData.church_id);
+
+  const lockChurchSelect =
+    !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
+
+  const lockFellowshipSelect =
+    !!user &&
+    ![ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_PASTOR].includes(user?.role);
+
+  const churchOptions = useMemo(() => {
+    if (lockChurchSelect) {
+      return [
+        {
+          value: user?.church_id?.toString(),
+          label: user?.church_name || '',
+        },
+      ];
+    }
+    return churches;
+  }, [user, churches, lockChurchSelect]);
+
+  const fellowshipOptions = useMemo(() => {
+    if (lockFellowshipSelect) {
+      return [
+        {
+          value: user?.fellowship_id?.toString(),
+          label: user?.fellowship_name || '',
+        },
+      ];
+    }
+    return fellowships;
+  }, [user, fellowships, lockFellowshipSelect]);
 
   const mutation = useMutation({
     mutationFn: (data: any) => updateCell(id, data),
@@ -162,14 +193,14 @@ export default function CellDetailPage() {
             label='Church'
             value={currentData.church_id}
             onEdit={(value) => handleEdit('church_id', value)}
-            options={churches}
+            options={churchOptions}
           />
 
           <FormSelectField
             label='Fellowship/PCF'
             value={currentData.fellowship_id}
             onEdit={(value) => handleEdit('fellowship_id', value)}
-            options={fellowships}
+            options={fellowshipOptions}
           />
 
           <FormSelectField

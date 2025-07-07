@@ -11,7 +11,7 @@ export const useWorkers = (
     church_id,
     page,
   }: {
-    page: number;
+    page?: number;
     church_id?: string;
   } = {} as any
 ) => {
