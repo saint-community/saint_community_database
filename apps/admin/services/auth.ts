@@ -78,3 +78,10 @@ export const getAccountById = async (id: string) => {
   );
   return data || {};
 };
+
+export const removeAccount = async (id: number) => {
+  const { data } = await ApiCaller.delete(
+    QUERY_PATHS.DELETE_ACCOUNT.replace(':id', id.toString())
+  );
+  return data;
+};

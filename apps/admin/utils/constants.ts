@@ -13,6 +13,7 @@ export const QUERY_PATHS = {
   ACCOUNT_DETAIL: '/api/account/:id',
   RESET_PASSWORD: '/api/account/resetpassword',
   UPDATE_PASSWORD: '/api/account/updatepassword',
+  DELETE_ACCOUNT: '/api/account/delete/:id',
 
   // church
   CHURCHES: '/api/churches',

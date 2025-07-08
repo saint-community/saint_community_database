@@ -13,11 +13,25 @@ import { Input } from '@workspace/ui/components/input';
 import { Button } from '@workspace/ui/components/button';
 import { Card } from '@workspace/ui/components/card';
 import { useAccounts } from '@/hooks/auth';
-import { Trash } from 'lucide-react';
+import { Loader2, Trash } from 'lucide-react';
 import { Badge } from '@workspace/ui/components/badge';
 import { AddNewAdmin } from '@/components/AddNewAdmin';
-import { ROLES } from '@/utils/constants';
+import { QUERY_PATHS, ROLES } from '@/utils/constants';
 import { useMe } from '@/hooks/useMe';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@workspace/ui/components/alert-dialog';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { removeAccount } from '@/services/auth';
+import { toast } from '@workspace/ui/lib/sonner';
 
 export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -25,8 +39,9 @@ export default function UsersPage() {
   const { data } = useAccounts(page);
   const { data: user } = useMe();
   const accounts = data?.data || [];
-
+  const queryClient = useQueryClient();
   const isAdmin = !!user && [ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
+  const [selectedMember, setSelectedMember] = useState<any>(null);
 
   console.log(data);
 
@@ -40,9 +55,27 @@ export default function UsersPage() {
     return data?.current_page;
   }, [data]);
 
+  const { mutate: removeMember, isPending } = useMutation({
+    mutationFn: (id: number) => {
+      return removeAccount(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_PATHS.ACCOUNTS] });
+      toast.success('Member removed successfully');
+      setSelectedMember(null);
+    },
+    onError: (error: any) => {
+      console.log(error);
+      toast.error(error?.message || 'Failed to remove member');
+      setSelectedMember(null);
+    },
+  });
+
   const handleRemoveMember = (id: number) => {
     // Implement remove functionality
     console.log('Removing member:', id);
+    setSelectedMember(id);
+    removeMember(id);
   };
 
   const filteredMembers = accounts?.filter((account: any) =>
@@ -95,13 +128,42 @@ export default function UsersPage() {
 
                 {isAdmin && (
                   <TableCell>
-                    <Button
-                      variant='destructive'
-                      size='sm'
-                      onClick={() => handleRemoveMember(member.id)}
-                    >
-                      <Trash />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant='destructive'
+                          size='sm'
+                          disabled={isPending}
+                        >
+                          {isPending && selectedMember === member.id ? (
+                            <Loader2 className='w-4 h-4 animate-spin' />
+                          ) : (
+                            <Trash />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            Are you absolutely sure?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. This will permanently
+                            delete this account and remove their data from our
+                            servers.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            className='bg-red-500 hover:bg-red-600'
+                            onClick={() => handleRemoveMember(member.id)}
+                          >
+                            Continue
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </TableCell>
                 )}
               </TableRow>
