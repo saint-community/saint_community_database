@@ -1,71 +1,74 @@
 /* eslint-disable react/no-children-prop */
-'use client';
+"use client";
 
-import { Button } from '@workspace/ui/components/button';
-import { useForm } from '@workspace/ui/lib/react-hook-form';
-import { z } from 'zod';
-import { Input } from '@workspace/ui/components/input';
-import { Textarea } from '@workspace/ui/components/textarea';
-import { Label } from '@workspace/ui/components/label';
-import { DatePicker } from '@workspace/ui/components/date-picker';
+import { Button } from "@workspace/ui/components/button";
+import { useForm } from "@workspace/ui/lib/react-hook-form";
+import { z } from "zod";
+import { Input } from "@workspace/ui/components/input";
+import { Textarea } from "@workspace/ui/components/textarea";
+import { Label } from "@workspace/ui/components/label";
+import { DatePicker } from "@workspace/ui/components/date-picker";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@workspace/ui/components/select';
-import { FieldInfo } from '@workspace/ui/components/field-info';
-import { useMutation } from '@tanstack/react-query';
-import { createWorker } from '@/services/workers';
-import { useWorkerForm } from '@/hooks/workers';
-import { Loader } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { toast } from '@workspace/ui/lib/sonner';
-import { Suspense } from 'react';
+} from "@workspace/ui/components/select";
+import { FieldInfo } from "@workspace/ui/components/field-info";
+import { useMutation } from "@tanstack/react-query";
+import { createWorker } from "@/services/workers";
+import { useWorkerForm } from "@/hooks/workers";
+import { Loader, Upload } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "@workspace/ui/lib/sonner";
+import { Suspense, useEffect, useMemo, useState } from "react";
+// import {
+//   Avatar,
+//   AvatarFallback,
+//   AvatarImage,
+// } from "@workspace/ui/components/avatar";
+// import { cn } from "@workspace/ui/lib/utils";
+// import { min } from "date-fns";
 
 const formSchema = z.object({
-  fullName: z.string().min(2, {
-    message: 'Full name must be at least 2 characters.',
+  // photoUpload: z.string().optional(),
+  firstName: z.string().min(2, {
+    message: "First name must be at least 2 characters.",
+  }),
+  lastName: z.string().min(2, {
+    message: "Surname must be at least 2 characters.",
   }),
   email: z.string().email({
-    message: 'Please enter a valid email address.',
+    message: "Please enter a valid email address.",
   }),
+  country: z.string().min(1, { message: "Please select a country" }),
+  state: z.string(),
   gender: z.string().min(1, {
-    message: 'Please select a gender.',
+    message: "Please select a gender.",
   }),
   phoneNumber: z.string().min(10, {
-    message: 'Please enter a valid phone number.',
+    message: "Please enter a valid phone number.",
   }),
-  church: z.string().min(1, {
-    message: 'Please select a church.',
-  }),
-  fellowship: z.string().min(1, {
-    message: 'Please select a fellowship.',
-  }),
-  cell: z.string().min(1, {
-    message: 'Please select a cell.',
-  }),
+  church: z.string(),
+  fellowship: z.string(),
+  cell: z.string(),
   homeAddress: z.string().min(5, {
-    message: 'Please enter a valid home address.',
+    message: "Please enter a valid home address.",
   }),
-  workAddress: z.string().min(5, {
-    message: 'Please enter a valid work address.',
-  }),
+  workAddress: z.string(),
   dateOfBirth: z.date().refine(
     (date) => {
       const parsedDate = new Date(date);
       return !isNaN(parsedDate.getTime());
     },
     {
-      message: 'Please enter a valid date of birth.',
+      message: "Please enter a valid date of birth.",
     }
   ),
-  department: z.string().min(1, {
-    message: 'Please select a department.',
-  }),
+  department: z.string(),
   prayerGroup: z.string().min(1, {
-    message: 'Please select a prayer group.',
+    message: "Please select a prayer group.",
   }),
   dateJoinedChurch: z.date().refine(
     (date) => {
@@ -73,71 +76,145 @@ const formSchema = z.object({
       return !isNaN(parsedDate.getTime());
     },
     {
-      message: 'Please enter a valid date.',
+      message: "Please enter a valid date.",
+    }
+  ),
+  dateBecameWorker: z.date().refine(
+    (date) => {
+      const parsedDate = new Date(date);
+      return !isNaN(parsedDate.getTime());
+    },
+    {
+      message: "Please enter a valid date.",
     }
   ),
 });
 
 const genders = [
-  { id: 'male', name: 'Male' },
-  { id: 'female', name: 'Female' },
+  { id: "male", name: "Male" },
+  { id: "female", name: "Female" },
 ];
 
 function RegisterPageMain() {
   const searchParams = useSearchParams();
-  const token = searchParams.get('token');
-  const { data } = useWorkerForm(token || '');
+  const token = searchParams.get("token");
+  const { data, error, isLoading } = useWorkerForm(token || "");
   const router = useRouter();
 
-  const user = data?.data?.user?.user;
-  const church = user?.church;
-  const fellowships = user?.fellowships;
-  const cells = user?.cells;
-  const prayerGroups = data?.data?.prayerGroups?.map(
-    (prayerGroup: { day: string; schedule: string; id: string }) => ({
-      value: prayerGroup.id,
-      label: `${prayerGroup.day} (${prayerGroup.schedule})`,
-    })
+  // Import countries.json dynamically to avoid SSR issues
+  const [countries, setCountries] = useState<{ code: string; name: string }[]>(
+    []
   );
+  useEffect(() => {
+    import("@/utils/countries.json").then((mod) => {
+      setCountries(mod.default || mod);
+    });
+  }, []);
 
-  const departments = data?.data?.departments?.map(
-    (department: { name: string; id: string }) => ({
-      value: department.id,
-      label: department.name,
-    })
-  );
+  const RequiredAsterisk = () => <span className="text-rose-500">*</span>;
+
+  // const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // const [file, setFile] = useState<File | null>(null);
+  const [states, setStates] = useState<string[]>([]);
+  const [selectedCountry, setSelectedCountry] = useState("");
+
+  useEffect(() => {
+    if (selectedCountry) {
+      import("@/utils/states.json").then((mod) => {
+        type AllStates = { [countryCode: string]: string[] };
+        const allStates = (mod.default || mod) as unknown as AllStates;
+        setStates(allStates[selectedCountry as keyof AllStates] || []);
+      });
+    } else {
+      setStates([]);
+    }
+  }, [selectedCountry]);
+
+  // useEffect(() => {
+  //   if (file && typeof file === "object" && "name" in file) {
+  //     const url = URL.createObjectURL(file);
+  //     setPreviewUrl(url);
+  //     return () => URL.revokeObjectURL(url);
+  //   } else {
+  //     setPreviewUrl(null);
+  //   }
+  // }, [file]);
+
+  const { church, fellowships, cells, prayerGroups, departments } =
+    useMemo(() => {
+      const church = {
+        id: data?.data?.churchInformation?.id || "",
+        name: data?.data?.churchInformation?.name || "",
+      };
+      const fellowships = data?.data?.churchInformation?.fellowships;
+      const cells = data?.data?.churchInformation?.cells;
+
+      const prayerGroups = data?.data?.prayerGroups?.map(
+        (prayerGroup: { day: string; schedule: string; id: string }) => ({
+          value: prayerGroup.id,
+          label: `${prayerGroup.day} (${prayerGroup.schedule})`,
+        })
+      );
+
+      const departments = data?.data?.departments?.map(
+        (department: { name: string; id: string }) => ({
+          value: department.id,
+          label: department.name,
+        })
+      );
+
+      return { church, fellowships, cells, prayerGroups, departments };
+    }, [data]);
 
   const mutation = useMutation({
     mutationFn: createWorker,
     onSuccess: () => {
-      toast.success('Account created successfully');
+      toast.success("Account created successfully");
       form.reset();
-      router.push('/completed');
+      router.push("/completed");
     },
-    onError: () => {
-      toast.error('Failed to create account');
+    onError: (error) => {
+      // Type guard for AxiosError
+      const err = error as any;
+      const response = err?.response;
+
+      if (response?.data?.errors) {
+        Object.entries(response.data.errors).forEach(([key, messages]) => {
+          form.setErrorMap({ [`${key}`]: Array.isArray(messages) ? messages[0] : messages });
+        });
+      }
+
+      toast.error("Failed to create account");
     },
   });
 
   const form = useForm({
     defaultValues: {
-      fullName: '',
-      email: '',
-      gender: '',
-      phoneNumber: '',
-      church: church?.id?.toString() || '',
-      fellowship: fellowships?.[0]?.id?.toString() || '',
-      cell: cells?.[0]?.id?.toString() || '',
-      homeAddress: '',
-      workAddress: '',
+      // photoUpload: null as File | null,
+      firstName: "",
+      lastName: "",
+      country: "",
+      state: "",
+      email: "",
+      gender: "",
+      phoneNumber: "",
+      church: church?.id?.toString() || "",
+      fellowship: fellowships?.[0]?.id?.toString() || "",
+      cell: cells?.[0]?.id?.toString() || "",
+      homeAddress: "",
+      workAddress: "",
       dateOfBirth: new Date(),
-      department: '',
+      department: "",
       dateJoinedChurch: new Date(),
-      prayerGroup: '',
+      prayerGroup: "",
+      dateBecameWorker: new Date(),
     },
     validators: {
       onSubmit: formSchema,
       onChange: formSchema,
+      onChangeAsync: ({ formApi }) => {
+        formApi.setFieldValue("church", church?.id?.toString());
+      },
     },
     onSubmit: async ({ value }) => {
       // Handle form submission here
@@ -146,23 +223,27 @@ function RegisterPageMain() {
         church_id: Number(value.church),
         fellowship_id: Number(value.fellowship),
         cell_id: Number(value.cell),
-        first_name: value.fullName.split(' ')[0] || '',
-        last_name: value.fullName.split(' ')[1] || '',
-        dob: value.dateOfBirth.toISOString().split('T')[0],
+        first_name: value.firstName || "",
+        last_name: value.lastName || "",
+        dob: value.dateOfBirth.toISOString().split("T")[0],
         gender: value.gender,
-        status: 'worker',
+        status: "worker",
         phone_number: value.phoneNumber,
         email: value.email,
-        facebook_username: '',
-        twitter_username: '',
-        instagram_username: '',
+        facebook_username: "",
+        twitter_username: "",
+        instagram_username: "",
         house_address: value.homeAddress,
         work_address: value.workAddress,
-        member_since: value.dateJoinedChurch.toISOString().split('T')[0],
-        worker_since: value.dateJoinedChurch.toISOString().split('T')[0],
+        member_since: value.dateJoinedChurch.toISOString().split("T")[0],
+        worker_since: value.dateJoinedChurch.toISOString().split("T")[0],
         active: true,
         prayer_group_id: value.prayerGroup,
         department_id: value.department ? Number(value.department) : undefined,
+        country: value.country,
+        state: value.state,
+        date_joined_church: value.dateJoinedChurch.toISOString().split("T")[0],
+        date_became_worker: value.dateBecameWorker.toISOString().split("T")[0],
       });
     },
     onSubmitInvalid(props) {
@@ -170,18 +251,58 @@ function RegisterPageMain() {
     },
   });
 
-  if (!token) {
+  if (isLoading) {
     return (
-      <div className='flex flex-col items-center justify-center h-screen max-w-[375px] mx-auto bg-white'>
-        Token not found
+      <div className="flex flex-col items-center justify-center h-screen max-w-[375px] mx-auto bg-white">
+        <Loader className="w-12 h-12 animate-spin mb-4 text-gray-400" />
+        <span className="text-gray-500">Hang tight, we're loading 🚀</span>
+      </div>
+    );
+  }
+  const isAxiosError =
+    error &&
+    typeof error === "object" &&
+    "response" in error &&
+    error.response &&
+    typeof error.response === "object";
+
+  if (
+    !token ||
+    (isAxiosError &&
+      (error as any).response?.status === 404 &&
+      !(error as any).response?.data?.success)
+  ) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen max-w-[375px] mx-auto bg-white">
+        <div className="text-center px-4">
+          <h2 className="text-lg font-semibold text-rose-600 mb-2">
+            Oops! Registration Link Invalid or Expired
+          </h2>
+          <p className="text-gray-500 mb-4">
+            The registration link you used is either invalid or has expired.
+            Please request a new registration link or contact support for
+            assistance.
+          </p>
+          <div className="pt-4 border-t border-gray-200">
+            <p className="text-xs text-gray-500">
+              Need help? Contact support at{" "}
+              <a
+                href="mailto:support@saintcommunity.com"
+                className="text-green-600 hover:underline"
+              >
+                support@saintcommunity.com
+              </a>
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className='flex flex-col items-center justify-center max-w-[375px] mx-auto bg-white py-[100px]'>
-      <h1 className='text-2xl font-bold'>Member Registration</h1>
-      <p className='text-sm text-gray-500 mb-[36px]'>
+    <div className="flex flex-col items-center justify-center max-w-[375px] mx-auto bg-white py-[100px]">
+      <h1 className="text-2xl font-bold">Workers Registration</h1>
+      <p className="text-sm text-gray-500 mb-[36px]">
         Kindly fill the form below
       </p>
       <form
@@ -190,20 +311,106 @@ function RegisterPageMain() {
           e.stopPropagation();
           void form.handleSubmit();
         }}
-        className='flex-1 w-full space-y-4 p-4 md:px-0'
+        className="flex-1 w-full space-y-4 p-4 md:px-0"
       >
-        <div className='space-y-2'>
-          <Label htmlFor='fullName'>Full Name</Label>
+        {/* <div className="space-y-2">
+          <form.Field name="photoUpload">
+            {(field) => {
+              const file = field.state.value as File | null;
+
+              return (
+                <div className="flex flex-col items-center gap-2">
+                  <Label
+                    htmlFor="photo-upload"
+                    className={cn(
+                      "flex flex-col items-center justify-center border border-dashed border-spacing-3 border-secondary w-full rounded-lg py-6  cursor-pointer hover:border-gray-400 transition-colors relative",
+                      previewUrl && "hidden"
+                    )}
+                  >
+                    <span className="text-black items-center gap-3 flex text-md">
+                      <Upload color="red" /> Upload a photo
+                    </span>
+
+                    <input
+                      id="photo-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] ?? null;
+                        file && field.handleChange(file);
+                        setFile(file);
+                      }}
+                    />
+                  </Label>
+                  {file && (
+                    <div className="flex flex-col items-center">
+                      {previewUrl && (
+                        <Avatar className="w-[100px] h-[100px] mt-12 mb-4">
+                          <AvatarImage
+                            src={previewUrl}
+                            alt="Photo preview"
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                          <AvatarFallback>CN</AvatarFallback>
+                        </Avatar>
+                      )}
+                      <span className="mt-1 text-xs text-green-600 text-center truncate">
+                        {"name" in file ? file.name : ""}
+                      </span>
+                      <Button
+                        variant="outline"
+                        className="border-red-500 text-red-500 px-8 capitalize bg-white my-4"
+                        onClick={() => {
+                          // Trigger file input click to change photo
+                          document.getElementById("photo-upload")?.click();
+                        }}
+                      >
+                        Change photo
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              );
+            }}
+          </form.Field>
+        </div> */}
+        <div className="space-y-2">
+          <Label htmlFor="firstName">
+            First Name
+            <RequiredAsterisk />
+          </Label>
           <form.Field
-            name='fullName'
+            name="firstName"
             children={(field) => (
               <>
                 <Input
-                  id='fullName'
+                  id="firstName"
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder='Enter full name'
-                  className='h-[48px]'
+                  placeholder="First Name"
+                  className="h-[48px]"
+                />
+                <FieldInfo field={field} />
+              </>
+            )}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="lastName">
+            Surname
+            <RequiredAsterisk />
+          </Label>
+          <form.Field
+            name="lastName"
+            children={(field) => (
+              <>
+                <Input
+                  id="lastName"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder="Surname"
+                  className="h-[48px]"
                 />
                 <FieldInfo field={field} />
               </>
@@ -211,19 +418,47 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className='space-y-2'>
-          <Label htmlFor='email'>Email Address</Label>
+        <div className="space-y-2">
+          <Label htmlFor="email">
+            Email Address
+            <RequiredAsterisk />
+          </Label>
           <form.Field
-            name='email'
+            name="email"
             children={(field) => (
               <>
                 <Input
-                  id='email'
-                  type='email'
+                  id="email"
+                  type="email"
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder='Enter email address'
-                  className='h-[48px]'
+                  placeholder="Enter Email"
+                  className="h-[48px]"
+                />
+                <FieldInfo field={field} />
+              </>
+            )}
+            
+          />
+          
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="phoneNumber">
+            Phone Number
+            <RequiredAsterisk />
+          </Label>
+          <form.Field
+            name="phoneNumber"
+            children={(field) => (
+              <>
+                <Input
+                  id="phoneNumber"
+                  type="tel"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder="Your Phone number"
+                  className="h-[48px]"
                 />
                 <FieldInfo field={field} />
               </>
@@ -231,56 +466,170 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className='space-y-2'>
-          <Label htmlFor='gender'>Gender</Label>
+        <div className="space-y-2">
+          <Label htmlFor="country">
+            Country
+            <RequiredAsterisk />
+          </Label>
           <form.Field
-            name='gender'
-            children={(field) => (
-              <>
-                <Select
-                  value={field.state.value}
-                  onValueChange={field.handleChange}
-                >
-                  <SelectTrigger className='h-[48px]'>
-                    <SelectValue placeholder='Select gender' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {genders.map((gender) => (
-                      <SelectItem key={gender.id} value={gender.id}>
-                        {gender.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FieldInfo field={field} />
-              </>
-            )}
+            name="country"
+            children={(field) => {
+              return (
+                <>
+                  <Select
+                    value={field.state.value}
+                    onValueChange={(e) => {
+                      field.handleChange(e);
+                      setSelectedCountry(e);
+                    }}
+                  >
+                    <SelectTrigger className="h-[48px]">
+                      <SelectValue placeholder="Select a country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {countries.map((country) => (
+                        <SelectItem key={country.code} value={country.code}>
+                          {country.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldInfo field={field} />
+                </>
+              );
+            }}
           />
         </div>
 
-        <div className='space-y-2'>
-          <Label htmlFor='phoneNumber'>Phone Number</Label>
+        {/* State select, depends on selected country */}
+        <div className="space-y-2">
+          <Label htmlFor="state">State/Province</Label>
           <form.Field
-            name='phoneNumber'
+            name="state"
+            children={(field) => {
+              return (
+                <>
+                  <Select
+                    value={field.state.value}
+                    onValueChange={field.handleChange}
+                    disabled={!selectedCountry}
+                  >
+                    <SelectTrigger className="h-[48px]">
+                      <SelectValue placeholder="Select a state" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {states.map((state, i) => (
+                        <SelectItem key={i} value={state}>
+                          {state}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldInfo field={field} />
+                </>
+              );
+            }}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="homeAddress">
+            Home Address
+            <RequiredAsterisk />
+          </Label>
+          <form.Field
+            name="homeAddress"
             children={(field) => (
               <>
-                <Input
-                  id='phoneNumber'
-                  type='tel'
+                <Textarea
+                  rows={6}
+                  id="homeAddress"
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder='Enter phone number'
-                  className='h-[48px]'
+                  placeholder="Enter home address"
                 />
                 <FieldInfo field={field} />
               </>
             )}
           />
         </div>
-        <div className='space-y-2'>
-          <Label htmlFor='church'>Church</Label>
+
+        <div className="space-y-2">
+          <Label htmlFor="workAddress">Work Address</Label>
           <form.Field
-            name='church'
+            name="workAddress"
+            children={(field) => (
+              <>
+                <Textarea
+                  rows={6}
+                  id="workAddress"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder="Enter work address"
+                />
+                <FieldInfo field={field} />
+              </>
+            )}
+          />
+        </div>
+
+        <div className="flex gap-2 w-full justify-between items-center">
+          <div className="space-y-2 w-1/2">
+            <Label htmlFor="gender">
+              Gender
+              <RequiredAsterisk />
+            </Label>
+            <form.Field
+              name="gender"
+              children={(field) => (
+                <>
+                  <Select
+                    value={field.state.value}
+                    onValueChange={field.handleChange}
+                  >
+                    <SelectTrigger className="h-[48px]">
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {genders.map((gender) => (
+                        <SelectItem key={gender.id} value={gender.id}>
+                          {gender.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldInfo field={field} />
+                </>
+              )}
+            />
+          </div>
+          <div className="space-y-2 w-1/2">
+            <Label htmlFor="dateOfBirth">
+              Date of Birth
+              <RequiredAsterisk />
+            </Label>
+            <br />
+            <form.Field
+              name="dateOfBirth"
+              children={(field) => (
+                <>
+                  <DatePicker
+                    value={field.state.value}
+                    onChange={(date) => field.handleChange(date || new Date())}
+                    className="h-[48px]"
+                    captionLayout="dropdown"
+                  />
+                  <FieldInfo field={field} />
+                </>
+              )}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="church">Church</Label>
+          <form.Field
+            name="church"
             children={(field) => (
               <>
                 <Select
@@ -288,14 +637,14 @@ function RegisterPageMain() {
                   onValueChange={field.handleChange}
                   disabled
                 >
-                  <SelectTrigger className='h-[48px]'>
-                    <SelectValue placeholder='Select a church' />
+                  <SelectTrigger className="h-[48px]">
+                    <SelectValue placeholder="Select a church" />
                   </SelectTrigger>
                   <SelectContent>
-                    {[{ value: church?.id, label: church?.name }]?.map(
-                      (church: { value: string; label: string }) => (
+                    {[{ value: church?.id, label: church?.name }].map(
+                      (church) => (
                         <SelectItem
-                          key={church.value || ''}
+                          key={church.value}
                           value={`${church.value}`}
                         >
                           {church.label}
@@ -310,22 +659,22 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className='space-y-2'>
-          <Label htmlFor='fellowship'>Fellowship</Label>
+        <div className="space-y-2">
+          <Label htmlFor="fellowship">Fellowship</Label>
           <form.Field
-            name='fellowship'
+            name="fellowship"
             children={(field) => (
               <>
                 <Select
                   value={field.state.value}
                   onValueChange={field.handleChange}
                 >
-                  <SelectTrigger className='h-[48px]'>
-                    <SelectValue placeholder='Select a fellowship' />
+                  <SelectTrigger className="h-[48px]">
+                    <SelectValue placeholder="Select a fellowship" />
                   </SelectTrigger>
                   <SelectContent>
                     {fellowships?.map(
-                      (fellowship: { id: string; name: string }) => (
+                      (fellowship: { id: number; name: string }) => (
                         <SelectItem
                           key={fellowship.id}
                           value={`${fellowship.id}`}
@@ -342,21 +691,21 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className='space-y-2'>
-          <Label htmlFor='cell'>Cell</Label>
+        <div className="space-y-2">
+          <Label htmlFor="cell">Cell</Label>
           <form.Field
-            name='cell'
+            name="cell"
             children={(field) => (
               <>
                 <Select
                   value={field.state.value}
                   onValueChange={field.handleChange}
                 >
-                  <SelectTrigger className='h-[48px]'>
-                    <SelectValue placeholder='Select a cell' />
+                  <SelectTrigger className="h-[48px]">
+                    <SelectValue placeholder="Select a cell" />
                   </SelectTrigger>
                   <SelectContent>
-                    {cells?.map((cell: { id: string; name: string }) => (
+                    {cells?.map((cell: { id: number; name: string }) => (
                       <SelectItem key={cell.id} value={`${cell.id}`}>
                         {cell.name}
                       </SelectItem>
@@ -369,72 +718,18 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className='space-y-2'>
-          <Label htmlFor='homeAddress'>Home Address</Label>
+        <div className="space-y-2">
+          <Label htmlFor="department">Department</Label>
           <form.Field
-            name='homeAddress'
-            children={(field) => (
-              <>
-                <Textarea
-                  id='homeAddress'
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder='Enter home address'
-                />
-                <FieldInfo field={field} />
-              </>
-            )}
-          />
-        </div>
-
-        <div className='space-y-2'>
-          <Label htmlFor='workAddress'>Work Address</Label>
-          <form.Field
-            name='workAddress'
-            children={(field) => (
-              <>
-                <Textarea
-                  id='workAddress'
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder='Enter work address'
-                />
-                <FieldInfo field={field} />
-              </>
-            )}
-          />
-        </div>
-
-        <div className='space-y-2'>
-          <Label htmlFor='dateOfBirth'>Date of Birth</Label>
-          <br />
-          <form.Field
-            name='dateOfBirth'
-            children={(field) => (
-              <>
-                <DatePicker
-                  value={field.state.value}
-                  onChange={(date) => field.handleChange(date || new Date())}
-                  className='h-[48px]'
-                />
-                <FieldInfo field={field} />
-              </>
-            )}
-          />
-        </div>
-
-        <div className='space-y-2'>
-          <Label htmlFor='department'>Department</Label>
-          <form.Field
-            name='department'
+            name="department"
             children={(field) => (
               <>
                 <Select
                   value={field.state.value}
                   onValueChange={field.handleChange}
                 >
-                  <SelectTrigger className='h-[48px]'>
-                    <SelectValue placeholder='Select a department' />
+                  <SelectTrigger className="h-[48px]">
+                    <SelectValue placeholder="Select a department" />
                   </SelectTrigger>
                   <SelectContent>
                     {departments?.map(
@@ -455,18 +750,20 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className='space-y-2'>
-          <Label htmlFor='prayerGroup'>Prayer Group</Label>
+        <div className="space-y-2">
+          <Label htmlFor="prayerGroup">
+            Prayer Group Day <RequiredAsterisk />
+          </Label>
           <form.Field
-            name='prayerGroup'
+            name="prayerGroup"
             children={(field) => (
               <>
                 <Select
                   value={field.state.value}
                   onValueChange={field.handleChange}
                 >
-                  <SelectTrigger className='h-[48px]'>
-                    <SelectValue placeholder='Select a prayer group' />
+                  <SelectTrigger className="h-[48px]">
+                    <SelectValue placeholder="Select a prayer group" />
                   </SelectTrigger>
                   <SelectContent>
                     {prayerGroups?.map(
@@ -487,17 +784,20 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className='space-y-2'>
-          <Label htmlFor='dateJoinedChurch'>Date Joined Church</Label>
+        <div className="space-y-2">
+          <Label htmlFor="dateJoinedChurch">
+            Date you joined Church <RequiredAsterisk />
+          </Label>
           <br />
           <form.Field
-            name='dateJoinedChurch'
+            name="dateJoinedChurch"
             children={(field) => (
               <>
                 <DatePicker
                   value={field.state.value}
                   onChange={(date) => field.handleChange(date || new Date())}
-                  className='h-[48px]'
+                  className="h-[48px]"
+                  captionLayout="dropdown"
                 />
                 <FieldInfo field={field} />
               </>
@@ -505,16 +805,36 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className='w-full '>
+        <div className="space-y-2">
+          <Label htmlFor="dateBecameWorker">
+            Date you become a worker <RequiredAsterisk />
+          </Label>
+          <br />
+          <form.Field
+            name="dateBecameWorker"
+            children={(field) => (
+              <>
+                <DatePicker
+                  value={field.state.value}
+                  onChange={(date) => field.handleChange(date || new Date())}
+                  className="h-[48px]"
+                  captionLayout="dropdown"
+                />
+                <FieldInfo field={field} />
+              </>
+            )}
+          />
+        </div>
+        <div className="w-full ">
           <form.Subscribe
             selector={(state) => [state.canSubmit, mutation.isPending]}
             children={([canSubmit, isPending]) => (
               <Button
-                type='submit'
-                className='w-full h-[48px] mt-[36px]'
+                type="submit"
+                className="w-full h-[48px] mt-[36px]"
                 disabled={!canSubmit}
               >
-                {isPending ? <Loader className='animate-spin' /> : 'Submit'}
+                {isPending ? <Loader className="animate-spin" /> : "Submit"}
               </Button>
             )}
           />

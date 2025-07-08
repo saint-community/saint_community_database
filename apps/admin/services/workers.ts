@@ -24,6 +24,8 @@ export interface Worker {
   department_id?: number;
   country?: string;
   state?: string;
+  date_joined_church?: string
+  date_became_worker?: string
 }
 
 export interface FormGenerateRequest {
