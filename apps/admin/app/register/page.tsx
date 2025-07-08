@@ -22,12 +22,12 @@ import { useWorkerForm } from "@/hooks/workers";
 import { Loader, Upload } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "@workspace/ui/lib/sonner";
-import { Suspense, useEffect, useState } from "react";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@workspace/ui/components/avatar";
+import { Suspense, useEffect, useMemo, useState } from "react";
+// import {
+//   Avatar,
+//   AvatarFallback,
+//   AvatarImage,
+// } from "@workspace/ui/components/avatar";
 // import { cn } from "@workspace/ui/lib/utils";
 // import { min } from "date-fns";
 
@@ -50,15 +50,9 @@ const formSchema = z.object({
   phoneNumber: z.string().min(10, {
     message: "Please enter a valid phone number.",
   }),
-  church: z.string().min(1, {
-    message: "Please select a church.",
-  }),
-  fellowship: z.string().min(1, {
-    message: "Please select a fellowship.",
-  }),
-  cell: z.string().min(1, {
-    message: "Please select a cell.",
-  }),
+  church: z.string(),
+  fellowship: z.string(),
+  cell: z.string(),
   homeAddress: z.string().min(5, {
     message: "Please enter a valid home address.",
   }),
@@ -117,52 +111,60 @@ function RegisterPageMain() {
     });
   }, []);
 
-  const demo = {
-    church: {
-      id: 1,
-      name: "Isolo Church",
-      country: "Nigeria",
-      state: "Lagos",
-      active: "yes",
-      address: "20 street road, Lagos Nigeria",
-      start_date: "2020-04-05",
-    },
-    fellowships: [
-      {
-        id: 1,
-        name: "Isolo Fellowship 1",
-        address: "Isolo oke afa",
-        start_date: "2020-04-05",
-      },
-    ],
-    cells: [
-      {
-        id: 1,
-        name: "Isolo Fellowsip 1 cell 1",
-        meeting_days: "4",
-        address: "20 Isolo road, Lagos Nigeria",
-        start_date: "2023-04-05",
-      },
-    ],
-  };
+  const RequiredAsterisk = () => <span className="text-rose-500">*</span>;
 
-  const user = data?.data?.user?.user;
-  const church = demo?.church;
-  const fellowships = demo?.fellowships;
-  const cells = demo?.cells;
-  const prayerGroups = data?.data?.prayerGroups?.map(
-    (prayerGroup: { day: string; schedule: string; id: string }) => ({
-      value: prayerGroup.id,
-      label: `${prayerGroup.day} (${prayerGroup.schedule})`,
-    })
-  );
+  // const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // const [file, setFile] = useState<File | null>(null);
+  const [states, setStates] = useState<string[]>([]);
+  const [selectedCountry, setSelectedCountry] = useState("");
 
-  const departments = data?.data?.departments?.map(
-    (department: { name: string; id: string }) => ({
-      value: department.id,
-      label: department.name,
-    })
-  );
+  useEffect(() => {
+    if (selectedCountry) {
+      import("@/utils/states.json").then((mod) => {
+        type AllStates = { [countryCode: string]: string[] };
+        const allStates = (mod.default || mod) as unknown as AllStates;
+        setStates(allStates[selectedCountry as keyof AllStates] || []);
+      });
+    } else {
+      setStates([]);
+    }
+  }, [selectedCountry]);
+
+  // useEffect(() => {
+  //   if (file && typeof file === "object" && "name" in file) {
+  //     const url = URL.createObjectURL(file);
+  //     setPreviewUrl(url);
+  //     return () => URL.revokeObjectURL(url);
+  //   } else {
+  //     setPreviewUrl(null);
+  //   }
+  // }, [file]);
+
+  const { church, fellowships, cells, prayerGroups, departments } =
+    useMemo(() => {
+      const church = {
+        id: data?.data?.churchInformation?.id || "",
+        name: data?.data?.churchInformation?.name || "",
+      };
+      const fellowships = data?.data?.churchInformation?.fellowships;
+      const cells = data?.data?.churchInformation?.cells;
+
+      const prayerGroups = data?.data?.prayerGroups?.map(
+        (prayerGroup: { day: string; schedule: string; id: string }) => ({
+          value: prayerGroup.id,
+          label: `${prayerGroup.day} (${prayerGroup.schedule})`,
+        })
+      );
+
+      const departments = data?.data?.departments?.map(
+        (department: { name: string; id: string }) => ({
+          value: department.id,
+          label: department.name,
+        })
+      );
+
+      return { church, fellowships, cells, prayerGroups, departments };
+    }, [data]);
 
   const mutation = useMutation({
     mutationFn: createWorker,
@@ -171,7 +173,17 @@ function RegisterPageMain() {
       form.reset();
       router.push("/completed");
     },
-    onError: () => {
+    onError: (error) => {
+      // Type guard for AxiosError
+      const err = error as any;
+      const response = err?.response;
+
+      if (response?.data?.errors) {
+        Object.entries(response.data.errors).forEach(([key, messages]) => {
+          form.setErrorMap({ [`${key}`]: Array.isArray(messages) ? messages[0] : messages });
+        });
+      }
+
       toast.error("Failed to create account");
     },
   });
@@ -200,6 +212,9 @@ function RegisterPageMain() {
     validators: {
       onSubmit: formSchema,
       onChange: formSchema,
+      onChangeAsync: ({ formApi }) => {
+        formApi.setFieldValue("church", church?.id?.toString());
+      },
     },
     onSubmit: async ({ value }) => {
       // Handle form submission here
@@ -236,35 +251,6 @@ function RegisterPageMain() {
     },
   });
 
-  const RequiredAsterisk = () => <span className="text-rose-500">*</span>;
-
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [file, setFile] = useState<File | null>(null);
-  const [states, setStates] = useState<string[]>([]);
-  const [selectedCountry, setSelectedCountry] = useState("");
-
-  useEffect(() => {
-    if (selectedCountry) {
-      import("@/utils/states.json").then((mod) => {
-        type AllStates = { [countryCode: string]: string[] };
-        const allStates = (mod.default || mod) as unknown as AllStates;
-        setStates(allStates[selectedCountry as keyof AllStates] || []);
-      });
-    } else {
-      setStates([]);
-    }
-  }, [selectedCountry]);
-
-  useEffect(() => {
-    if (file && typeof file === "object" && "name" in file) {
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-      return () => URL.revokeObjectURL(url);
-    } else {
-      setPreviewUrl(null);
-    }
-  }, [file]);
-
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen max-w-[375px] mx-auto bg-white">
@@ -273,7 +259,19 @@ function RegisterPageMain() {
       </div>
     );
   }
-  if (!token || error) {
+  const isAxiosError =
+    error &&
+    typeof error === "object" &&
+    "response" in error &&
+    error.response &&
+    typeof error.response === "object";
+
+  if (
+    !token ||
+    (isAxiosError &&
+      (error as any).response?.status === 404 &&
+      !(error as any).response?.data?.success)
+  ) {
     return (
       <div className="flex flex-col items-center justify-center h-screen max-w-[375px] mx-auto bg-white">
         <div className="text-center px-4">
@@ -440,7 +438,9 @@ function RegisterPageMain() {
                 <FieldInfo field={field} />
               </>
             )}
+            
           />
+          
         </div>
 
         <div className="space-y-2">
@@ -617,6 +617,7 @@ function RegisterPageMain() {
                     value={field.state.value}
                     onChange={(date) => field.handleChange(date || new Date())}
                     className="h-[48px]"
+                    captionLayout="dropdown"
                   />
                   <FieldInfo field={field} />
                 </>
@@ -640,10 +641,10 @@ function RegisterPageMain() {
                     <SelectValue placeholder="Select a church" />
                   </SelectTrigger>
                   <SelectContent>
-                    {[{ value: church?.id, label: church?.name }]?.map(
-                      (church: { value: number; label: string }) => (
+                    {[{ value: church?.id, label: church?.name }].map(
+                      (church) => (
                         <SelectItem
-                          key={church.value || ""}
+                          key={church.value}
                           value={`${church.value}`}
                         >
                           {church.label}
@@ -796,6 +797,7 @@ function RegisterPageMain() {
                   value={field.state.value}
                   onChange={(date) => field.handleChange(date || new Date())}
                   className="h-[48px]"
+                  captionLayout="dropdown"
                 />
                 <FieldInfo field={field} />
               </>
@@ -816,6 +818,7 @@ function RegisterPageMain() {
                   value={field.state.value}
                   onChange={(date) => field.handleChange(date || new Date())}
                   className="h-[48px]"
+                  captionLayout="dropdown"
                 />
                 <FieldInfo field={field} />
               </>
