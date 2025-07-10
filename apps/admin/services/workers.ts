@@ -85,3 +85,25 @@ export const getWorkerForm = async (token: string) => {
   );
   return data || {};
 };
+
+
+export const getWorkersRegistration = async (action: string) => {
+  const { data } = await ApiCaller.get(
+    `${QUERY_PATHS.WORKERS}/${action}`
+  );
+  return data || {};
+};
+
+export const approveWorker = async (id: string) => {
+  const { data } = await ApiCaller.get(
+    QUERY_PATHS.WORKER_APPROVE.replace(':id', id)
+  );
+  return data?.data;
+};
+
+export const rejectWorker = async (id: string) => {
+  const { data } = await ApiCaller.get(
+    QUERY_PATHS.WORKER_REJECT.replace(':id', id)
+  );
+  return data?.data;
+};

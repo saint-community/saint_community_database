@@ -3,6 +3,7 @@ import { useSidebar, SidebarTrigger } from '@workspace/ui/components/sidebar';
 import { SideBarTop } from './sidebar-top';
 import useWindowDimensions from '@workspace/ui/hooks/useWindowDimensions';
 import { useMemo } from 'react';
+import ConfirmDialog from './ConfirmAlertDialog';
 
 export const MainContent = ({ children }: { children: React.ReactNode }) => {
   const sidebarData = useSidebar();
@@ -21,6 +22,7 @@ export const MainContent = ({ children }: { children: React.ReactNode }) => {
       <SidebarTrigger className='absolute' />
       <SideBarTop />
       <div className={mainClass}>{children}</div>
+      <ConfirmDialog  />
     </main>
   );
 };

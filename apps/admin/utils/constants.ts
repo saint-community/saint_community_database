@@ -41,6 +41,11 @@ export const QUERY_PATHS = {
   WORKER_FORM_GENERATE: '/api/worker/form/generate',
   WORKER_FORM_DETAIL: '/api/worker/form/:token',
   WORKER_APPROVE: '/api/worker/approve/:id',
+  WORKER_REJECT: '/api/worker/reject/:id',
+  WORKER_PENDING: '/api/workers/pending',
+  WORKER_REJECTED: '/api/workers/rejected',
+  WORKER_APPROVED: '/api/workers/approved',
+
 
   // departments
   DEPARTMENTS: '/api/departments',

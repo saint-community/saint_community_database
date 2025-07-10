@@ -1,4 +1,4 @@
-import { getWorkerById, getWorkers, getWorkerForm } from '@/services/workers';
+import { getWorkerById, getWorkers, getWorkerForm, rejectWorker, approveWorker, getWorkersRegistration } from '@/services/workers';
 import { QUERY_PATHS } from '@/utils/constants';
 import {
   keepPreviousData,
@@ -66,5 +66,32 @@ export const useWorkerOption = () => {
         })
       );
     },
+  });
+};
+
+export const useInfiniteWorkersRegistration = (action: string) => {
+  return useInfiniteQuery({
+    queryKey: [`${QUERY_PATHS.WORKERS}${action}`],
+    queryFn: () => getWorkersRegistration(action),
+    enabled: !!action,
+    getNextPageParam: (lastPage) =>
+      lastPage.next_page_url ? lastPage?.current_page + 1 : undefined,
+    initialPageParam: 1,
+  });
+};
+
+export const useApproveWorker = (id: string) => {
+  return useQuery({
+    queryKey: [QUERY_PATHS.WORKER_APPROVE.replace(':id', id)],
+    queryFn: () => approveWorker(id),
+    enabled: !!id,
+  });
+};
+
+export const useRejectWorker = (id: string) => {
+  return useQuery({
+    queryKey: [QUERY_PATHS.WORKER_REJECT.replace(':id', id)],
+    queryFn: () => rejectWorker(id),
+    enabled: !!id,
   });
 };
