@@ -39,7 +39,7 @@ const otherItems = [
   },
   {
     title: 'Advanced',
-    url: '#',
+    url: '/d/registration-requests?status=pending',
     icon: Settings2,
   },
   {
