@@ -21,6 +21,7 @@ function Calendar({
       toDate={new Date(3050, 11, 31)}
       fromYear={1950}
       showOutsideDays={showOutsideDays}
+      
       className={cn("p-3", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",

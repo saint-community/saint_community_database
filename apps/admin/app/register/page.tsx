@@ -618,6 +618,7 @@ function RegisterPageMain() {
                     onChange={(date) => field.handleChange(date || new Date())}
                     className="h-[48px]"
                     captionLayout="dropdown"
+                    
                   />
                   <FieldInfo field={field} />
                 </>

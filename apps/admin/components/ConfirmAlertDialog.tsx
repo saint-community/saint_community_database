@@ -1,15 +1,14 @@
-import { useModalStore } from "@/lib/store";
+
+import { useModalStore } from "@/store";
 import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogCancel,
-  AlertDialogAction,
-} from "@radix-ui/react-alert-dialog";
-import {
-  AlertDialogHeader,
-  AlertDialogFooter,
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
 } from "@workspace/ui/components/alert-dialog";
 
 const ConfirmDialog = () => {
@@ -17,7 +16,11 @@ const ConfirmDialog = () => {
   const closeAlertModal = useModalStore(
     ({ closeAlertModal }) => closeAlertModal
   );
+
+  
   const props = useModalStore(({ alertProps }) => alertProps);
+
+console.log("ConfirmDialog props:", props);
 
   const { title, description, okText, onConfirm } = props;
 
