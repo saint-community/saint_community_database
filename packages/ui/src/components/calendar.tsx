@@ -18,10 +18,10 @@ function Calendar({
   return (
     <DayPicker
       fromDate={new Date(1950, 0, 1)}
-      toDate={new Date(3050, 11, 31)}
+      toDate={new Date()}
       fromYear={1950}
       showOutsideDays={showOutsideDays}
-      
+
       className={cn("p-3", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",

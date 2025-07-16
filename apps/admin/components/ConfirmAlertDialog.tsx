@@ -17,10 +17,8 @@ const ConfirmDialog = () => {
     ({ closeAlertModal }) => closeAlertModal
   );
 
-  
-  const props = useModalStore(({ alertProps }) => alertProps);
 
-console.log("ConfirmDialog props:", props);
+  const props = useModalStore(({ alertProps }) => alertProps);
 
   const { title, description, okText, onConfirm } = props;
 

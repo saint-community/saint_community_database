@@ -32,6 +32,8 @@ import {
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
+import { isEmpty } from "lodash";
+
 
 const RegistrationRequests = () => {
   const { push } = useRouter();
@@ -184,10 +186,10 @@ const RegistrationRequests = () => {
               Hang tight, we're loading registration list 🚀
             </span>
           </div>
-        ) : workers?.length === 0 ? (
+        ) : isEmpty(workersRequestData) ? (
           <div className="flex flex-col items-center justify-center h-screen  mx-auto ">
             <span className="text-gray-500">
-              There are no registration requests at the moment.{" "}
+              {`There are no ${slug} registration requests at the moment.`}
             </span>
           </div>
         ) : (

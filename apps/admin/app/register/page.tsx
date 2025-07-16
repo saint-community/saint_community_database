@@ -23,6 +23,7 @@ import { Loader, Upload } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "@workspace/ui/lib/sonner";
 import { Suspense, useEffect, useMemo, useState } from "react";
+import dayjs from "dayjs";
 // import {
 //   Avatar,
 //   AvatarFallback,
@@ -31,6 +32,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 // import { cn } from "@workspace/ui/lib/utils";
 // import { min } from "date-fns";
 
+const currentDate = new Date().toISOString();
 const formSchema = z.object({
   // photoUpload: z.string().optional(),
   firstName: z.string().min(2, {
@@ -57,37 +59,44 @@ const formSchema = z.object({
     message: "Please enter a valid home address.",
   }),
   workAddress: z.string(),
-  dateOfBirth: z.date().refine(
-    (date) => {
-      const parsedDate = new Date(date);
-      return !isNaN(parsedDate.getTime());
-    },
-    {
-      message: "Please enter a valid date of birth.",
-    }
-  ),
+  dateOfBirth: z
+    .date({
+      required_error: "Please select your date of birth",
+    })
+    .refine(
+      (value: any) =>
+        value === currentDate ||
+        !dayjs(value).isAfter(dayjs(currentDate).subtract(7, "days"), "day"),
+      {
+        message: "Oops, you can only select past dates",
+      }
+    ),
   department: z.string(),
   prayerGroup: z.string().min(1, {
     message: "Please select a prayer group.",
   }),
-  dateJoinedChurch: z.date().refine(
-    (date) => {
-      const parsedDate = new Date(date);
-      return !isNaN(parsedDate.getTime());
-    },
-    {
-      message: "Please enter a valid date.",
-    }
-  ),
-  dateBecameWorker: z.date().refine(
-    (date) => {
-      const parsedDate = new Date(date);
-      return !isNaN(parsedDate.getTime());
-    },
-    {
-      message: "Please enter a valid date.",
-    }
-  ),
+  dateJoinedChurch: z
+    .date({
+      required_error: "Please select a valid date",
+    })
+    .refine(
+      (value: any) =>
+        value === currentDate || !dayjs(value).isAfter(dayjs(), "day"),
+      {
+        message: "Oops, you can only select past dates",
+      }
+    ),
+  dateBecameWorker: z
+    .date({
+      required_error: "Please select a valid date",
+    })
+    .refine(
+      (value: any) =>
+        value === currentDate || !dayjs(value).isAfter(dayjs(), "day"),
+      {
+        message: "Oops, you can only select past dates",
+      }
+    ),
 });
 
 const genders = [
@@ -166,6 +175,18 @@ function RegisterPageMain() {
       return { church, fellowships, cells, prayerGroups, departments };
     }, [data]);
 
+  function normalizeServerErrors(
+    errors: Record<string, string[] | string>
+  ): Record<string, string> {
+    const result: any = {};
+
+    for (const [field, messages] of Object.entries(errors)) {
+      result[field] = Array.isArray(messages) ? messages[0] : messages;
+    }
+
+    return result;
+  }
+
   const mutation = useMutation({
     mutationFn: createWorker,
     onSuccess: () => {
@@ -179,9 +200,10 @@ function RegisterPageMain() {
       const response = err?.response;
 
       if (response?.data?.errors) {
-        Object.entries(response.data.errors).forEach(([key, messages]) => {
-          form.setErrorMap({ [`${key}`]: Array.isArray(messages) ? messages[0] : messages });
-        });
+        const normalized = normalizeServerErrors(response.data.errors);
+
+        // form.setErrorMap(normalized);
+        Object.values(normalized).forEach((msg) => toast.error(msg));
       }
 
       toast.error("Failed to create account");
@@ -203,11 +225,11 @@ function RegisterPageMain() {
       cell: cells?.[0]?.id?.toString() || "",
       homeAddress: "",
       workAddress: "",
-      dateOfBirth: new Date(),
+      dateOfBirth: dayjs(currentDate).subtract(7, "years").toDate(),
       department: "",
-      dateJoinedChurch: new Date(),
+      dateJoinedChurch: dayjs(currentDate).subtract(7, "days").toDate(),
       prayerGroup: "",
-      dateBecameWorker: new Date(),
+      dateBecameWorker: dayjs(currentDate).subtract(7, "days").toDate(),
     },
     validators: {
       onSubmit: formSchema,
@@ -438,9 +460,7 @@ function RegisterPageMain() {
                 <FieldInfo field={field} />
               </>
             )}
-            
           />
-          
         </div>
 
         <div className="space-y-2">
@@ -573,7 +593,7 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className="flex gap-2 w-full justify-between items-center">
+        <div className="flex flex-initial gap-2 w-full justify-between ">
           <div className="space-y-2 w-1/2">
             <Label htmlFor="gender">
               Gender
@@ -618,7 +638,6 @@ function RegisterPageMain() {
                     onChange={(date) => field.handleChange(date || new Date())}
                     className="h-[48px]"
                     captionLayout="dropdown"
-                    
                   />
                   <FieldInfo field={field} />
                 </>
