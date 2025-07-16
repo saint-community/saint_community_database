@@ -6,7 +6,7 @@ import {
   useInfiniteWorkersRegistration,
   useRejectWorker,
 } from "@/hooks/workers";
-import { useModalStore } from "@/lib/store";
+import { useModalStore } from "@/store";
 import { approveWorker, rejectWorker } from "@/services/workers";
 import { useMutation } from "@tanstack/react-query";
 import {
@@ -32,6 +32,8 @@ import {
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
+import { isEmpty } from "lodash";
+
 
 const RegistrationRequests = () => {
   const { push } = useRouter();
@@ -182,6 +184,12 @@ const RegistrationRequests = () => {
             <Loader className="w-12 h-12 animate-spin mb-4 text-gray-400" />
             <span className="text-gray-500">
               Hang tight, we're loading registration list 🚀
+            </span>
+          </div>
+        ) : isEmpty(workersRequestData) ? (
+          <div className="flex flex-col items-center justify-center h-screen  mx-auto ">
+            <span className="text-gray-500">
+              {`There are no ${slug} registration requests at the moment.`}
             </span>
           </div>
         ) : (
@@ -375,9 +383,7 @@ const RegistrationRequests = () => {
               </>
             ) : hasNextPage ? (
               "Load More"
-            ) : (
-              "No More"
-            )}
+            ) : null}
           </Button>
         </div>
         {/* <ConfirmDialog open={openAlert} onConfirm={handleOpenAlert} /> */}
