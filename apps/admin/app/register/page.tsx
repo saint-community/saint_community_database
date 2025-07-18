@@ -24,6 +24,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "@workspace/ui/lib/sonner";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
+import { isEmpty } from "lodash";
 // import {
 //   Avatar,
 //   AvatarFallback,
@@ -45,7 +46,7 @@ const formSchema = z.object({
     message: "Please enter a valid email address.",
   }),
   country: z.string().min(1, { message: "Please select a country" }),
-  state: z.string(),
+  state: z.string().min(1, { message: "Please select a state" }),
   gender: z.string().min(1, {
     message: "Please select a gender.",
   }),
@@ -109,6 +110,7 @@ function RegisterPageMain() {
   const token = searchParams.get("token");
   const { data, error, isLoading } = useWorkerForm(token || "");
   const router = useRouter();
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Import countries.json dynamically to avoid SSR issues
   const [countries, setCountries] = useState<{ code: string; name: string }[]>(
@@ -202,8 +204,14 @@ function RegisterPageMain() {
       if (response?.data?.errors) {
         const normalized = normalizeServerErrors(response.data.errors);
 
-        // form.setErrorMap(normalized);
-        Object.values(normalized).forEach((msg) => toast.error(msg));
+        setErrors(normalized);
+        toast.error("Please fix the errors in the form");
+        return;
+      }
+
+      if (response?.data?.message) {
+        toast.error(response.data.message);
+        return;
       }
 
       toast.error("Failed to create account");
@@ -236,6 +244,10 @@ function RegisterPageMain() {
       onChange: formSchema,
       onChangeAsync: ({ formApi }) => {
         formApi.setFieldValue("church", church?.id?.toString());
+        fellowships.length === 1 &&
+          formApi.setFieldValue("fellowship", fellowships?.[0]?.id?.toString());
+        cells.length === 1 &&
+          formApi.setFieldValue("cell", cells?.[0]?.id?.toString());
       },
     },
     onSubmit: async ({ value }) => {
@@ -267,9 +279,6 @@ function RegisterPageMain() {
         date_joined_church: value.dateJoinedChurch.toISOString().split("T")[0],
         date_became_worker: value.dateBecameWorker.toISOString().split("T")[0],
       });
-    },
-    onSubmitInvalid(props) {
-      console.log(props);
     },
   });
 
@@ -458,6 +467,9 @@ function RegisterPageMain() {
                   className="h-[48px]"
                 />
                 <FieldInfo field={field} />
+                <em className="text-red-500 text-xs">
+                  {errors?.email ? errors?.email : null}
+                </em>
               </>
             )}
           />
@@ -481,6 +493,9 @@ function RegisterPageMain() {
                   className="h-[48px]"
                 />
                 <FieldInfo field={field} />
+                 <em className="text-red-500 text-xs">
+                  {errors?.phone_number ? errors?.phone_number : null}
+                </em>
               </>
             )}
           />
@@ -853,6 +868,7 @@ function RegisterPageMain() {
                 type="submit"
                 className="w-full h-[48px] mt-[36px]"
                 disabled={!canSubmit}
+                onClick={() => setErrors({})}
               >
                 {isPending ? <Loader className="animate-spin" /> : "Submit"}
               </Button>
