@@ -85,22 +85,26 @@ export default function UsersPage() {
   );
 
   return (
-    <div className='p-6'>
+    <div className='p-4 sm:p-6'>
       <h1 className='text-2xl font-bold mb-2'>Manage Users</h1>
       <p className='text-gray-600 mb-6'>Manage user data in the table below</p>
 
       <Card className='p-4'>
-        <div className='flex items-center justify-between mb-4'>
+        <div className='flex sm:items-center justify-between mb-4 flex-col sm:flex-row gap-4'>
           <h2 className='text-xl font-semibold'>Users</h2>
-          <div className='flex items-center gap-2'>
+          <div className='flex sm:items-center gap-2 flex-col sm:flex-row'>
             <Input
               type='search'
               placeholder='Search users'
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className='max-w-[300px]'
+              className='sm:max-w-[300px]'
             />
-            {isAdmin && <AddNewAdmin />}
+            {isAdmin && (
+              <div className='self-end'>
+                <AddNewAdmin />
+              </div>
+            )}
           </div>
         </div>
 

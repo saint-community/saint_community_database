@@ -61,31 +61,31 @@ export default function SettingsLayout({
   ];
 
   return (
-    <div className='flex h-full'>
+    <div className='flex h-full flex-col md:flex-row'>
       {/* Sidebar */}
-      <div className='w-64 border-r bg-white'>
-        <div className='p-6'>
+      <div className='w-full md:w-64 border-r border-b md:border-b-0 bg-white'>
+        <div className='p-4 md:p-6'>
           <h2 className='text-lg font-semibold'>Settings</h2>
-          <p className='text-sm text-muted-foreground'>
+          <p className='text-sm text-muted-foreground hidden md:block'>
             Manage your account settings and preferences.
           </p>
         </div>
-        <ScrollArea className='h-[calc(100vh-8rem)]'>
-          <div className='space-y-1 p-2'>
+        <ScrollArea className='h-auto md:h-[calc(100vh-8rem)]'>
+          <div className='flex md:flex-col md:space-y-1 space-x-1 md:space-x-0 p-2 overflow-x-auto md:overflow-x-visible'>
             {sidebarNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground py-4',
+                  'flex items-center gap-2 md:gap-3 rounded-lg px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground py-3 md:py-4 whitespace-nowrap md:whitespace-normal min-w-fit',
                   pathname === item.href
                     ? 'bg-accent text-accent-foreground'
                     : 'text-muted-foreground'
                 )}
               >
-                <item.icon className='h-5 w-5 text-primary' />
-                {item.title}
-                <ChevronRight className='ml-auto h-4 w-4' />
+                <item.icon className='h-4 w-4 md:h-5 md:w-5 text-primary flex-shrink-0' />
+                <span className='hidden sm:inline'>{item.title}</span>
+                <ChevronRight className='ml-auto h-3 w-3 md:h-4 md:w-4 hidden md:block' />
               </Link>
             ))}
           </div>
@@ -94,7 +94,7 @@ export default function SettingsLayout({
 
       {/* Main Content */}
       <div className='flex-1 overflow-auto bg-white'>
-        <div className='container max-w-5xl py-6'>{children}</div>
+        <div className='container max-w-5xl p-0 md:p-6'>{children}</div>
       </div>
     </div>
   );
