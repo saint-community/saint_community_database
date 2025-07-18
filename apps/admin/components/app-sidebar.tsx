@@ -19,6 +19,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from '@workspace/ui/components/sidebar';
 import Image from 'next/image';
 import {
@@ -52,6 +53,7 @@ const otherItems = [
 
 export function AppSidebar() {
   const { data } = useMe();
+  const { isMobile, toggleSidebar } = useSidebar();
   const hideChurch =
     !!data && ![ROLES.ADMIN, ROLES.PASTOR].includes(data?.role);
 
@@ -131,12 +133,14 @@ export function AppSidebar() {
                   Database
                 </p>
               </div>
-              <Avatar className='w-[100px] h-[100px] mt-12 mb-4'>
+              <Avatar className='sm:w-[100px] sm:h-[100px] w-[50px] h-[50px] mt-12 mb-4'>
                 <AvatarImage src='https://github.com/shadcn.png' alt='@user' />
                 <AvatarFallback>CN</AvatarFallback>
               </Avatar>
-              <b className='text-[19px] font-medium m-0 p-0'>{data?.name}</b>
-              <p className='text-sm m-0 p-0'>{data?.email}</p>
+              <b className='sm:text-[19px] text-md font-medium m-0 p-0'>
+                {data?.name}
+              </b>
+              <p className='sm:text-sm text-sm-0 p-0'>{data?.email}</p>
             </div>
           </SidebarHeader>
           <SidebarGroupContent>
@@ -147,7 +151,15 @@ export function AppSidebar() {
                     asChild
                     className='rounded-none px-4 h-[56px]'
                   >
-                    <Link href={item.url} className=''>
+                    <Link
+                      href={item.url}
+                      className=''
+                      onClick={() => {
+                        if (isMobile) {
+                          toggleSidebar();
+                        }
+                      }}
+                    >
                       <item.icon
                         size={24}
                         fontSize={24}
@@ -173,6 +185,8 @@ export function AppSidebar() {
                         if (item.isSignOut) {
                           localStorage.clear();
                           location.reload();
+                        } else if (isMobile) {
+                          toggleSidebar();
                         }
                       }}
                     >

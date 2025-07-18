@@ -18,7 +18,7 @@ export const SideBarTop = () => {
   return (
     <div className='bg-white flex-row flex items-center w-full justify-between p-4 sm:p-0'>
       <Image src={decoration} alt='' className='hidden sm:block' />
-      <p className='text-[38px] font-light hidden sm:block'>
+      <p className='sm:text-[38px] text-md font-light ml-[50px] sm:ml-0'>
         {getRouteNameFromPath(pathname)}
       </p>
       <div className='flex sm:hidden' />
