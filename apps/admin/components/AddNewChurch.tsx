@@ -8,7 +8,7 @@ import { Input } from '@workspace/ui/components/input';
 import { Textarea } from '@workspace/ui/components/textarea';
 import { Label } from '@workspace/ui/components/label';
 import { Modal } from '@workspace/ui/components/modal';
-import { SquarePlus } from 'lucide-react';
+import { Loader2, SquarePlus } from 'lucide-react';
 import { useState } from 'react';
 import { DatePicker } from '@workspace/ui/components/date-picker';
 import { FieldInfo } from '@workspace/ui/components/field-info';
@@ -244,7 +244,11 @@ export function AddNewChurchSheet() {
                 className='w-full'
                 disabled={!canSubmit || mutation.isPending}
               >
-                {mutation.isPending ? '...' : 'Add Church'}
+                {mutation.isPending ? (
+                  <Loader2 className='w-4 h-4 animate-spin' />
+                ) : (
+                  'Add Church'
+                )}
               </Button>
             )}
           />

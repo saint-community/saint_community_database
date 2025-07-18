@@ -51,7 +51,7 @@ export function LeaderSelector({
           readOnly
         />
       </DialogTrigger>
-      <DialogContent className='sm:max-w-md'>
+      <DialogContent className='sm:max-w-md max-h-[500px] overflow-y-auto'>
         <DialogHeader className='mb-0 pb-0'>
           <DialogTitle>Select a leader</DialogTitle>
           <DialogDescription>

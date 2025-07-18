@@ -5,7 +5,7 @@ import { Button } from '@workspace/ui/components/button';
 import { Input } from '@workspace/ui/components/input';
 import { useParams } from 'next/navigation';
 import { useCellById } from '@/hooks/cell';
-import { CalendarIcon, Pencil, Users, Users2 } from 'lucide-react';
+import { CalendarIcon, Loader2, Pencil, Users, Users2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
@@ -238,7 +238,11 @@ export default function CellDetailPage() {
               onClick={handleSave}
               disabled={!editedData || mutation.isPending}
             >
-              {mutation.isPending ? 'Saving...' : 'Save'}
+              {mutation.isPending ? (
+                <Loader2 className='w-4 h-4 animate-spin' />
+              ) : (
+                'Save'
+              )}
             </Button>
           </div>
         </div>

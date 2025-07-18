@@ -5,7 +5,7 @@ import { Button } from '@workspace/ui/components/button';
 import { Input } from '@workspace/ui/components/input';
 import { useParams } from 'next/navigation';
 import { useWorkerById } from '@/hooks/workers';
-import { Check, Pencil } from 'lucide-react';
+import { Check, Loader2, Pencil } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { updateWorker } from '@/services/workers';
 import { useMutation } from '@tanstack/react-query';
@@ -102,7 +102,17 @@ export default function WorkerDetailPage() {
   }, [user, cells, lockCellSelect]);
 
   const mutation = useMutation({
-    mutationFn: (data: any) => updateWorker(id, data),
+    mutationFn: (data: any) =>
+      updateWorker(id, {
+        ...data,
+        church_id: Number(data.church_id),
+        fellowship_id: Number(data.fellowship_id),
+        cell_id: Number(data.cell_id),
+        department_id: Number(data.department_id),
+        prayer_group_id: Number(data.prayer_group_id),
+        first_name: data.full_name.split(' ')[0],
+        last_name: data.full_name.split(' ')[1],
+      }),
     onSuccess: () => {
       toast.success('Worker updated successfully');
     },
@@ -140,7 +150,7 @@ export default function WorkerDetailPage() {
   }
 
   const onChange = (name: string) => (value: any) => {
-    setWorker((prev: any) => ({ ...prev, [name]: value }));
+    setWorker((prev: any) => ({ ...prev, [name]: value.target.value }));
   };
 
   return (
@@ -362,8 +372,13 @@ export default function WorkerDetailPage() {
             <Button
               className='bg-red-500 hover:bg-red-600 px-8'
               onClick={handleSave}
+              disabled={mutation.isPending}
             >
-              Save
+              {mutation.isPending ? (
+                <Loader2 className='w-4 h-4 animate-spin' />
+              ) : (
+                'Save'
+              )}
             </Button>
           </div>
         </div>

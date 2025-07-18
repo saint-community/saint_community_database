@@ -2,13 +2,13 @@
 'use client';
 
 import { Button } from '@workspace/ui/components/button';
-import { useForm } from '@workspace/ui/lib/react-hook-form';
+import { useForm, useStore } from '@workspace/ui/lib/react-hook-form';
 import { z } from 'zod';
 import { Input } from '@workspace/ui/components/input';
 import { Textarea } from '@workspace/ui/components/textarea';
 import { Label } from '@workspace/ui/components/label';
 import { Modal } from '@workspace/ui/components/modal';
-import { SquarePlus } from 'lucide-react';
+import { Loader2, SquarePlus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { DatePicker } from '@workspace/ui/components/date-picker';
 import {
@@ -89,6 +89,10 @@ export function AddNewFellowshipSheet() {
       toast.error('Please fill in all fields');
     },
   });
+
+  const churchId = useStore(form.store, (state) => state.values.church_id);
+
+  console.log('churchId', churchId);
 
   const lockChurchSelect =
     !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
@@ -243,7 +247,7 @@ export function AddNewFellowshipSheet() {
                   setSelectedWorker={(worker) => {
                     field.handleChange(`${worker}`);
                   }}
-                  churchId={isAdmin ? undefined : user?.church_id?.toString()}
+                  churchId={churchId}
                 />
                 <FieldInfo field={field} />
               </>
@@ -277,7 +281,11 @@ export function AddNewFellowshipSheet() {
                 className='w-full'
                 disabled={!canSubmit || mutation.isPending}
               >
-                {mutation.isPending ? '...' : 'Add Fellowship'}
+                {mutation.isPending ? (
+                  <Loader2 className='w-4 h-4 animate-spin' />
+                ) : (
+                  'Add Fellowship'
+                )}
               </Button>
             )}
           />

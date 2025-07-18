@@ -21,8 +21,8 @@ import { useMe } from '@/hooks/useMe';
 import { ROLES } from '@/utils/constants';
 import { useAccounts } from '@/hooks/auth';
 import { registerUser } from '@/services/auth';
-import { Loader } from 'lucide-react';
 import { toast } from '@workspace/ui/lib/sonner';
+import { Loader2 } from 'lucide-react';
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -219,7 +219,11 @@ export function AddNewAdmin() {
             selector={(state) => [state.canSubmit, mutation.isPending]}
             children={([canSubmit, isPending]) => (
               <Button type='submit' className='w-full' disabled={!canSubmit}>
-                {isPending ? <Loader className='animate-spin' /> : 'Add User'}
+                {isPending ? (
+                  <Loader2 className='w-4 h-4 animate-spin' />
+                ) : (
+                  'Add User'
+                )}
               </Button>
             )}
           />

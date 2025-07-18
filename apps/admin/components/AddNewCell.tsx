@@ -8,7 +8,7 @@ import { Input } from '@workspace/ui/components/input';
 import { Textarea } from '@workspace/ui/components/textarea';
 import { Label } from '@workspace/ui/components/label';
 import { Modal } from '@workspace/ui/components/modal';
-import { SquarePlus } from 'lucide-react';
+import { Loader2, SquarePlus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { DatePicker } from '@workspace/ui/components/date-picker';
 import {
@@ -348,7 +348,11 @@ export function AddNewCellSheet() {
                 className='w-full'
                 disabled={!canSubmit || isPending}
               >
-                {isPending ? '...' : 'Add Cell'}
+                {isPending ? (
+                  <Loader2 className='w-4 h-4 animate-spin' />
+                ) : (
+                  'Add Cell'
+                )}
               </Button>
             )}
           />

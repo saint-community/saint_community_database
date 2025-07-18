@@ -4,7 +4,7 @@ import { Card, CardContent } from '@workspace/ui/components/card';
 import { Button } from '@workspace/ui/components/button';
 import { useParams } from 'next/navigation';
 import { useFellowshipById } from '@/hooks/fellowships';
-import { CalendarIcon, Users, Users2 } from 'lucide-react';
+import { CalendarIcon, Loader2, Users, Users2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
@@ -214,7 +214,11 @@ export default function FellowshipDetailPage() {
               onClick={handleSave}
               disabled={!editedData || mutation.isPending}
             >
-              {mutation.isPending ? 'Saving...' : 'Save'}
+              {mutation.isPending ? (
+                <Loader2 className='w-4 h-4 animate-spin' />
+              ) : (
+                'Save'
+              )}
             </Button>
           </div>
         </div>
