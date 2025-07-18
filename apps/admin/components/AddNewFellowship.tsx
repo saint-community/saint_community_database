@@ -92,8 +92,6 @@ export function AddNewFellowshipSheet() {
 
   const churchId = useStore(form.store, (state) => state.values.church_id);
 
-  console.log('churchId', churchId);
-
   const lockChurchSelect =
     !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
   console.log(lockChurchSelect);

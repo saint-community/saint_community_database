@@ -154,10 +154,10 @@ export default function WorkerDetailPage() {
   };
 
   return (
-    <div className='flex-1 flex p-6 w-full flex-col gap-6'>
+    <div className='flex-1 flex p-4 sm:p-6 w-full flex-col sm:gap-6 gap-4'>
       {/* Main Content Card */}
       <div className='flex justify-between items-center'>
-        <div className='flex gap-6 w-full'>
+        <div className='flex gap-6 w-full sm:flex-row flex-col'>
           {/* Date Joined Card */}
           <div className='bg-[#fff] rounded-lg p-4 flex-1 flex flex-col items-start shadow-sm min-w-[200px]'>
             <div className='flex items-center gap-2 mb-2'>
@@ -271,7 +271,7 @@ export default function WorkerDetailPage() {
         </div>
       </div>
 
-      <Card className='bg-white p-8 rounded-lg flex-1'>
+      <Card className='bg-white p-4 sm:p-8 rounded-lg flex-1'>
         <h2 className='text-2xl font-semibold text-red-500 mb-8 text-center'>
           {worker.first_name || 'Worker Details'}
         </h2>

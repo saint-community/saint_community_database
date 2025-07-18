@@ -16,20 +16,23 @@ export const SideBarTop = () => {
   const { data } = useMe();
 
   return (
-    <div className='bg-white flex-row flex items-center w-full justify-between'>
-      <Image src={decoration} alt='' />
-      <p className='text-[38px] font-light'>{getRouteNameFromPath(pathname)}</p>
+    <div className='bg-white flex-row flex items-center w-full justify-between p-4 sm:p-0'>
+      <Image src={decoration} alt='' className='hidden sm:block' />
+      <p className='text-[38px] font-light hidden sm:block'>
+        {getRouteNameFromPath(pathname)}
+      </p>
+      <div className='flex sm:hidden' />
       <div className='flex items-center'>
         <div className='cursor-pointer text-primary'>
-          <Bell size={32} />
+          <Bell className='w-6 h-6 sm:w-8 sm:h-8' />
         </div>
-        <div className='h-[33px] mx-[33px] w-[0.5px] bg-[#D6B978]' />
-        <div className='flex items-center pr-[18px] gap-5'>
-          <Avatar className='w-12 h-12'>
+        <div className='h-[33px] sm:mx-[33px] mx-4 w-[0.5px] bg-[#D6B978]' />
+        <div className='flex items-center sm:pr-[18px] gap-5'>
+          <Avatar className='sm:w-12 sm:h-12 w-8 h-8'>
             <AvatarImage src='https://github.com/shadcn.png' />
             <AvatarFallback>A</AvatarFallback>
           </Avatar>
-          <div>
+          <div className='hidden sm:block'>
             <p className='text-lg font-medium'>{data?.name}</p>
             <p className='text-[#705C2F] text-xs'>{data?.email}</p>
           </div>

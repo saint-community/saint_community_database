@@ -144,7 +144,7 @@ export default function CellDetailPage() {
   const formattedDate = format(cellData.dateStarted, 'do MMM. yyyy');
 
   return (
-    <div className='flex-1 flex p-6 w-full flex-col gap-6'>
+    <div className='flex-1 flex p-4 sm:p-6 w-full flex-col sm:gap-6 gap-4'>
       {/* Stats Cards Row */}
       <div className='grid grid-cols-1 md:grid-cols-3 gap-3'>
         <StatCard
@@ -165,7 +165,7 @@ export default function CellDetailPage() {
       </div>
 
       {/* Main Content Card */}
-      <Card className='border border-blue-400 p-6 bg-white'>
+      <Card className='border border-blue-400 p-4 sm:p-6 bg-white'>
         <h2 className='text-2xl font-semibold text-red-500 mb-8 text-center'>
           {currentData.name}
         </h2>

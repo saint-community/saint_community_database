@@ -117,6 +117,7 @@ export function AppSidebar() {
 
     return items;
   }, [hideChurch, hideFellowship, hideCells]);
+
   return (
     <Sidebar className='h-dvh'>
       <SidebarContent>

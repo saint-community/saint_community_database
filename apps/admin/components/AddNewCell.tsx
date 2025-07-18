@@ -316,7 +316,7 @@ export function AddNewCellSheet() {
                   setSelectedWorker={(worker) => {
                     field.handleChange(`${worker}`);
                   }}
-                  churchId={isAdmin ? undefined : user?.church_id?.toString()}
+                  churchId={churchId}
                 />
 
                 <FieldInfo field={field} />

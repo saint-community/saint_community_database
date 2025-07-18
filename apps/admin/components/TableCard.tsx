@@ -254,9 +254,9 @@ export function TableCard({
   }, [search, searchKeys, table]);
 
   return (
-    <Card className='bg-white px-9 py-5'>
+    <Card className='bg-white p-4 sm:px-9 sm:py-5'>
       <div className='w-full'>
-        <div className='flex items-center mb-6 justify-between '>
+        <div className='flex sm:items-center mb-6 justify-between flex-col sm:flex-row gap-4'>
           <h2 className='font-medium text-xl'>{title}</h2>
           <Input
             placeholder='Church, Fellowship, Cell, members'
@@ -266,9 +266,9 @@ export function TableCard({
             // onChange={(event) =>
             //   table.getColumn('email')?.setFilterValue(event.target.value)
             // }
-            className='max-w-[300px] placeholder:text-xs h-[40px]'
+            className='sm:max-w-[300px] placeholder:text-xs h-[40px]'
           />
-          <div className='font-normal text-[16px] flex items-center cursor-pointer'>
+          <div className='font-normal text-[16px]  items-center cursor-pointer hidden sm:flex'>
             <ListFilter className='text-primary' size={24} />
             Filter by
           </div>
