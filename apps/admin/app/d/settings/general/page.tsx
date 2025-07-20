@@ -15,6 +15,7 @@ import { Input } from '@workspace/ui/components/input';
 import { Label } from '@workspace/ui/components/label';
 import { Separator } from '@workspace/ui/components/separator';
 import { toast } from '@workspace/ui/lib/sonner';
+import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 
 export default function GeneralSettingsPage() {
@@ -36,8 +37,9 @@ export default function GeneralSettingsPage() {
       toast.success('Password updated successfully');
       onCancel();
     },
-    onError: () => {
-      toast.error('Failed to update password');
+    onError: (error: any) => {
+      const errorMessage = error.response.data.error;
+      toast.error(errorMessage || 'Failed to update password');
     },
   });
 
@@ -127,7 +129,21 @@ export default function GeneralSettingsPage() {
             <Button variant='outline' onClick={onCancel}>
               Cancel
             </Button>
-            <Button onClick={onSave}>Save</Button>
+            <Button
+              onClick={onSave}
+              disabled={
+                mutation.isPending ||
+                !currentPassword ||
+                !newPassword ||
+                !confirmNewPassword
+              }
+            >
+              {mutation.isPending ? (
+                <Loader2 className='animate-spin h-4 w-4' />
+              ) : (
+                'Save'
+              )}
+            </Button>
           </CardFooter>
         </Card>
       </div>
