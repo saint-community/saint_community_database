@@ -219,7 +219,7 @@ function RegisterPageMain() {
 
   const form = useForm({
     defaultValues: {
-      // photoUpload: null as File | null,
+      // profileImage: null as File | null,
       firstName: '',
       lastName: '',
       country: '',
@@ -344,7 +344,7 @@ function RegisterPageMain() {
         className='flex-1 w-full space-y-4 p-4 md:px-0'
       >
         {/* <div className="space-y-2">
-          <form.Field name="photoUpload">
+          <form.Field name="profileImage">
             {(field) => {
               const file = field.state.value as File | null;
 
