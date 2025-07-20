@@ -87,9 +87,13 @@ export const getWorkerForm = async (token: string) => {
 };
 
 
-export const getWorkersRegistration = async (action: string) => {
+export const getWorkersRegistration = async ({action, page = 1}: {action: string, page?: number}) => {
   const { data } = await ApiCaller.get(
-    `${QUERY_PATHS.WORKERS}/${action}`
+    `${QUERY_PATHS.WORKERS}/${action}`, {
+      params: {
+        ...(page && { page }),
+      }
+    }
   );
   return data || {};
 };
