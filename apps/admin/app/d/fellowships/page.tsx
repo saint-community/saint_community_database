@@ -6,13 +6,24 @@ import { TableCard } from '@/components/TableCard';
 import { useFellowships } from '@/hooks/fellowships';
 import { useStatistics } from '@/hooks/statistics';
 import { useMe } from '@/hooks/useMe';
+import { ROLES } from '@/utils/constants';
 import { ListCheck, User, User2, Users2 } from 'lucide-react';
+import { redirect } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
 export default function Page() {
   const { data: user } = useMe();
   const [page, setPage] = useState(1);
   const { data } = useFellowships(user?.church_id?.toString(), page);
+
+  const isAdmin =
+    user?.role === ROLES.ADMIN ||
+    user?.role === ROLES.PASTOR ||
+    user?.role === ROLES.CHURCH_PASTOR;
+
+  if (user && !isAdmin) {
+    redirect('/d/cells');
+  }
 
   const fellowships = data?.data || [];
 

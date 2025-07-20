@@ -9,13 +9,16 @@ import { useStatistics } from '@/hooks/statistics';
 import { useMemo, useState } from 'react';
 import { useMe } from '@/hooks/useMe';
 import { ROLES } from '@/utils/constants';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
   const [page, setPage] = useState(1);
   const { data: user } = useMe();
   const isAdmin = user?.role === ROLES.ADMIN || user?.role === ROLES.PASTOR;
 
-  console.log({ isAdmin });
+  if (user && !isAdmin) {
+    redirect('/d/fellowships');
+  }
 
   const { data } = useChurches(page);
   const { data: stats } = useStatistics();

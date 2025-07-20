@@ -14,7 +14,7 @@ export const getFellowships = async (churchId?: string, page: number = 1) => {
 export const createFellowship = async (body: {
   name: string;
   church_id: number;
-  cordinator_id: number;
+  cordinator_id?: number;
   address: string;
   active: boolean;
   start_date: string;

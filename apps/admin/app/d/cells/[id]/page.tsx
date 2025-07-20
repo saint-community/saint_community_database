@@ -18,6 +18,7 @@ import { Label } from '@workspace/ui/components/label';
 import { useMe } from '@/hooks/useMe';
 import { MEETING_DAYS, ROLES } from '@/utils/constants';
 import { DatePicker } from '@workspace/ui/components/date-picker';
+import { toast } from '@workspace/ui/lib/sonner';
 
 // const formSchema = z.object({
 //   name: z.string().min(2, {
@@ -106,9 +107,11 @@ export default function CellDetailPage() {
     onSuccess: () => {
       refetch();
       setEditedData(null);
+      toast.success('Cell updated successfully');
     },
     onError: (error) => {
       console.log(error);
+      toast.error('Failed to update cell');
     },
   });
 
@@ -186,7 +189,8 @@ export default function CellDetailPage() {
               setSelectedWorker={(worker) => {
                 handleEdit('leader_id', worker);
               }}
-              churchId={isAdmin ? undefined : user?.church_id?.toString()}
+              churchId={currentData.church_id}
+              fellowshipId={currentData.fellowship_id}
             />
           </div>
           <FormSelectField

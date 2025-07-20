@@ -16,6 +16,7 @@ import { FormSelectField, FormField } from '@/components/forms';
 import { useMe } from '@/hooks/useMe';
 import { DatePicker } from '@workspace/ui/components/date-picker';
 import { ROLES } from '@/utils/constants';
+import { toast } from '@workspace/ui/lib/sonner';
 
 // const formSchema = z.object({
 //   name: z.string().min(2, {
@@ -63,9 +64,11 @@ export default function FellowshipDetailPage() {
     onSuccess: () => {
       refetch();
       setEditedData(null);
+      toast.success('Fellowship updated successfully');
     },
     onError: (error) => {
       console.log(error);
+      toast.error('Failed to update fellowship');
     },
   });
 
@@ -120,11 +123,11 @@ export default function FellowshipDetailPage() {
 
     mutation.mutate({
       name: editedData.name,
-      cordinator_id: editedData.cordinator_id,
-      church_id: editedData.church_id,
+      cordinator_id: Number(editedData.cordinator_id),
+      church_id: Number(editedData.church_id),
       location: editedData.location,
       address: editedData.address,
-      start_date: editedData.dateStarted,
+      start_date: editedData.dateStarted?.toISOString()?.split('T')[0],
     });
   };
 
@@ -176,7 +179,7 @@ export default function FellowshipDetailPage() {
               setSelectedWorker={(worker) => {
                 handleEdit('cordinator_id', worker);
               }}
-              churchId={isAdmin ? undefined : user?.church_id?.toString()}
+              churchId={currentData.church_id}
             />
           </div>
 

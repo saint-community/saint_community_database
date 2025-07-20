@@ -5,7 +5,6 @@ import {
   User2,
   Users2,
   ListCheck,
-  LayoutDashboard,
   LogOut,
   Settings2,
 } from 'lucide-react';
@@ -73,11 +72,11 @@ export function AppSidebar() {
   // Menu items.
   const mainItems = useMemo(() => {
     const items = [
-      {
-        title: 'Dashboard',
-        url: '/d',
-        icon: LayoutDashboard,
-      },
+      // {
+      //   title: 'Dashboard',
+      //   url: '/d',
+      //   icon: LayoutDashboard,
+      // },
       ...(!hideChurch
         ? [
             {

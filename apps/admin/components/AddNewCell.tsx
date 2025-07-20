@@ -26,6 +26,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMe } from '@/hooks/useMe';
 import { QUERY_PATHS, ROLES } from '@/utils/constants';
 import { LeaderSelector } from './WorkerSelector';
+import { optionalTextInput } from '@/utils/helper';
 
 const formSchema = z.object({
   church_id: z.string().min(1, {
@@ -43,9 +44,7 @@ const formSchema = z.object({
   address: z.string().min(5, {
     message: 'Address must be at least 5 characters.',
   }),
-  leader_id: z.string().min(1, {
-    message: 'Please select a leader.',
-  }),
+  leader_id: optionalTextInput(z.string()),
   dateStarted: z.date().refine(
     (date) => {
       const parsedDate = new Date(date);
@@ -68,9 +67,9 @@ export function AddNewCellSheet() {
       cellName: '',
       location: '',
       address: '',
-      leader_id: '',
       dateStarted: new Date(),
-    },
+      leader_id: '',
+    } as any,
     validators: {
       onSubmit: formSchema,
       onChange: formSchema,
@@ -99,6 +98,10 @@ export function AddNewCellSheet() {
   const { data: churches } = useChurchesOption(!lockChurchSelect);
   const churchId = useStore(form.store, (state) => state.values.church_id);
   const { data: fellowships } = useFellowshipsOption(churchId);
+  const fellowshipId = useStore(
+    form.store,
+    (state) => state.values.fellowship_id
+  );
   const queryClient = useQueryClient();
 
   const lockFellowshipSelect =
@@ -317,6 +320,7 @@ export function AddNewCellSheet() {
                     field.handleChange(`${worker}`);
                   }}
                   churchId={churchId}
+                  fellowshipId={fellowshipId || 'nan'}
                 />
 
                 <FieldInfo field={field} />
