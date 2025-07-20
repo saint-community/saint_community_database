@@ -68,7 +68,7 @@ export function LeaderSelector({
           readOnly
         />
       </DialogTrigger>
-      <DialogContent className='sm:max-w-md max-h-[500px] overflow-y-auto'>
+      <DialogContent className='sm:max-w-md max-h-[500px] overflow-y-auto  scrollbar-hide'>
         <DialogHeader className='mb-0 pb-0'>
           <DialogTitle>
             Select a {fellowshipId ? 'cell' : 'fellowship'} leader
@@ -83,10 +83,14 @@ export function LeaderSelector({
             onChange={(e) => setSearch(e.target.value)}
             placeholder='Search for a leader'
           />
-          <div className='flex flex-col gap-2 flex-1 overflow-y-auto'>
+          <div className='flex flex-col gap-2 flex-1 overflow-y-auto scrollbar-hide'>
             {isLoading || fellowshipLoading ? (
-              <div className='flex justify-center items-center h-full'>
+              <div className='flex justify-center items-center h-[200px]'>
                 <Loader2 className='animate-spin h-10 w-10' />
+              </div>
+            ) : filteredLeaders?.length === 0 ? (
+              <div className='flex justify-center items-center h-[200px]'>
+                <p className='text-sm text-gray-500'>No leaders found</p>
               </div>
             ) : (
               filteredLeaders?.map((worker: any) => (
