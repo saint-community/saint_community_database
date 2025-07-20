@@ -109,11 +109,6 @@ export function AppSidebar() {
         url: '/d/workers',
         icon: User2,
       },
-      {
-        title: 'Members',
-        url: '/d/members',
-        icon: User2,
-      },
     ];
 
     return items;
