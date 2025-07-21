@@ -91,7 +91,7 @@ export default function ChurchDetailPage() {
   };
 
   return (
-    <div className='flex-1 flex p-6 w-full flex-col gap-6'>
+    <div className='flex-1 flex p-6 w-full flex-col gap-6 bg-[#fafafa]'>
       {/* Stats Cards Row */}
       <div className='grid grid-cols-1 md:grid-cols-5 gap-3'>
         <StatCard

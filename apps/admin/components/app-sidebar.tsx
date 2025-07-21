@@ -119,7 +119,7 @@ export function AppSidebar() {
   }, [hideChurch, hideFellowship, hideCells]);
   return (
     <Sidebar className='h-dvh'>
-      <SidebarContent>
+      <SidebarContent className='bg-white'>
         <SidebarGroup className='p-0'>
           <SidebarHeader className='pt-20'>
             {/* <SidebarGroupLabel>Application</SidebarGroupLabel> */}

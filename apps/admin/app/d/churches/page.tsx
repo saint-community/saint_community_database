@@ -27,7 +27,7 @@ export default function Page() {
   }, [data]);
 
   return (
-    <div className='flex-1 flex p-6 w-full flex-col gap-6'>
+    <div className='flex-1 flex p-6 w-full flex-col gap-6 bg-[#fafafa]'>
       <div className='flex gap-6'>
         <div className='flex-auto'>
           <ChurchChart />

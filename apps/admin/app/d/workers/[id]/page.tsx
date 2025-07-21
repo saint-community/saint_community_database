@@ -144,7 +144,7 @@ export default function WorkerDetailPage() {
   };
 
   return (
-    <div className='flex-1 flex p-6 w-full flex-col gap-6'>
+    <div className='flex-1 flex p-6 w-full flex-col gap-6 bg-[#fafafa]'>
       {/* Main Content Card */}
       <div className='flex justify-between items-center'>
         <div className='flex gap-6 w-full'>
