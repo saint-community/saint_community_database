@@ -1,29 +1,29 @@
 /* eslint-disable react/no-children-prop */
-"use client";
+'use client';
 
-import { Button } from "@workspace/ui/components/button";
-import { useForm } from "@workspace/ui/lib/react-hook-form";
-import { z } from "zod";
-import { Input } from "@workspace/ui/components/input";
-import { Textarea } from "@workspace/ui/components/textarea";
-import { Label } from "@workspace/ui/components/label";
-import { DatePicker } from "@workspace/ui/components/date-picker";
+import { Button } from '@workspace/ui/components/button';
+import { useForm } from '@workspace/ui/lib/react-hook-form';
+import { z } from 'zod';
+import { Input } from '@workspace/ui/components/input';
+import { Textarea } from '@workspace/ui/components/textarea';
+import { Label } from '@workspace/ui/components/label';
+import { DatePicker } from '@workspace/ui/components/date-picker';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@workspace/ui/components/select";
-import { FieldInfo } from "@workspace/ui/components/field-info";
-import { useMutation } from "@tanstack/react-query";
-import { createWorker } from "@/services/workers";
-import { useWorkerForm } from "@/hooks/workers";
-import { Loader, Upload } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { toast } from "@workspace/ui/lib/sonner";
-import { Suspense, useEffect, useMemo, useState } from "react";
-import dayjs from "dayjs";
+} from '@workspace/ui/components/select';
+import { FieldInfo } from '@workspace/ui/components/field-info';
+import { useMutation } from '@tanstack/react-query';
+import { createWorker } from '@/services/workers';
+import { useWorkerForm } from '@/hooks/workers';
+import { Loader } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { toast } from '@workspace/ui/lib/sonner';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import dayjs from 'dayjs';
 // import {
 //   Avatar,
 //   AvatarFallback,
@@ -36,100 +36,101 @@ const currentDate = new Date().toISOString();
 const formSchema = z.object({
   // photoUpload: z.string().optional(),
   firstName: z.string().min(2, {
-    message: "First name must be at least 2 characters.",
+    message: 'First name must be at least 2 characters.',
   }),
   lastName: z.string().min(2, {
-    message: "Surname must be at least 2 characters.",
+    message: 'Surname must be at least 2 characters.',
   }),
   email: z.string().email({
-    message: "Please enter a valid email address.",
+    message: 'Please enter a valid email address.',
   }),
-  country: z.string().min(1, { message: "Please select a country" }),
-  state: z.string(),
+  country: z.string().min(1, { message: 'Please select a country' }),
+  state: z.string().min(1, { message: 'Please select a state' }),
   gender: z.string().min(1, {
-    message: "Please select a gender.",
+    message: 'Please select a gender.',
   }),
   phoneNumber: z.string().min(10, {
-    message: "Please enter a valid phone number.",
+    message: 'Please enter a valid phone number.',
   }),
   church: z.string(),
   fellowship: z.string(),
   cell: z.string(),
   homeAddress: z.string().min(5, {
-    message: "Please enter a valid home address.",
+    message: 'Please enter a valid home address.',
   }),
   workAddress: z.string(),
   dateOfBirth: z
     .date({
-      required_error: "Please select your date of birth",
+      required_error: 'Please select your date of birth',
     })
     .refine(
       (value: any) =>
         value === currentDate ||
-        !dayjs(value).isAfter(dayjs(currentDate).subtract(7, "days"), "day"),
+        !dayjs(value).isAfter(dayjs(currentDate).subtract(7, 'days'), 'day'),
       {
-        message: "Oops, you can only select past dates",
+        message: 'Oops, you can only select past dates',
       }
     ),
   department: z.string(),
   prayerGroup: z.string().min(1, {
-    message: "Please select a prayer group.",
+    message: 'Please select a prayer group.',
   }),
   dateJoinedChurch: z
     .date({
-      required_error: "Please select a valid date",
+      required_error: 'Please select a valid date',
     })
     .refine(
       (value: any) =>
-        value === currentDate || !dayjs(value).isAfter(dayjs(), "day"),
+        value === currentDate || !dayjs(value).isAfter(dayjs(), 'day'),
       {
-        message: "Oops, you can only select past dates",
+        message: 'Oops, you can only select past dates',
       }
     ),
   dateBecameWorker: z
     .date({
-      required_error: "Please select a valid date",
+      required_error: 'Please select a valid date',
     })
     .refine(
       (value: any) =>
-        value === currentDate || !dayjs(value).isAfter(dayjs(), "day"),
+        value === currentDate || !dayjs(value).isAfter(dayjs(), 'day'),
       {
-        message: "Oops, you can only select past dates",
+        message: 'Oops, you can only select past dates',
       }
     ),
 });
 
 const genders = [
-  { id: "male", name: "Male" },
-  { id: "female", name: "Female" },
+  { id: 'male', name: 'Male' },
+  { id: 'female', name: 'Female' },
 ];
 
 function RegisterPageMain() {
   const searchParams = useSearchParams();
-  const token = searchParams.get("token");
-  const { data, error, isLoading } = useWorkerForm(token || "");
+  const token = searchParams.get('token');
+  const { data, error, isLoading } = useWorkerForm(token || '');
   const router = useRouter();
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Import countries.json dynamically to avoid SSR issues
   const [countries, setCountries] = useState<{ code: string; name: string }[]>(
     []
   );
   useEffect(() => {
-    import("@/utils/countries.json").then((mod) => {
+    import('@/utils/countries.json').then((mod) => {
       setCountries(mod.default || mod);
     });
   }, []);
 
-  const RequiredAsterisk = () => <span className="text-rose-500">*</span>;
+  const RequiredAsterisk = () => <span className='text-rose-500'>*</span>;
 
   // const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   // const [file, setFile] = useState<File | null>(null);
   const [states, setStates] = useState<string[]>([]);
-  const [selectedCountry, setSelectedCountry] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState('');
 
   useEffect(() => {
     if (selectedCountry) {
-      import("@/utils/states.json").then((mod) => {
+      import('@/utils/states.json').then((mod) => {
         type AllStates = { [countryCode: string]: string[] };
         const allStates = (mod.default || mod) as unknown as AllStates;
         setStates(allStates[selectedCountry as keyof AllStates] || []);
@@ -152,8 +153,8 @@ function RegisterPageMain() {
   const { church, fellowships, cells, prayerGroups, departments } =
     useMemo(() => {
       const church = {
-        id: data?.data?.churchInformation?.id || "",
-        name: data?.data?.churchInformation?.name || "",
+        id: data?.data?.churchInformation?.id || '',
+        name: data?.data?.churchInformation?.name || '',
       };
       const fellowships = data?.data?.churchInformation?.fellowships;
       const cells = data?.data?.churchInformation?.cells;
@@ -190,9 +191,9 @@ function RegisterPageMain() {
   const mutation = useMutation({
     mutationFn: createWorker,
     onSuccess: () => {
-      toast.success("Account created successfully");
+      toast.success('Account created successfully');
       form.reset();
-      router.push("/completed");
+      router.push('/completed');
     },
     onError: (error) => {
       // Type guard for AxiosError
@@ -202,40 +203,50 @@ function RegisterPageMain() {
       if (response?.data?.errors) {
         const normalized = normalizeServerErrors(response.data.errors);
 
-        // form.setErrorMap(normalized);
-        Object.values(normalized).forEach((msg) => toast.error(msg));
+        setErrors(normalized);
+        toast.error('Please fix the errors in the form');
+        return;
       }
 
-      toast.error("Failed to create account");
+      if (response?.data?.message) {
+        toast.error(response.data.message);
+        return;
+      }
+
+      toast.error('Failed to create account');
     },
   });
 
   const form = useForm({
     defaultValues: {
-      // photoUpload: null as File | null,
-      firstName: "",
-      lastName: "",
-      country: "",
-      state: "",
-      email: "",
-      gender: "",
-      phoneNumber: "",
-      church: church?.id?.toString() || "",
-      fellowship: fellowships?.[0]?.id?.toString() || "",
-      cell: cells?.[0]?.id?.toString() || "",
-      homeAddress: "",
-      workAddress: "",
-      dateOfBirth: dayjs(currentDate).subtract(7, "years").toDate(),
-      department: "",
-      dateJoinedChurch: dayjs(currentDate).subtract(7, "days").toDate(),
-      prayerGroup: "",
-      dateBecameWorker: dayjs(currentDate).subtract(7, "days").toDate(),
+      // profileImage: null as File | null,
+      firstName: '',
+      lastName: '',
+      country: '',
+      state: '',
+      email: '',
+      gender: '',
+      phoneNumber: '',
+      church: church?.id?.toString() || '',
+      fellowship: fellowships?.[0]?.id?.toString() || '',
+      cell: cells?.[0]?.id?.toString() || '',
+      homeAddress: '',
+      workAddress: '',
+      dateOfBirth: dayjs(currentDate).subtract(7, 'years').toDate(),
+      department: '',
+      dateJoinedChurch: dayjs(currentDate).subtract(7, 'days').toDate(),
+      prayerGroup: '',
+      dateBecameWorker: dayjs(currentDate).subtract(7, 'days').toDate(),
     },
     validators: {
       onSubmit: formSchema,
       onChange: formSchema,
       onChangeAsync: ({ formApi }) => {
-        formApi.setFieldValue("church", church?.id?.toString());
+        formApi.setFieldValue('church', church?.id?.toString());
+        fellowships.length === 1 &&
+          formApi.setFieldValue('fellowship', fellowships?.[0]?.id?.toString());
+        cells.length === 1 &&
+          formApi.setFieldValue('cell', cells?.[0]?.id?.toString());
       },
     },
     onSubmit: async ({ value }) => {
@@ -245,48 +256,45 @@ function RegisterPageMain() {
         church_id: Number(value.church),
         fellowship_id: Number(value.fellowship),
         cell_id: Number(value.cell),
-        first_name: value.firstName || "",
-        last_name: value.lastName || "",
-        dob: value.dateOfBirth.toISOString().split("T")[0],
+        first_name: value.firstName || '',
+        last_name: value.lastName || '',
+        dob: value.dateOfBirth.toISOString().split('T')[0],
         gender: value.gender,
-        status: "worker",
+        status: 'worker',
         phone_number: value.phoneNumber,
         email: value.email,
-        facebook_username: "",
-        twitter_username: "",
-        instagram_username: "",
+        facebook_username: '',
+        twitter_username: '',
+        instagram_username: '',
         house_address: value.homeAddress,
         work_address: value.workAddress,
-        member_since: value.dateJoinedChurch.toISOString().split("T")[0],
-        worker_since: value.dateJoinedChurch.toISOString().split("T")[0],
+        member_since: value.dateJoinedChurch.toISOString().split('T')[0],
+        worker_since: value.dateJoinedChurch.toISOString().split('T')[0],
         active: true,
         prayer_group_id: value.prayerGroup,
         department_id: value.department ? Number(value.department) : undefined,
         country: value.country,
         state: value.state,
-        date_joined_church: value.dateJoinedChurch.toISOString().split("T")[0],
-        date_became_worker: value.dateBecameWorker.toISOString().split("T")[0],
+        date_joined_church: value.dateJoinedChurch.toISOString().split('T')[0],
+        date_became_worker: value.dateBecameWorker.toISOString().split('T')[0],
       });
-    },
-    onSubmitInvalid(props) {
-      console.log(props);
     },
   });
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen max-w-[375px] mx-auto bg-white">
-        <Loader className="w-12 h-12 animate-spin mb-4 text-gray-400" />
-        <span className="text-gray-500">Hang tight, we're loading 🚀</span>
+      <div className='flex flex-col items-center justify-center h-screen max-w-[375px] mx-auto bg-white'>
+        <Loader className='w-12 h-12 animate-spin mb-4 text-gray-400' />
+        <span className='text-gray-500'>Hang tight, we're loading 🚀</span>
       </div>
     );
   }
   const isAxiosError =
     error &&
-    typeof error === "object" &&
-    "response" in error &&
+    typeof error === 'object' &&
+    'response' in error &&
     error.response &&
-    typeof error.response === "object";
+    typeof error.response === 'object';
 
   if (
     !token ||
@@ -295,22 +303,22 @@ function RegisterPageMain() {
       !(error as any).response?.data?.success)
   ) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen max-w-[375px] mx-auto bg-white">
-        <div className="text-center px-4">
-          <h2 className="text-lg font-semibold text-rose-600 mb-2">
+      <div className='flex flex-col items-center justify-center h-screen max-w-[375px] mx-auto bg-white'>
+        <div className='text-center px-4'>
+          <h2 className='text-lg font-semibold text-rose-600 mb-2'>
             Oops! Registration Link Invalid or Expired
           </h2>
-          <p className="text-gray-500 mb-4">
+          <p className='text-gray-500 mb-4'>
             The registration link you used is either invalid or has expired.
             Please request a new registration link or contact support for
             assistance.
           </p>
-          <div className="pt-4 border-t border-gray-200">
-            <p className="text-xs text-gray-500">
-              Need help? Contact support at{" "}
+          <div className='pt-4 border-t border-gray-200'>
+            <p className='text-xs text-gray-500'>
+              Need help? Contact support at{' '}
               <a
-                href="mailto:support@saintcommunity.com"
-                className="text-green-600 hover:underline"
+                href='mailto:support@saintcommunity.com'
+                className='text-green-600 hover:underline'
               >
                 support@saintcommunity.com
               </a>
@@ -322,9 +330,9 @@ function RegisterPageMain() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center max-w-[375px] mx-auto bg-white py-[100px]">
-      <h1 className="text-2xl font-bold">Workers Registration</h1>
-      <p className="text-sm text-gray-500 mb-[36px]">
+    <div className='flex flex-col items-center justify-center max-w-[375px] mx-auto bg-white py-[100px]'>
+      <h1 className='text-2xl font-bold'>Workers Registration</h1>
+      <p className='text-sm text-gray-500 mb-[36px]'>
         Kindly fill the form below
       </p>
       <form
@@ -333,10 +341,10 @@ function RegisterPageMain() {
           e.stopPropagation();
           void form.handleSubmit();
         }}
-        className="flex-1 w-full space-y-4 p-4 md:px-0"
+        className='flex-1 w-full space-y-4 p-4 md:px-0'
       >
         {/* <div className="space-y-2">
-          <form.Field name="photoUpload">
+          <form.Field name="profileImage">
             {(field) => {
               const file = field.state.value as File | null;
 
@@ -397,42 +405,42 @@ function RegisterPageMain() {
             }}
           </form.Field>
         </div> */}
-        <div className="space-y-2">
-          <Label htmlFor="firstName">
+        <div className='space-y-2'>
+          <Label htmlFor='firstName'>
             First Name
             <RequiredAsterisk />
           </Label>
           <form.Field
-            name="firstName"
+            name='firstName'
             children={(field) => (
               <>
                 <Input
-                  id="firstName"
+                  id='firstName'
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder="First Name"
-                  className="h-[48px]"
+                  placeholder='First Name'
+                  className='h-[48px]'
                 />
                 <FieldInfo field={field} />
               </>
             )}
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="lastName">
+        <div className='space-y-2'>
+          <Label htmlFor='lastName'>
             Surname
             <RequiredAsterisk />
           </Label>
           <form.Field
-            name="lastName"
+            name='lastName'
             children={(field) => (
               <>
                 <Input
-                  id="lastName"
+                  id='lastName'
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder="Surname"
-                  className="h-[48px]"
+                  placeholder='Surname'
+                  className='h-[48px]'
                 />
                 <FieldInfo field={field} />
               </>
@@ -440,59 +448,65 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="email">
+        <div className='space-y-2'>
+          <Label htmlFor='email'>
             Email Address
             <RequiredAsterisk />
           </Label>
           <form.Field
-            name="email"
+            name='email'
             children={(field) => (
               <>
                 <Input
-                  id="email"
-                  type="email"
+                  id='email'
+                  type='email'
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder="Enter Email"
-                  className="h-[48px]"
+                  placeholder='Enter Email'
+                  className='h-[48px]'
                 />
                 <FieldInfo field={field} />
+                <em className='text-red-500 text-xs'>
+                  {errors?.email ? errors?.email : null}
+                </em>
               </>
             )}
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="phoneNumber">
+        <div className='space-y-2'>
+          <Label htmlFor='phoneNumber'>
             Phone Number
             <RequiredAsterisk />
           </Label>
           <form.Field
-            name="phoneNumber"
+            name='phoneNumber'
             children={(field) => (
               <>
                 <Input
-                  id="phoneNumber"
-                  type="tel"
+                  id='phoneNumber'
+                  type='tel'
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder="Your Phone number"
-                  className="h-[48px]"
+                  placeholder='Your Phone number'
+                  className='h-[48px]'
                 />
                 <FieldInfo field={field} />
+                <em className='text-red-500 text-xs'>
+                  {errors?.phone_number ? errors?.phone_number : null}
+                </em>
               </>
             )}
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="country">
+        <div className='space-y-2'>
+          <Label htmlFor='country'>
             Country
             <RequiredAsterisk />
           </Label>
           <form.Field
-            name="country"
+            name='country'
             children={(field) => {
               return (
                 <>
@@ -503,8 +517,8 @@ function RegisterPageMain() {
                       setSelectedCountry(e);
                     }}
                   >
-                    <SelectTrigger className="h-[48px]">
-                      <SelectValue placeholder="Select a country" />
+                    <SelectTrigger className='h-[48px]'>
+                      <SelectValue placeholder='Select a country' />
                     </SelectTrigger>
                     <SelectContent>
                       {countries.map((country) => (
@@ -522,10 +536,10 @@ function RegisterPageMain() {
         </div>
 
         {/* State select, depends on selected country */}
-        <div className="space-y-2">
-          <Label htmlFor="state">State/Province</Label>
+        <div className='space-y-2'>
+          <Label htmlFor='state'>State/Province</Label>
           <form.Field
-            name="state"
+            name='state'
             children={(field) => {
               return (
                 <>
@@ -534,8 +548,8 @@ function RegisterPageMain() {
                     onValueChange={field.handleChange}
                     disabled={!selectedCountry}
                   >
-                    <SelectTrigger className="h-[48px]">
-                      <SelectValue placeholder="Select a state" />
+                    <SelectTrigger className='h-[48px]'>
+                      <SelectValue placeholder='Select a state' />
                     </SelectTrigger>
                     <SelectContent>
                       {states.map((state, i) => (
@@ -552,21 +566,21 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="homeAddress">
+        <div className='space-y-2'>
+          <Label htmlFor='homeAddress'>
             Home Address
             <RequiredAsterisk />
           </Label>
           <form.Field
-            name="homeAddress"
+            name='homeAddress'
             children={(field) => (
               <>
                 <Textarea
                   rows={6}
-                  id="homeAddress"
+                  id='homeAddress'
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder="Enter home address"
+                  placeholder='Enter home address'
                 />
                 <FieldInfo field={field} />
               </>
@@ -574,18 +588,18 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="workAddress">Work Address</Label>
+        <div className='space-y-2'>
+          <Label htmlFor='workAddress'>Work Address</Label>
           <form.Field
-            name="workAddress"
+            name='workAddress'
             children={(field) => (
               <>
                 <Textarea
                   rows={6}
-                  id="workAddress"
+                  id='workAddress'
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder="Enter work address"
+                  placeholder='Enter work address'
                 />
                 <FieldInfo field={field} />
               </>
@@ -593,22 +607,22 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className="flex flex-initial gap-2 w-full justify-between ">
-          <div className="space-y-2 w-1/2">
-            <Label htmlFor="gender">
+        <div className='flex flex-initial gap-2 w-full justify-between '>
+          <div className='space-y-2 w-1/2'>
+            <Label htmlFor='gender'>
               Gender
               <RequiredAsterisk />
             </Label>
             <form.Field
-              name="gender"
+              name='gender'
               children={(field) => (
                 <>
                   <Select
                     value={field.state.value}
                     onValueChange={field.handleChange}
                   >
-                    <SelectTrigger className="h-[48px]">
-                      <SelectValue placeholder="Select gender" />
+                    <SelectTrigger className='h-[48px]'>
+                      <SelectValue placeholder='Select gender' />
                     </SelectTrigger>
                     <SelectContent>
                       {genders.map((gender) => (
@@ -623,21 +637,21 @@ function RegisterPageMain() {
               )}
             />
           </div>
-          <div className="space-y-2 w-1/2">
-            <Label htmlFor="dateOfBirth">
+          <div className='space-y-2 w-1/2'>
+            <Label htmlFor='dateOfBirth'>
               Date of Birth
               <RequiredAsterisk />
             </Label>
             <br />
             <form.Field
-              name="dateOfBirth"
+              name='dateOfBirth'
               children={(field) => (
                 <>
                   <DatePicker
                     value={field.state.value}
                     onChange={(date) => field.handleChange(date || new Date())}
-                    className="h-[48px]"
-                    captionLayout="dropdown"
+                    className='h-[48px]'
+                    captionLayout='dropdown'
                   />
                   <FieldInfo field={field} />
                 </>
@@ -646,10 +660,10 @@ function RegisterPageMain() {
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="church">Church</Label>
+        <div className='space-y-2'>
+          <Label htmlFor='church'>Church</Label>
           <form.Field
-            name="church"
+            name='church'
             children={(field) => (
               <>
                 <Select
@@ -657,8 +671,8 @@ function RegisterPageMain() {
                   onValueChange={field.handleChange}
                   disabled
                 >
-                  <SelectTrigger className="h-[48px]">
-                    <SelectValue placeholder="Select a church" />
+                  <SelectTrigger className='h-[48px]'>
+                    <SelectValue placeholder='Select a church' />
                   </SelectTrigger>
                   <SelectContent>
                     {[{ value: church?.id, label: church?.name }].map(
@@ -679,18 +693,18 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="fellowship">Fellowship</Label>
+        <div className='space-y-2'>
+          <Label htmlFor='fellowship'>Fellowship</Label>
           <form.Field
-            name="fellowship"
+            name='fellowship'
             children={(field) => (
               <>
                 <Select
                   value={field.state.value}
                   onValueChange={field.handleChange}
                 >
-                  <SelectTrigger className="h-[48px]">
-                    <SelectValue placeholder="Select a fellowship" />
+                  <SelectTrigger className='h-[48px]'>
+                    <SelectValue placeholder='Select a fellowship' />
                   </SelectTrigger>
                   <SelectContent>
                     {fellowships?.map(
@@ -711,18 +725,18 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="cell">Cell</Label>
+        <div className='space-y-2'>
+          <Label htmlFor='cell'>Cell</Label>
           <form.Field
-            name="cell"
+            name='cell'
             children={(field) => (
               <>
                 <Select
                   value={field.state.value}
                   onValueChange={field.handleChange}
                 >
-                  <SelectTrigger className="h-[48px]">
-                    <SelectValue placeholder="Select a cell" />
+                  <SelectTrigger className='h-[48px]'>
+                    <SelectValue placeholder='Select a cell' />
                   </SelectTrigger>
                   <SelectContent>
                     {cells?.map((cell: { id: number; name: string }) => (
@@ -738,18 +752,18 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="department">Department</Label>
+        <div className='space-y-2'>
+          <Label htmlFor='department'>Department</Label>
           <form.Field
-            name="department"
+            name='department'
             children={(field) => (
               <>
                 <Select
                   value={field.state.value}
                   onValueChange={field.handleChange}
                 >
-                  <SelectTrigger className="h-[48px]">
-                    <SelectValue placeholder="Select a department" />
+                  <SelectTrigger className='h-[48px]'>
+                    <SelectValue placeholder='Select a department' />
                   </SelectTrigger>
                   <SelectContent>
                     {departments?.map(
@@ -770,20 +784,20 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="prayerGroup">
+        <div className='space-y-2'>
+          <Label htmlFor='prayerGroup'>
             Prayer Group Day <RequiredAsterisk />
           </Label>
           <form.Field
-            name="prayerGroup"
+            name='prayerGroup'
             children={(field) => (
               <>
                 <Select
                   value={field.state.value}
                   onValueChange={field.handleChange}
                 >
-                  <SelectTrigger className="h-[48px]">
-                    <SelectValue placeholder="Select a prayer group" />
+                  <SelectTrigger className='h-[48px]'>
+                    <SelectValue placeholder='Select a prayer group' />
                   </SelectTrigger>
                   <SelectContent>
                     {prayerGroups?.map(
@@ -804,20 +818,20 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="dateJoinedChurch">
+        <div className='space-y-2'>
+          <Label htmlFor='dateJoinedChurch'>
             Date you joined Church <RequiredAsterisk />
           </Label>
           <br />
           <form.Field
-            name="dateJoinedChurch"
+            name='dateJoinedChurch'
             children={(field) => (
               <>
                 <DatePicker
                   value={field.state.value}
                   onChange={(date) => field.handleChange(date || new Date())}
-                  className="h-[48px]"
-                  captionLayout="dropdown"
+                  className='h-[48px]'
+                  captionLayout='dropdown'
                 />
                 <FieldInfo field={field} />
               </>
@@ -825,36 +839,37 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="dateBecameWorker">
+        <div className='space-y-2'>
+          <Label htmlFor='dateBecameWorker'>
             Date you become a worker <RequiredAsterisk />
           </Label>
           <br />
           <form.Field
-            name="dateBecameWorker"
+            name='dateBecameWorker'
             children={(field) => (
               <>
                 <DatePicker
                   value={field.state.value}
                   onChange={(date) => field.handleChange(date || new Date())}
-                  className="h-[48px]"
-                  captionLayout="dropdown"
+                  className='h-[48px]'
+                  captionLayout='dropdown'
                 />
                 <FieldInfo field={field} />
               </>
             )}
           />
         </div>
-        <div className="w-full ">
+        <div className='w-full '>
           <form.Subscribe
             selector={(state) => [state.canSubmit, mutation.isPending]}
             children={([canSubmit, isPending]) => (
               <Button
-                type="submit"
-                className="w-full h-[48px] mt-[36px]"
+                type='submit'
+                className='w-full h-[48px] mt-[36px]'
                 disabled={!canSubmit}
+                onClick={() => setErrors({})}
               >
-                {isPending ? <Loader className="animate-spin" /> : "Submit"}
+                {isPending ? <Loader className='animate-spin' /> : 'Submit'}
               </Button>
             )}
           />

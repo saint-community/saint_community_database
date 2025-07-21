@@ -14,6 +14,7 @@ import { useMutation } from '@tanstack/react-query';
 import { loginUser } from '@/services/auth';
 import { FieldInfo } from '@workspace/ui/components/field-info';
 import { toast } from '@workspace/ui/lib/sonner';
+import { Loader2 } from 'lucide-react';
 
 const formSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -49,20 +50,20 @@ export default function LoginPage() {
   });
 
   return (
-    <div className='flex h-svh'>
-      <div className='flex flex-1 bg-slate-600 overflow-hidden relative justify-center items-center'>
-        <p className='z-10 text-center text-[58px] text-white font-serif'>
+    <div className='flex h-svh flex-col sm:flex-row w-full overflow-hidden'>
+      <div className='flex sm:flex-1 bg-slate-600 overflow-hidden relative justify-center items-center p-12 sm:p-0'>
+        <p className='z-10 text-center sm:text-[58px] text-md text-white font-serif'>
           SAINTS COMMUNITY
         </p>
         <Image
           src={imageFile}
           alt='Background'
-          className='w-full absolute top-0 left-0 right-0 bottom-0 blur-sm '
+          className='w-full absolute top-0 left-0 right-0 bottom-0 blur-sm'
           priority
           objectFit='cover'
         />
       </div>
-      <div className='flex flex-1 max-w-[650px] flex-col items-center gap-5 pt-[100px] bg-white'>
+      <div className='flex flex-1 sm:max-w-[650px] max-w-auto flex-col items-center gap-5 py-10 sm:pt-[100px] bg-white'>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -131,9 +132,11 @@ export default function LoginPage() {
                 className='w-full h-[48px] font-medium mt-10'
                 disabled={!canSubmit || loginMutation.isPending}
               >
-                {loginMutation.isPending || isSubmitting
-                  ? 'Signing in...'
-                  : 'Sign In'}
+                {loginMutation.isPending || isSubmitting ? (
+                  <Loader2 className='w-4 h-4 animate-spin' />
+                ) : (
+                  'Sign In'
+                )}
               </Button>
             )}
           />

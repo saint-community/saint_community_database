@@ -5,7 +5,7 @@ import { Button } from '@workspace/ui/components/button';
 import { Input } from '@workspace/ui/components/input';
 import { useParams } from 'next/navigation';
 import { useWorkerById } from '@/hooks/workers';
-import { Check, Pencil } from 'lucide-react';
+import { Check, Loader2, Pencil } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { updateWorker } from '@/services/workers';
 import { useMutation } from '@tanstack/react-query';
@@ -22,6 +22,7 @@ import { ROLES } from '@/utils/constants';
 export default function WorkerDetailPage() {
   const params = useParams();
   const id = params.id as string;
+  const [editedData, setEditedData] = useState<any>(null);
   const { data, isLoading } = useWorkerById(id);
   const { data: churches } = useChurchesOption();
   const { data: departments } = useDepartmentsOption();
@@ -102,7 +103,17 @@ export default function WorkerDetailPage() {
   }, [user, cells, lockCellSelect]);
 
   const mutation = useMutation({
-    mutationFn: (data: any) => updateWorker(id, data),
+    mutationFn: (data: any) =>
+      updateWorker(id, {
+        ...data,
+        church_id: Number(data.church_id),
+        fellowship_id: Number(data.fellowship_id),
+        cell_id: Number(data.cell_id),
+        department_id: Number(data.department_id),
+        prayer_group_id: Number(data.prayer_group_id),
+        first_name: data.full_name.split(' ')[0],
+        last_name: data.full_name.split(' ')[1],
+      }),
     onSuccess: () => {
       toast.success('Worker updated successfully');
     },
@@ -111,18 +122,22 @@ export default function WorkerDetailPage() {
     },
   });
 
+  const currentData = {
+    ...worker,
+    ...(editedData || {}),
+  };
+
   const handleSave = () => {
+    if (!editedData) return;
+
     mutation.mutate({
-      ...worker,
+      ...currentData,
       active: true,
     });
   };
 
   const handleCancel = () => {
-    setWorker({
-      ...data,
-      full_name: `${data.first_name} ${data.last_name}`,
-    });
+    setEditedData(null);
   };
 
   if (isLoading) {
@@ -134,20 +149,24 @@ export default function WorkerDetailPage() {
   if (!worker) {
     return (
       <div className='flex justify-center items-center h-full'>
-        Member not found
+        Worker not found
       </div>
     );
   }
 
   const onChange = (name: string) => (value: any) => {
-    setWorker((prev: any) => ({ ...prev, [name]: value }));
+    setEditedData((prev: any) => ({ ...prev, [name]: value.target.value }));
+  };
+
+  const onSelect = (name: string) => (value: any) => {
+    setEditedData((prev: any) => ({ ...prev, [name]: value }));
   };
 
   return (
-    <div className='flex-1 flex p-6 w-full flex-col gap-6 bg-[#fafafa]'>
+    <div className='flex-1 flex p-4 sm:p-6 w-full flex-col sm:gap-6 bg-[#fafafa] gap-4'>
       {/* Main Content Card */}
       <div className='flex justify-between items-center'>
-        <div className='flex gap-6 w-full'>
+        <div className='flex gap-6 w-full sm:flex-row flex-col'>
           {/* Date Joined Card */}
           <div className='bg-[#fff] rounded-lg p-4 flex-1 flex flex-col items-start shadow-md min-w-[200px]'>
             <div className='flex items-center gap-2 mb-2'>
@@ -261,7 +280,7 @@ export default function WorkerDetailPage() {
         </div>
       </div>
 
-      <Card className='bg-white p-8 rounded-lg flex-1'>
+      <Card className='bg-white p-4 sm:p-8 rounded-lg flex-1'>
         <h2 className='text-2xl font-semibold text-red-500 mb-8 text-center'>
           {worker.first_name || 'Worker Details'}
         </h2>
@@ -270,13 +289,13 @@ export default function WorkerDetailPage() {
         <div className='space-y-6 max-w-2xl mx-auto'>
           <FormField
             label='Full Name'
-            value={worker.full_name}
+            value={currentData.full_name}
             onChange={onChange('full_name')}
           />
           <FormSelectField
             label='Gender'
-            value={worker.gender}
-            onEdit={onChange('gender')}
+            value={currentData.gender}
+            onEdit={onSelect('gender')}
             options={[
               {
                 value: 'male',
@@ -291,63 +310,79 @@ export default function WorkerDetailPage() {
 
           <FormSelectField
             label='Church'
-            value={`${worker.church_id}`}
-            onEdit={onChange('church_id')}
+            value={`${currentData.church_id}`}
+            onEdit={onSelect('church_id')}
             options={churchOptions}
           />
 
           <FormSelectField
             label='Fellowship/PCF'
-            value={`${worker.fellowship_id}`}
-            onEdit={onChange('fellowship_id')}
+            value={`${currentData.fellowship_id}`}
+            onEdit={onSelect('fellowship_id')}
             options={fellowshipOptions}
           />
 
           <FormSelectField
             label='Cell'
-            value={`${worker.cell_id}`}
-            onEdit={onChange('cell_id')}
+            value={`${currentData.cell_id}`}
+            onEdit={onSelect('cell_id')}
             options={cellOptions}
           />
           <FormSelectField
             label='Department'
-            value={`${worker.department_id}`}
-            onEdit={onChange('department_id')}
+            value={`${currentData.department_id}`}
+            onEdit={onSelect('department_id')}
             options={departments}
           />
 
           <FormSelectField
             label='Assign a Role'
-            value={worker.status}
-            onEdit={onChange('status')}
+            value={currentData.status}
+            onEdit={onSelect('status')}
             options={[
+              {
+                value: 'member',
+                label: 'Member',
+              },
               {
                 value: 'worker',
                 label: 'Worker',
+              },
+              {
+                value: 'cell_leader',
+                label: 'Cell Leader',
+              },
+              {
+                value: 'fellowship_leader',
+                label: 'Fellowship Leader',
+              },
+              {
+                value: 'church_pastor',
+                label: 'Church Pastor',
               },
             ]}
           />
 
           <FormField
             label='Phone Number'
-            value={worker.phone_number}
+            value={currentData.phone_number}
             onChange={onChange('phone_number')}
           />
           <FormField
             label='Home Address'
-            value={worker.house_address}
+            value={currentData.house_address}
             onChange={onChange('house_address')}
           />
           <FormField
             label='Work Address'
-            value={worker.work_address}
+            value={currentData.work_address}
             onChange={onChange('work_address')}
           />
 
           <FormSelectField
             label='Prayer Group'
-            value={worker.prayer_group_id}
-            onEdit={onChange('prayer_group_id')}
+            value={currentData.prayer_group_id}
+            onEdit={onSelect('prayer_group_id')}
             options={prayerGroups}
           />
 
@@ -362,8 +397,13 @@ export default function WorkerDetailPage() {
             <Button
               className='bg-red-500 hover:bg-red-600 px-8'
               onClick={handleSave}
+              disabled={!editedData || mutation.isPending}
             >
-              Save
+              {mutation.isPending ? (
+                <Loader2 className='w-4 h-4 animate-spin' />
+              ) : (
+                'Save'
+              )}
             </Button>
           </div>
         </div>

@@ -69,14 +69,18 @@ export const useWorkerOption = () => {
   });
 };
 
-export const useInfiniteWorkersRegistration = (action: string) => {
+export const useInfiniteWorkersRegistration = ({action}: {action: string, page?: number}) => {
   return useInfiniteQuery({
-    queryKey: [`${QUERY_PATHS.WORKERS}${action}`],
-    queryFn: () => getWorkersRegistration(action),
+    queryKey: [`${QUERY_PATHS.WORKERS}${action}`, action],
+    queryFn: ({pageParam}) => getWorkersRegistration({action, page: pageParam}),
     enabled: !!action,
-    getNextPageParam: (lastPage) =>
-      lastPage.next_page_url ? lastPage?.current_page + 1 : undefined,
+    getNextPageParam:  (lastPage) => {
+      return lastPage.data.current_page < lastPage.data.last_page
+        ? lastPage.data.current_page + 1
+        : undefined
+    },
     initialPageParam: 1,
+    
   });
 };
 

@@ -57,6 +57,17 @@ export async function updatePassword(body: {
   return data;
 }
 
+export async function updateAccount(body: {
+  current_password: string;
+  new_password: string;
+}): Promise<{
+  error?: string;
+  message?: string;
+}> {
+  const { data } = await ApiCaller.put(QUERY_PATHS.UPDATE_ACCOUNT, body);
+  return data;
+}
+
 export const logoutUser = async () => {
   await ApiCaller.get(QUERY_PATHS.LOGOUT);
   localStorage.removeItem(STORAGE_KEYS.IS_AUTHENTICATED);

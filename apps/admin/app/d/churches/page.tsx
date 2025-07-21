@@ -9,13 +9,16 @@ import { useStatistics } from '@/hooks/statistics';
 import { useMemo, useState } from 'react';
 import { useMe } from '@/hooks/useMe';
 import { ROLES } from '@/utils/constants';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
   const [page, setPage] = useState(1);
   const { data: user } = useMe();
   const isAdmin = user?.role === ROLES.ADMIN || user?.role === ROLES.PASTOR;
 
-  console.log({ isAdmin });
+  if (user && !isAdmin) {
+    redirect('/d/fellowships');
+  }
 
   const { data } = useChurches(page);
   const { data: stats } = useStatistics();
@@ -27,12 +30,12 @@ export default function Page() {
   }, [data]);
 
   return (
-    <div className='flex-1 flex p-6 w-full flex-col gap-6 bg-[#fafafa]'>
-      <div className='flex gap-6'>
+    <div className='flex-1 flex p-4 sm:p-6 w-full flex-col sm:gap-6 bg-[#fafafa] gap-4'>
+      <div className='flex gap-6 flex-col sm:flex-row'>
         <div className='flex-auto'>
           <ChurchChart />
         </div>
-        <div className='flex-1 min-w-[400px]'>
+        <div className='flex-1 sm:min-w-[400px] w-auto'>
           <ListLinkSection
             list={[
               {

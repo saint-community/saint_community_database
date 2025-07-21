@@ -1,24 +1,24 @@
 'use client';
 
-import ConfirmDialog from '@/components/ConfirmAlertDialog';
+import ConfirmDialog from "@/components/ConfirmAlertDialog";
 import {
   useApproveWorker,
   useInfiniteWorkersRegistration,
   useRejectWorker,
-} from '@/hooks/workers';
-import { useModalStore } from '@/store';
-import { approveWorker, rejectWorker } from '@/services/workers';
-import { useMutation } from '@tanstack/react-query';
+} from "@/hooks/workers";
+import { useModalStore } from "@/store";
+import { approveWorker, rejectWorker } from "@/services/workers";
+import { useMutation } from "@tanstack/react-query";
 import {
   Avatar,
   AvatarImage,
   AvatarFallback,
-} from '@workspace/ui/components/avatar';
-import { Badge } from '@workspace/ui/components/badge';
-import { Button } from '@workspace/ui/components/button';
-import { Card, CardContent } from '@workspace/ui/components/card';
-import { toast } from '@workspace/ui/lib/sonner';
-import { cn } from '@workspace/ui/lib/utils';
+} from "@workspace/ui/components/avatar";
+import { Badge } from "@workspace/ui/components/badge";
+import { Button } from "@workspace/ui/components/button";
+import { Card, CardContent } from "@workspace/ui/components/card";
+import { toast } from "@workspace/ui/lib/sonner";
+import { cn } from "@workspace/ui/lib/utils";
 import {
   Bell,
   Settings,
@@ -29,10 +29,11 @@ import {
   MapPin,
   CakeIcon,
   Loader,
-} from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
-import { isEmpty } from 'lodash';
+} from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
+import { isEmpty } from "lodash";
+
 
 const RegistrationRequests = () => {
   const { push } = useRouter();
@@ -48,7 +49,7 @@ const RegistrationRequests = () => {
     isFetchingNextPage,
     refetch,
     isLoading,
-  } = useInfiniteWorkersRegistration(slug);
+  } = useInfiniteWorkersRegistration({ action: slug });
 
   const mutation = useMutation({
     mutationFn: (id: any) => approveWorker(id),
@@ -194,12 +195,12 @@ const RegistrationRequests = () => {
         ) : (
           <div className='space-y-4'>
             {workersRequestData.map((member) => (
-              <Card key={member.id} className='relative rounded-lg'>
-                <CardContent className='p-6 bg-white rounded-lg'>
-                  <div className='flex items-start justify-between mb-4'>
-                    <div className='flex items-center gap-3'>
-                      <Avatar className='w-12 h-12'>
-                        <AvatarImage src='/placeholder.svg?height=48&width=48' />
+              <Card key={member.id} className="relative rounded-lg">
+                <CardContent className="p-6 bg-white rounded-lg">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="w-12 h-12">
+                        <AvatarImage src="/placeholder.svg?height=48&width=48" />
                         <AvatarFallback>JS</AvatarFallback>
                       </Avatar>
                       <div>
@@ -227,10 +228,10 @@ const RegistrationRequests = () => {
                   </div>
 
                   {/* Contact Info */}
-                  <div className='grid grid-cols-3 gap-4 mb-4'>
-                    <div className='space-y-2'>
-                      <div className='flex items-center gap-2 text-sm'>
-                        <Mail className='w-4 h-4 text-gray-400' />
+                  <div className="grid grid-cols-3 gap-4 mb-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Mail className="w-4 h-4 text-gray-400" />
                         <span>{member.email}</span>
                       </div>
                       <div className='flex items-center gap-2 text-sm'>
@@ -261,11 +262,11 @@ const RegistrationRequests = () => {
                   </div>
 
                   {/* Other Details */}
-                  <div className='mb-6 pt-4'>
-                    <h4 className='font-semibold mb-3'>Other Details:</h4>
-                    <div className='grid grid-cols-3 gap-4 text-sm'>
-                      <div className='flex flex-col gap-2'>
-                        <div className='text-gray-600'>
+                  <div className="mb-6 pt-4">
+                    <h4 className="font-semibold mb-3">Other Details:</h4>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div className="flex flex-col gap-2">
+                        <div className="text-gray-600">
                           CHURCH: {member.church}
                         </div>
                         <div className='text-gray-600'>
@@ -348,40 +349,40 @@ const RegistrationRequests = () => {
         )}
 
         {/* Pagination */}
-        <div className='flex items-center justify-center gap-2 mt-8'>
+        <div className="flex items-center justify-center gap-2 mt-8">
           <Button
-            variant='ghost'
-            size='sm'
-            className='text-gray-400'
+            variant="ghost"
+            size="sm"
+            className="text-gray-400"
             onClick={() => fetchNextPage()}
             disabled={!hasNextPage || isFetchingNextPage}
           >
             {isFetchingNextPage ? (
               <>
                 <svg
-                  className='animate-spin h-4 w-4 mr-2 inline-block text-gray-400'
-                  xmlns='http://www.w3.org/2000/svg'
-                  fill='none'
-                  viewBox='0 0 24 24'
+                  className="animate-spin h-4 w-4 mr-2 inline-block text-gray-400"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
                 >
                   <circle
-                    className='opacity-25'
-                    cx='12'
-                    cy='12'
-                    r='10'
-                    stroke='currentColor'
-                    strokeWidth='4'
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
                   ></circle>
                   <path
-                    className='opacity-75'
-                    fill='currentColor'
-                    d='M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z'
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
                   ></path>
                 </svg>
                 Loading...
               </>
             ) : hasNextPage ? (
-              'Load More'
+              "Load More"
             ) : null}
           </Button>
         </div>

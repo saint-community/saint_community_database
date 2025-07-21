@@ -6,13 +6,24 @@ import { TableCard } from '@/components/TableCard';
 import { useFellowships } from '@/hooks/fellowships';
 import { useStatistics } from '@/hooks/statistics';
 import { useMe } from '@/hooks/useMe';
+import { ROLES } from '@/utils/constants';
 import { ListCheck, User, User2, Users2 } from 'lucide-react';
+import { redirect } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
 export default function Page() {
   const { data: user } = useMe();
   const [page, setPage] = useState(1);
   const { data } = useFellowships(user?.church_id?.toString(), page);
+
+  const isAdmin =
+    user?.role === ROLES.ADMIN ||
+    user?.role === ROLES.PASTOR ||
+    user?.role === ROLES.CHURCH_PASTOR;
+
+  if (user && !isAdmin) {
+    redirect('/d/cells');
+  }
 
   const fellowships = data?.data || [];
 
@@ -23,12 +34,12 @@ export default function Page() {
   }, [data]);
 
   return (
-    <div className='flex-1 flex p-6 w-full flex-col gap-6 bg-[#fafafa]'>
-      <div className='flex gap-6'>
+    <div className='flex-1 flex p-4 sm:p-6 w-full flex-col sm:gap-6 bg-[#fafafa] gap-4'>
+      <div className='flex gap-6 sm:flex-row flex-col'>
         <div className='flex-auto'>
           <ChurchChart />
         </div>
-        <div className='flex-1 min-w-[400px]'>
+        <div className='flex-1 sm:min-w-[400px] w-auto'>
           <ListLinkSection
             list={[
               {

@@ -5,6 +5,7 @@ import {
   Users2,
   User2,
 } from 'lucide-react';
+import { z } from 'zod';
 
 const items = [
   {
@@ -41,3 +42,8 @@ const items = [
 
 export const getRouteNameFromPath = (pathname: string) =>
   items.find((m) => m.url === pathname)?.title;
+
+export const optionalTextInput = (schema: z.ZodString) =>
+  z
+    .union([z.string(), z.undefined()])
+    .refine((val) => !val || schema.safeParse(val).success);

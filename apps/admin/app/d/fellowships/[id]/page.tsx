@@ -4,7 +4,7 @@ import { Card, CardContent } from '@workspace/ui/components/card';
 import { Button } from '@workspace/ui/components/button';
 import { useParams } from 'next/navigation';
 import { useFellowshipById } from '@/hooks/fellowships';
-import { CalendarIcon, Users, Users2 } from 'lucide-react';
+import { CalendarIcon, Loader2, Users, Users2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
@@ -16,6 +16,7 @@ import { FormSelectField, FormField } from '@/components/forms';
 import { useMe } from '@/hooks/useMe';
 import { DatePicker } from '@workspace/ui/components/date-picker';
 import { ROLES } from '@/utils/constants';
+import { toast } from '@workspace/ui/lib/sonner';
 
 // const formSchema = z.object({
 //   name: z.string().min(2, {
@@ -63,9 +64,11 @@ export default function FellowshipDetailPage() {
     onSuccess: () => {
       refetch();
       setEditedData(null);
+      toast.success('Fellowship updated successfully');
     },
     onError: (error) => {
       console.log(error);
+      toast.error('Failed to update fellowship');
     },
   });
 
@@ -120,16 +123,16 @@ export default function FellowshipDetailPage() {
 
     mutation.mutate({
       name: editedData.name,
-      cordinator_id: editedData.cordinator_id,
-      church_id: editedData.church_id,
+      cordinator_id: Number(editedData.cordinator_id),
+      church_id: Number(editedData.church_id),
       location: editedData.location,
       address: editedData.address,
-      start_date: editedData.dateStarted,
+      start_date: editedData.dateStarted?.toISOString()?.split('T')[0],
     });
   };
 
   return (
-    <div className='flex-1 flex p-6 w-full flex-col gap-6 bg-[#fafafa]'>
+    <div className='flex-1 flex p-4 sm:p-6 w-full flex-col sm:gap-6 bg-[#fafafa] gap-4'>
       {/* Stats Cards Row */}
       <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
         <StatCard
@@ -155,7 +158,7 @@ export default function FellowshipDetailPage() {
       </div>
 
       {/* Main Content Card */}
-      <Card className='bg-white p-8 rounded-lg flex-1'>
+      <Card className='bg-white p-4 sm:p-8 rounded-lg flex-1'>
         <h2 className='text-2xl font-semibold text-red-500 mb-8 text-center'>
           {currentData.name}
         </h2>
@@ -176,7 +179,7 @@ export default function FellowshipDetailPage() {
               setSelectedWorker={(worker) => {
                 handleEdit('cordinator_id', worker);
               }}
-              churchId={isAdmin ? undefined : user?.church_id?.toString()}
+              churchId={currentData.church_id}
             />
           </div>
 
@@ -214,7 +217,11 @@ export default function FellowshipDetailPage() {
               onClick={handleSave}
               disabled={!editedData || mutation.isPending}
             >
-              {mutation.isPending ? 'Saving...' : 'Save'}
+              {mutation.isPending ? (
+                <Loader2 className='w-4 h-4 animate-spin' />
+              ) : (
+                'Save'
+              )}
             </Button>
           </div>
         </div>

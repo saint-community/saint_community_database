@@ -1,5 +1,7 @@
 'use client';
 import { useMe } from '@/hooks/useMe';
+import { updateAccount } from '@/services/auth';
+import { useMutation } from '@tanstack/react-query';
 import { Button } from '@workspace/ui/components/button';
 import {
   Card,
@@ -12,23 +14,52 @@ import {
 import { Input } from '@workspace/ui/components/input';
 import { Label } from '@workspace/ui/components/label';
 import { Separator } from '@workspace/ui/components/separator';
-import { Pencil } from 'lucide-react';
+import { toast } from '@workspace/ui/lib/sonner';
+import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 
 export default function GeneralSettingsPage() {
   const { data: user } = useMe();
-  const [name, setName] = useState(user?.name);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
 
   const onCancel = () => {
-    setName(user?.name);
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmNewPassword('');
   };
 
+  const mutation = useMutation({
+    mutationFn: (data: { current_password: string; new_password: string }) =>
+      updateAccount(data),
+    onSuccess: () => {
+      toast.success('Password updated successfully');
+      onCancel();
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response.data.error;
+      toast.error(errorMessage || 'Failed to update password');
+    },
+  });
+
   const onSave = () => {
-    console.log('save');
+    if (currentPassword === newPassword) {
+      toast.error('New password cannot be the same as the current password');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+    mutation.mutate({
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
   };
 
   return (
-    <div className='space-y-6 bg-white p-6'>
+    <div className='space-y-6 bg-white p-4 sm:p-6'>
       <div>
         <h3 className='text-lg font-medium'>General</h3>
         <p className='text-sm text-muted-foreground'>
@@ -49,19 +80,7 @@ export default function GeneralSettingsPage() {
               <div className='grid gap-2'>
                 <Label htmlFor='name'>Full Name</Label>
                 <div className='relative'>
-                  <Input
-                    id='name'
-                    defaultValue={user?.name}
-                    onChange={(e) => setName(e.target.value)}
-                    value={name}
-                  />
-                  <Button
-                    size='icon'
-                    variant='ghost'
-                    className='absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4'
-                  >
-                    <Pencil className='h-4 w-4' />
-                  </Button>
+                  <Input id='name' defaultValue={user?.name} disabled />
                 </div>
               </div>
               <div className='grid gap-2'>
@@ -73,40 +92,36 @@ export default function GeneralSettingsPage() {
                     defaultValue={user?.email}
                     disabled
                   />
-                  <Button
-                    size='icon'
-                    variant='ghost'
-                    className='absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4'
-                  >
-                    <Pencil className='h-4 w-4' />
-                  </Button>
                 </div>
               </div>
               <div className='grid gap-2'>
-                <Label htmlFor='phone'>Phone Number</Label>
-                <div className='relative'>
-                  <Input
-                    id='phone'
-                    defaultValue={user?.phone}
-                    autoComplete='off'
-                    aria-autocomplete='none'
-                  />
-                  <Button
-                    size='icon'
-                    variant='ghost'
-                    className='absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4'
-                  >
-                    <Pencil className='h-4 w-4' />
-                  </Button>
-                </div>
+                <Label htmlFor='current-password'>Current Password</Label>
+                <Input
+                  id='current-password'
+                  type='password'
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                />
               </div>
               <div className='grid gap-2'>
-                <Label htmlFor='current-password'>Create a New Password</Label>
-                <Input id='current-password' type='password' />
+                <Label htmlFor='new-password'>New Password</Label>
+                <Input
+                  id='new-password'
+                  type='password'
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
               </div>
               <div className='grid gap-2'>
-                <Label htmlFor='new-password'>Conform New Password</Label>
-                <Input id='new-password' type='password' />
+                <Label htmlFor='confirm-new-password'>
+                  Confirm New Password
+                </Label>
+                <Input
+                  id='confirm-new-password'
+                  type='password'
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                />
               </div>
             </div>
           </CardContent>
@@ -114,7 +129,21 @@ export default function GeneralSettingsPage() {
             <Button variant='outline' onClick={onCancel}>
               Cancel
             </Button>
-            <Button onClick={onSave}>Save</Button>
+            <Button
+              onClick={onSave}
+              disabled={
+                mutation.isPending ||
+                !currentPassword ||
+                !newPassword ||
+                !confirmNewPassword
+              }
+            >
+              {mutation.isPending ? (
+                <Loader2 className='animate-spin h-4 w-4' />
+              ) : (
+                'Save'
+              )}
+            </Button>
           </CardFooter>
         </Card>
       </div>

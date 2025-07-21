@@ -5,7 +5,7 @@ import { Button } from '@workspace/ui/components/button';
 import { Input } from '@workspace/ui/components/input';
 import { useParams } from 'next/navigation';
 import { useChurchById } from '@/hooks/churches';
-import { CalendarIcon, Pencil, Users, Users2 } from 'lucide-react';
+import { CalendarIcon, Loader2, Pencil, Users, Users2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
@@ -31,6 +31,7 @@ export default function ChurchDetailPage() {
     },
     onError: (error) => {
       console.log(error);
+      toast.error('Failed to update church');
     },
   });
 
@@ -91,7 +92,7 @@ export default function ChurchDetailPage() {
   };
 
   return (
-    <div className='flex-1 flex p-6 w-full flex-col gap-6 bg-[#fafafa]'>
+    <div className='flex-1 flex p-4 sm:p-6 w-full flex-col sm:gap-6 bg-[#fafafa] gap-4'>
       {/* Stats Cards Row */}
       <div className='grid grid-cols-1 md:grid-cols-5 gap-3'>
         <StatCard
@@ -122,7 +123,7 @@ export default function ChurchDetailPage() {
       </div>
 
       {/* Main Content Card */}
-      <Card className='bg-white p-8 rounded-lg flex-1'>
+      <Card className='bg-white p-4 sm:p-8 rounded-lg flex-1'>
         <h2 className='text-2xl font-semibold text-red-500 mb-8 text-center'>
           {currentData.name}
         </h2>
@@ -185,7 +186,11 @@ export default function ChurchDetailPage() {
               onClick={handleSave}
               disabled={!editedData || mutation.isPending}
             >
-              {mutation.isPending ? 'Saving...' : 'Save'}
+              {mutation.isPending ? (
+                <Loader2 className='w-4 h-4 animate-spin' />
+              ) : (
+                'Save'
+              )}
             </Button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { ChurchChart } from '@/components/church-graph';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
   return (

@@ -2,13 +2,13 @@
 'use client';
 
 import { Button } from '@workspace/ui/components/button';
-import { useForm } from '@workspace/ui/lib/react-hook-form';
+import { useForm, useStore } from '@workspace/ui/lib/react-hook-form';
 import { z } from 'zod';
 import { Input } from '@workspace/ui/components/input';
 import { Textarea } from '@workspace/ui/components/textarea';
 import { Label } from '@workspace/ui/components/label';
 import { Modal } from '@workspace/ui/components/modal';
-import { SquarePlus } from 'lucide-react';
+import { Loader2, SquarePlus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { DatePicker } from '@workspace/ui/components/date-picker';
 import {
@@ -40,9 +40,7 @@ const formSchema = z.object({
   address: z.string().min(5, {
     message: 'Address must be at least 5 characters.',
   }),
-  leader_id: z.string().min(1, {
-    message: 'Please select a leader.',
-  }),
+  leader_id: z.string().optional(),
   dateStarted: z.date().refine(
     (date) => {
       const parsedDate = new Date(date);
@@ -57,7 +55,7 @@ const formSchema = z.object({
 export function AddNewFellowshipSheet() {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
-  const { data: user, isAdmin } = useMe();
+  const { data: user } = useMe();
 
   const form = useForm({
     defaultValues: {
@@ -67,7 +65,7 @@ export function AddNewFellowshipSheet() {
       address: '',
       leader_id: '',
       dateStarted: new Date(),
-    },
+    } as any,
     validators: {
       onSubmit: formSchema,
       onChange: formSchema,
@@ -79,20 +77,20 @@ export function AddNewFellowshipSheet() {
         church_id: Number(value.church_id),
         name: value.fellowshipName,
         address: value.address,
-        cordinator_id: Number(value.leader_id),
+        cordinator_id: value.leader_id ? Number(value.leader_id) : undefined,
         active: true,
         start_date: startDate || '',
       });
     },
     onSubmitInvalid(props) {
-      console.log(props);
       toast.error('Please fill in all fields');
     },
   });
 
+  const churchId = useStore(form.store, (state) => state.values.church_id);
+
   const lockChurchSelect =
     !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
-  console.log(lockChurchSelect);
 
   const { data: churches } = useChurchesOption(!lockChurchSelect);
 
@@ -243,7 +241,7 @@ export function AddNewFellowshipSheet() {
                   setSelectedWorker={(worker) => {
                     field.handleChange(`${worker}`);
                   }}
-                  churchId={isAdmin ? undefined : user?.church_id?.toString()}
+                  churchId={churchId}
                 />
                 <FieldInfo field={field} />
               </>
@@ -277,7 +275,11 @@ export function AddNewFellowshipSheet() {
                 className='w-full'
                 disabled={!canSubmit || mutation.isPending}
               >
-                {mutation.isPending ? '...' : 'Add Fellowship'}
+                {mutation.isPending ? (
+                  <Loader2 className='w-4 h-4 animate-spin' />
+                ) : (
+                  'Add Fellowship'
+                )}
               </Button>
             )}
           />

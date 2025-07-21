@@ -14,7 +14,7 @@ export const QUERY_PATHS = {
   RESET_PASSWORD: '/api/account/resetpassword',
   UPDATE_PASSWORD: '/api/account/updatepassword',
   DELETE_ACCOUNT: '/api/account/delete/:id',
-
+  UPDATE_ACCOUNT: '/api/account/update',
   // church
   CHURCHES: '/api/churches',
   CHURCH_DETAIL: '/api/church/:id',
@@ -46,7 +46,6 @@ export const QUERY_PATHS = {
   WORKER_REJECTED: '/api/workers/rejected',
   WORKER_APPROVED: '/api/workers/approved',
 
-
   // departments
   DEPARTMENTS: '/api/departments',
   DEPARTMENT_DETAIL: '/api/departments/:id',
@@ -63,6 +62,7 @@ export const QUERY_PATHS = {
 
   // statistics
   STATISTICS: '/api/statistics',
+  WORKER_STATISTICS: '/api/statistics/workers',
 };
 
 export const COUNTRIES = Array.from(
