@@ -30,9 +30,7 @@ const chartConfig = {
 
 export function ChurchChart() {
   const [year, setYear] = useState(new Date().getFullYear());
-  const { data } = useWorkerStatistics(year);
-
-  const chartData = (data || [])?.filter((item: any) => !!item.month);
+  const { data: chartData } = useWorkerStatistics(year);
 
   return (
     <Card className='bg-white'>
