@@ -116,7 +116,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar className='h-dvh'>
-      <SidebarContent>
+      <SidebarContent className='bg-[#fafafa]'>
         <SidebarGroup className='p-0'>
           <SidebarHeader className='pt-20'>
             {/* <SidebarGroupLabel>Application</SidebarGroupLabel> */}

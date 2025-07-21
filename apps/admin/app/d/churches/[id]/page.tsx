@@ -92,7 +92,7 @@ export default function ChurchDetailPage() {
   };
 
   return (
-    <div className='flex-1 flex p-4 sm:p-6 w-full flex-col sm:gap-6 gap-4'>
+    <div className='flex-1 flex p-4 sm:p-6 w-full flex-col sm:gap-6 gap-4 bg-[#fafafa]'>
       {/* Stats Cards Row */}
       <div className='grid grid-cols-1 md:grid-cols-5 gap-3'>
         <StatCard
@@ -207,7 +207,7 @@ interface StatCardProps {
 
 function StatCard({ icon, label, value }: StatCardProps) {
   return (
-    <Card className='bg-white border-none shadow-sm'>
+    <Card className='bg-white border-none shadow-md'>
       <CardContent className='p-4 flex items-center gap-4'>
         <div className='h-12 w-12 flex items-center justify-center'>{icon}</div>
         <div>
