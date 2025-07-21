@@ -62,6 +62,7 @@ export const QUERY_PATHS = {
 
   // statistics
   STATISTICS: '/api/statistics',
+  WORKER_STATISTICS: '/api/statistics/workers',
 };
 
 export const COUNTRIES = Array.from(
