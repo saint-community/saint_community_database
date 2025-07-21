@@ -149,7 +149,7 @@ export default function WorkerDetailPage() {
       <div className='flex justify-between items-center'>
         <div className='flex gap-6 w-full'>
           {/* Date Joined Card */}
-          <div className='bg-[#fff] rounded-lg p-4 flex-1 flex flex-col items-start shadow-sm min-w-[200px]'>
+          <div className='bg-[#fff] rounded-lg p-4 flex-1 flex flex-col items-start shadow-md min-w-[200px]'>
             <div className='flex items-center gap-2 mb-2'>
               <span>
                 {/* Calendar Icon */}
@@ -187,7 +187,7 @@ export default function WorkerDetailPage() {
             </span>
           </div>
           {/* worker since Card */}
-          <div className='bg-[#fff] rounded-lg p-4 flex-1 flex flex-col items-start shadow-sm min-w-[200px]'>
+          <div className='bg-[#fff] rounded-lg p-4 flex-1 flex flex-col items-start shadow-md min-w-[200px]'>
             <div className='flex items-center gap-2 mb-2'>
               <span>
                 {/* Calendar Icon */}
@@ -225,7 +225,7 @@ export default function WorkerDetailPage() {
             </span>
           </div>
           {/* Date of Birth Card */}
-          <div className='bg-[#fff] rounded-lg p-4 flex-1 flex flex-col items-start shadow-sm min-w-[200px]'>
+          <div className='bg-[#fff] rounded-lg p-4 flex-1 flex flex-col items-start shadow-md min-w-[200px]'>
             <div className='flex items-center gap-2 mb-2'>
               <span>
                 {/* User Icon */}

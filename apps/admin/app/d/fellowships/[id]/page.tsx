@@ -231,7 +231,7 @@ interface StatCardProps {
 
 function StatCard({ icon, label, value }: StatCardProps) {
   return (
-    <Card className='bg-white border-none shadow-sm'>
+    <Card className='bg-white border-none shadow-md'>
       <CardContent className='p-4 flex items-center gap-4'>
         <div className='h-12 w-12 flex items-center justify-center'>{icon}</div>
         <div>
