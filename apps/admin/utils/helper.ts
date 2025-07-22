@@ -47,3 +47,5 @@ export const optionalTextInput = (schema: z.ZodString) =>
   z
     .union([z.string(), z.undefined()])
     .refine((val) => !val || schema.safeParse(val).success);
+
+    export const getInitials = (name: string) => name.split(" ").map(word => word[0]).join("");  
