@@ -18,6 +18,7 @@ import { Clock, Mail, Phone, MapPin, CakeIcon, Loader } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
 import { isEmpty } from "lodash";
+import { getInitials } from "@/utils/helper";
 
 const RegistrationRequests = () => {
   const { push } = useRouter();
@@ -79,6 +80,7 @@ const RegistrationRequests = () => {
       phone: worker.phone_number || "N/A",
       homeAddress: worker.house_address || "N/A",
       workAddress: worker.work_address || "N/A",
+      profileImageUrl: worker?.profile_image_url,
       birthDate: worker.dob ? new Date(worker.dob).toLocaleDateString() : "N/A",
       church: worker.church?.name, // Assuming church_id is a string
       pastor: "Pastor's Name", // Placeholder, replace with actual data if available
@@ -184,8 +186,8 @@ const RegistrationRequests = () => {
                   <div className="flex items-start justify-between mb-4 flex-col sm:flex-row gap-4">
                     <div className="flex items-center gap-3">
                       <Avatar className="w-12 h-12">
-                        <AvatarImage src="/placeholder.svg?height=48&width=48" />
-                        <AvatarFallback>JS</AvatarFallback>
+                        <AvatarImage src={member.profileImageUrl ?? "/placeholder.svg?height=48&width=48"} />
+                        <AvatarFallback className="uppercase">{getInitials(member.name)}</AvatarFallback>
                       </Avatar>
                       <div>
                         <div className="flex items-center gap-2">
