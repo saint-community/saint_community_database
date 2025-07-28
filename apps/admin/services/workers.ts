@@ -2,6 +2,7 @@ import { QUERY_PATHS } from '@/utils/constants';
 import { ApiCaller } from './init';
 
 export interface Worker {
+  profile_image?: Blob;
   church_id: number;
   fellowship_id: number;
   cell_id: number;
@@ -59,8 +60,10 @@ export const getWorkerById = async (id: string) => {
   return data?.data;
 };
 
-export const createWorker = async (body: Worker) => {
-  const { data } = await ApiCaller.post(QUERY_PATHS.WORKER_CREATE, body);
+export const createWorker = async (body: Worker | FormData) => {
+  const { data } = await ApiCaller.post(QUERY_PATHS.WORKER_CREATE, body, {headers: {
+    "Content-Type": "multipart/form-data",
+  }});
   return data || {};
 };
 
