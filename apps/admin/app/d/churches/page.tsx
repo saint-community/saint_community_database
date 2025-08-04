@@ -55,7 +55,7 @@ export default function Page() {
               },
               {
                 title: 'Total members:',
-                value: stats?.members || 0,
+                value: stats?.workers || 0,
                 icon: <User2 size={24} className='stroke-red-500' />,
               },
             ]}

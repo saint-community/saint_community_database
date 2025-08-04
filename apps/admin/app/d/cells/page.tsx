@@ -3,7 +3,7 @@ import { AddNewCellSheet } from '@/components/AddNewCell';
 import { ChurchChart } from '@/components/church-graph';
 import { ListLinkSection } from '@/components/ListLinkSection';
 import { TableCard } from '@/components/TableCard';
-import { User, User2, Users2 } from 'lucide-react';
+import { User, Users2 } from 'lucide-react';
 import { useStatistics } from '@/hooks/statistics';
 import { useCells } from '@/hooks/cell';
 import { useMemo, useState } from 'react';
@@ -30,18 +30,13 @@ export default function Page() {
             list={[
               {
                 title: 'Cell Leaders:',
-                value: stats?.workers || 0,
+                value: stats?.cells || 0,
                 icon: <Users2 size={24} className='stroke-red-500' />,
               },
               {
                 title: 'Workers-In-Training:',
                 value: stats?.workers || 0,
                 icon: <User size={24} className='stroke-red-500' />,
-              },
-              {
-                title: 'Total members:',
-                value: stats?.members || 0,
-                icon: <User2 size={24} className='stroke-red-500' />,
               },
             ]}
           />

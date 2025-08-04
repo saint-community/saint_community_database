@@ -36,17 +36,17 @@ export default function Page() {
             list={[
               {
                 title: 'Pastors',
-                value: 30,
+                value: stats?.Churches,
                 icon: <Church size={24} className='stroke-red-500' />,
               },
               {
                 title: 'Fellowships/PCF Coordinators:',
-                value: 400,
+                value: stats?.fellowships,
                 icon: <ListCheck size={24} className='stroke-red-500' />,
               },
               {
                 title: 'Cell Leaders:',
-                value: 500,
+                value: stats?.cells,
                 icon: <Users2 size={24} className='stroke-red-500' />,
               },
               {

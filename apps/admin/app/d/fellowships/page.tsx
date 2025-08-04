@@ -7,7 +7,7 @@ import { useFellowships } from '@/hooks/fellowships';
 import { useStatistics } from '@/hooks/statistics';
 import { useMe } from '@/hooks/useMe';
 import { ROLES } from '@/utils/constants';
-import { ListCheck, User, User2, Users2 } from 'lucide-react';
+import { ListCheck, User, Users2 } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
@@ -49,18 +49,13 @@ export default function Page() {
               },
               {
                 title: 'Cell Leaders:',
-                value: stats?.workers || 0,
+                value: stats?.cells || 0,
                 icon: <Users2 size={24} className='stroke-red-500' />,
               },
               {
                 title: 'Workers-In-Training:',
                 value: stats?.workers || 0,
                 icon: <User size={24} className='stroke-red-500' />,
-              },
-              {
-                title: 'Total members:',
-                value: stats?.members || 0,
-                icon: <User2 size={24} className='stroke-red-500' />,
               },
             ]}
           />
