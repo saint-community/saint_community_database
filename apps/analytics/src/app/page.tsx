@@ -1,210 +1,300 @@
+/* eslint-disable react/no-children-prop */
 'use client';
-
+import { useRouter } from 'next/navigation';
+import { useForm } from '@workspace/ui/lib/react-hook-form';
+import { z } from 'zod';
+import { useMutation } from '@tanstack/react-query';
+import { toast } from '@workspace/ui/lib/sonner';
+import { loginUser } from '../services/auth';
+import imageFile from '@/src/assets/bg1.png';
+import { EyeIcon, EyeOffIcon, Loader2, Lock, Mail } from 'lucide-react';
+import { Label } from '@workspace/ui/components/label';
+import { FieldInfo } from '@workspace/ui/components/field-info';
+import Link from 'next/link';
+import { Button } from '@/@workspace/ui/components/button';
+import {
+  InputGroup,
+  InputGroupInput,
+  InputGroupAddon,
+} from '@/@workspace/ui/components/input-group';
 import { useState } from 'react';
+import Image from 'next/image';
+import Logo from '@/src/assets/svgs/logo.svg';
+
+const formSchema = z.object({
+  email: z.email('Please enter a valid email'),
+  password: z.string().min(4, 'Password must be at least 4 characters'),
+});
 
 export default function LoginPage() {
-  const [showPassword, setShowPassword] = useState(false);
-  const [keepLoggedIn, setKeepLoggedIn] = useState(true);
+  const router = useRouter();
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
+  const form = useForm({
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+    validators: {
+      onSubmit: formSchema,
+      onChange: formSchema,
+    },
+    onSubmit: async ({ value }) => {
+      loginMutation.mutate(value);
+    },
+  });
+
+  const loginMutation = useMutation({
+    mutationFn: loginUser,
+    onSuccess: () => {
+      toast.success('Login successful');
+      router.push('/d');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'An error occurred');
+    },
+  });
 
   return (
-    <div className='min-h-screen flex'>
-      {/* Left Panel - Visual/Marketing */}
-      <div className='hidden lg:flex lg:w-2/3 relative bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 rounded-r-3xl overflow-hidden'>
-        {/* Background Image Placeholder */}
-        <div className='absolute inset-0 bg-gradient-to-br from-blue-900/80 via-purple-900/80 to-indigo-900/80'></div>
-
-        {/* Content */}
-        <div className='relative z-10 flex flex-col justify-between p-12 text-white'>
-          {/* Top Branding */}
-          <div className='flex items-center gap-3'>
-            <span className='text-xl font-semibold'>SAINTS COMMUNITY</span>
-            <div className='flex gap-1'>
-              <div className='w-3 h-3 bg-red-500 rounded-full'></div>
-              <div className='w-3 h-3 bg-yellow-400 rounded-full'></div>
-              <div className='w-3 h-3 bg-white rounded-full'></div>
+    <div className='flex h-svh w-full'>
+      <div className='flex-1  p-6 '>
+        <div
+          className='w-full h-full bg-white rounded-xl  bg-center bg-cover bg-no-repeat relative'
+          style={{ backgroundImage: `url(${imageFile.src})` }}
+        >
+          <div className='w-full h-full bg-black/50 rounded-xl absolute top-0 left-0 right-0 bottom-0 flex flex-col  justify-between z-10'>
+            <Image src={Logo} alt='Logo' className='mt-8 invert mx-4' />
+            <div className='flex flex-col items-center justify-center gap-2 py-12'>
+              <h2 className='text-white text-3xl font-bold'>
+                Analytics Portal
+              </h2>
+              <p className='text-white text-lg max-w-md text-center'>
+                Lorem ipsum dolor cadet imanu hitoshi utare gabe chim du interi
+                dolor cadet.
+              </p>
             </div>
-          </div>
-
-          {/* Center Content */}
-          <div className='text-center'>
-            <h1 className='text-6xl font-bold mb-6'>Analytics Portal</h1>
-            <p className='text-xl opacity-90 max-w-md mx-auto'>
-              Lorem ipsum dolor cadet imanu hitoshi utare gabe chim du interi
-              dolor cadet.
-            </p>
-          </div>
-
-          {/* Bottom Pagination */}
-          <div className='flex justify-center gap-2'>
-            <div className='w-3 h-3 bg-blue-500 rounded-full'></div>
-            <div className='w-3 h-3 bg-gray-400 rounded-full'></div>
-            <div className='w-3 h-3 bg-gray-400 rounded-full'></div>
           </div>
         </div>
       </div>
+      <div className='flex-1 p-6 items-center justify-center flex my-auto'>
+        <div className='w-full h-full p-6 max-w-[500px]'>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              void form.handleSubmit();
+            }}
+            className='flex flex-col items-center gap-4'
+          >
+            <h1 className='text-2xl font-bold text-black'>Hello Again!</h1>
+            <Button className='font-medium my-4 bg-white text-black border-6 h-[40px] border-black'>
+              Login
+            </Button>
 
-      {/* Right Panel - Login Form */}
-      <div className='w-full lg:w-1/3 bg-white flex items-center justify-center p-8'>
-        <div className='w-full max-w-md'>
-          {/* Title */}
-          <h2 className='text-3xl font-bold text-black text-center mb-8'>
-            Hello Again!
-          </h2>
+            <div className='w-full flex items-center gap-5'>
+              <div className='w-full flex-1 h-[0.5px] bg-gray-500' />
+              <p className='text-sm text-black font-medium'>
+                Log in with your details
+              </p>
+              <div className='w-full flex-1 h-[0.5px] bg-gray-500' />
+            </div>
 
-          {/* Initial Login Button */}
-          <button className='w-full border border-black text-black py-3 px-6 rounded-lg font-medium mb-6 hover:bg-gray-50 transition-colors'>
-            Log In
-          </button>
-
-          {/* Separator */}
-          <div className='flex items-center mb-6'>
-            <div className='flex-1 h-px bg-gray-300'></div>
-            <span className='px-4 text-gray-500 text-sm'>
-              Log in with your details
-            </span>
-            <div className='flex-1 h-px bg-gray-300'></div>
-          </div>
-
-          {/* Login Form */}
-          <form className='space-y-6'>
-            {/* Email Input */}
-            <div>
-              <label className='block text-black font-medium mb-2'>
+            <div className='w-full'>
+              <Label htmlFor='email' className='text-sm text-muted-foreground'>
                 Email Address
-              </label>
-              <div className='relative'>
-                <div className='absolute left-3 top-1/2 transform -translate-y-1/2'>
-                  <svg
-                    className='w-5 h-5 text-gray-400'
-                    fill='none'
-                    stroke='currentColor'
-                    viewBox='0 0 24 24'
-                  >
-                    <path
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      strokeWidth={2}
-                      d='M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z'
-                    />
-                  </svg>
-                </div>
-                <input
-                  type='email'
-                  defaultValue='Johndoe@gmail.com'
-                  className='w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent'
-                />
-              </div>
-            </div>
-
-            {/* Password Input */}
-            <div>
-              <label className='block text-black font-medium mb-2'>
-                Password
-              </label>
-              <div className='relative'>
-                <div className='absolute left-3 top-1/2 transform -translate-y-1/2'>
-                  <svg
-                    className='w-5 h-5 text-gray-400'
-                    fill='none'
-                    stroke='currentColor'
-                    viewBox='0 0 24 24'
-                  >
-                    <path
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      strokeWidth={2}
-                      d='M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z'
-                    />
-                  </svg>
-                </div>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  defaultValue='Johndoe123'
-                  className='w-full pl-12 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent'
-                />
-                <button
-                  type='button'
-                  onClick={() => setShowPassword(!showPassword)}
-                  className='absolute right-3 top-1/2 transform -translate-y-1/2'
-                >
-                  {showPassword ? (
-                    <svg
-                      className='w-5 h-5 text-gray-400'
-                      fill='none'
-                      stroke='currentColor'
-                      viewBox='0 0 24 24'
-                    >
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth={2}
-                        d='M15 12a3 3 0 11-6 0 3 3 0 016 0z'
+              </Label>
+              <form.Field
+                name='email'
+                children={(field) => (
+                  <>
+                    <InputGroup className='w-full text-[14px] h-[50px]'>
+                      <InputGroupInput
+                        placeholder='Enter Your Email'
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
                       />
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth={2}
-                        d='M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z'
-                      />
-                    </svg>
-                  ) : (
-                    <svg
-                      className='w-5 h-5 text-gray-400'
-                      fill='none'
-                      stroke='currentColor'
-                      viewBox='0 0 24 24'
-                    >
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth={2}
-                        d='M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21'
-                      />
-                    </svg>
-                  )}
-                </button>
-              </div>
+                      <InputGroupAddon className='text-muted-foreground'>
+                        <Mail />
+                      </InputGroupAddon>
+                    </InputGroup>
+                    {/* <Input
+                      id='email'
+                      className='w-full text-[14px]'
+                      placeholder='Enter Your Email'
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                    /> */}
+                    <FieldInfo field={field} />
+                  </>
+                )}
+              />
             </div>
-
-            {/* Options */}
-            <div className='flex items-center justify-between'>
-              <label className='flex items-center'>
-                <input
-                  type='checkbox'
-                  checked={keepLoggedIn}
-                  onChange={(e) => setKeepLoggedIn(e.target.checked)}
-                  className='w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 focus:ring-2'
-                />
-                <span className='ml-2 text-black'>Keep me logged in</span>
-              </label>
-              <a href='#' className='text-blue-600 hover:underline'>
-                Forgot password?
-              </a>
-            </div>
-
-            {/* Main Login Button */}
-            <button
-              type='submit'
-              className='w-full bg-red-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center justify-center gap-2'
-            >
-              <svg
-                className='w-5 h-5'
-                fill='none'
-                stroke='currentColor'
-                viewBox='0 0 24 24'
+            <div className='w-full'>
+              <Label
+                htmlFor='password'
+                className='text-sm text-muted-foreground'
               >
-                <path
-                  strokeLinecap='round'
-                  strokeLinejoin='round'
-                  strokeWidth={2}
-                  d='M9 5l7 7-7 7'
-                />
-              </svg>
-              Log In
-            </button>
+                Enter Password
+              </Label>
+              <form.Field
+                name='password'
+                children={(field) => (
+                  <>
+                    <InputGroup className='w-full text-[14px] h-[50px]'>
+                      <InputGroupInput
+                        type={isPasswordVisible ? 'text' : 'password'}
+                        placeholder='Enter Your Password'
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                      />
+                      <InputGroupAddon className='text-muted-foreground'>
+                        <Lock />
+                      </InputGroupAddon>
+                      <InputGroupAddon
+                        align='inline-end'
+                        onClick={() => setIsPasswordVisible(!isPasswordVisible)}
+                      >
+                        {!isPasswordVisible ? <EyeOffIcon /> : <EyeIcon />}
+                      </InputGroupAddon>
+                    </InputGroup>
+                    {/* <PasswordInput
+                      className='w-full text-[14px]'
+                      placeholder='Enter Your Password'
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                    /> */}
+                    <FieldInfo field={field} />
+                  </>
+                )}
+              />
+              <div className='flex justify-between w-full mt-4'>
+                <div className='flex items-center gap-2'>
+                  <input type='checkbox' id='remember' />
+                  <Label htmlFor='remember'>Remember me</Label>
+                </div>
+                <Link href='/reset-password'>
+                  <p className='text-sm hover:underline text-blue-600'>
+                    Forgot Password?
+                  </p>
+                </Link>
+              </div>
+            </div>
+            <form.Subscribe
+              selector={(state) => [state.canSubmit, state.isSubmitting]}
+              children={([canSubmit, isSubmitting]) => (
+                <Button
+                  type='submit'
+                  className='w-full font-medium mt-8 h-[60px]'
+                  disabled={!canSubmit || loginMutation.isPending}
+                >
+                  {loginMutation.isPending || isSubmitting ? (
+                    <Loader2 className='w-4 h-4 animate-spin' />
+                  ) : (
+                    'Sign In'
+                  )}
+                </Button>
+              )}
+            />
           </form>
         </div>
       </div>
     </div>
+    // <div className='flex h-svh flex-col sm:flex-row w-full overflow-hidden'>
+    //   <div className='flex sm:flex-1 bg-slate-600 overflow-hidden relative justify-center items-center p-12 sm:p-0'>
+    //     <Image
+    //       src={imageFile}
+    //       alt='Background'
+    //       className='w-full absolute top-0 left-0 right-0 bottom-0 blur-sm'
+    //       priority
+    //       objectFit='cover'
+    //     />
+    //   </div>
+    //   <div className='flex flex-1 flex-col items-center gap-5 py-10  bg-white'>
+    //     <form
+    //       onSubmit={(e) => {
+    //         e.preventDefault();
+    //         e.stopPropagation();
+    //         void form.handleSubmit();
+    //       }}
+    //       className='flex flex-col items-center gap-4 w-[450px] px-[56px]'
+    //     >
+    //       <h1 className='text-2xl font-bold text-black'>Hello Again!</h1>
+    //       <Button className='font-medium mt-10 bg-white text-black border-2 border-black'>
+    //         Login
+    //       </Button>
+
+    //       <div className='w-full flex items-center gap-2'>
+    //         <div className='w-full flex-1 h-2 bg-black' />
+    //         <p className='text-sm text-muted-foreground'>
+    //           Log in with your details
+    //         </p>
+    //         <div className='w-full flex-1 h-2 bg-black' />
+    //       </div>
+
+    //       <div className='w-full'>
+    //         <Label htmlFor='email' className='text-sm text-muted-foreground'>
+    //           Email Address
+    //         </Label>
+    //         <form.Field
+    //           name='email'
+    //           children={(field) => (
+    //             <>
+    //               <Input
+    //                 id='email'
+    //                 className='w-full text-[14px]'
+    //                 placeholder='Enter Your Email'
+    //                 value={field.state.value}
+    //                 onChange={(e) => field.handleChange(e.target.value)}
+    //               />
+    //               <FieldInfo field={field} />
+    //             </>
+    //           )}
+    //         />
+    //       </div>
+    //       <div className='w-full'>
+    //         <Label htmlFor='password' className='text-sm text-muted-foreground'>
+    //           Enter Password
+    //         </Label>
+    //         <form.Field
+    //           name='password'
+    //           children={(field) => (
+    //             <>
+    //               <PasswordInput
+    //                 className='w-full text-[14px]'
+    //                 placeholder='Enter Your Password'
+    //                 value={field.state.value}
+    //                 onChange={(e) => field.handleChange(e.target.value)}
+    //               />
+    //               <FieldInfo field={field} />
+    //             </>
+    //           )}
+    //         />
+    //         <div className='flex justify-end w-full mt-2'>
+    //           <Link href='/reset-password'>
+    //             <p className='text-sm hover:underline text-primary'>
+    //               Forgot Password?
+    //             </p>
+    //           </Link>
+    //         </div>
+    //       </div>
+    //       <form.Subscribe
+    //         selector={(state) => [state.canSubmit, state.isSubmitting]}
+    //         children={([canSubmit, isSubmitting]) => (
+    //           <Button
+    //             type='submit'
+    //             className='w-full font-medium mt-10'
+    //             disabled={!canSubmit || loginMutation.isPending}
+    //           >
+    //             {loginMutation.isPending || isSubmitting ? (
+    //               <Loader2 className='w-4 h-4 animate-spin' />
+    //             ) : (
+    //               'Sign In'
+    //             )}
+    //           </Button>
+    //         )}
+    //       />
+    //     </form>
+    //   </div>
+    // </div>
   );
 }

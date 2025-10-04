@@ -1,21 +1,44 @@
-import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+'use client';
 import './globals.css';
+import { Abhaya_Libre, Geist_Mono, Poppins } from 'next/font/google';
+import { Toaster } from '@workspace/ui/lib/sonner';
+import { Providers } from '@/src/components/providers';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const fontSans = Poppins({
   subsets: ['latin'],
+  variable: '--font-sans',
+  weight: '400',
+});
+const fontSans600 = Poppins({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  weight: '600',
+});
+const fontSans500 = Poppins({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  weight: '500',
+});
+const fontSans300 = Poppins({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  weight: '300',
 });
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
+const fontMono = Geist_Mono({
   subsets: ['latin'],
+  variable: '--font-mono',
 });
 
-export const metadata: Metadata = {
-  title: 'Saints Community - Analytics Portal',
-  description: 'Saints Community Analytics Portal Login',
-};
+const fontSerif = Abhaya_Libre({
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-serif',
+});
+// export const metadata: Metadata = {
+//   title: 'Saints Community - Analytics Portal',
+//   description: 'Saints Community Analytics Portal Login',
+// };
 
 export default function RootLayout({
   children,
@@ -25,9 +48,10 @@ export default function RootLayout({
   return (
     <html lang='en'>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${fontSans.variable} ${fontMono.variable} ${fontSerif.variable} ${fontSans600.variable} ${fontSans500.variable} ${fontSans300.variable} font-sans antialiased bg-white`}
       >
-        {children}
+        <Providers>{children}</Providers>
+        <Toaster position='top-right' richColors />
       </body>
     </html>
   );
