@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 5 100% 95%;
+    --background: 40 33% 98%;
     --foreground: 5 5% 0%;
     --card: 5 50% 90%;
     --card-foreground: 5 5% 10%;
@@ -79,13 +79,8 @@
   } */
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+body {
+  @apply bg-background text-foreground;
 }
 
 .scrollbar-hide {

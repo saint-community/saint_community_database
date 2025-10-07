@@ -13,7 +13,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!data && !isLoading) {
-      router.push('/login');
+      router.push('/');
     }
   }, [data, router, isLoading]);
 
