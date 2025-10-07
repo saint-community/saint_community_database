@@ -1,8 +1,9 @@
-'use client';
+// 'use client';
 import './globals.css';
 import { Abhaya_Libre, Geist_Mono, Poppins } from 'next/font/google';
 import { Toaster } from '@workspace/ui/lib/sonner';
 import { Providers } from '@/src/components/providers';
+import { Metadata } from 'next';
 
 const fontSans = Poppins({
   subsets: ['latin'],
@@ -35,10 +36,11 @@ const fontSerif = Abhaya_Libre({
   subsets: ['latin'],
   variable: '--font-serif',
 });
-// export const metadata: Metadata = {
-//   title: 'Saints Community - Analytics Portal',
-//   description: 'Saints Community Analytics Portal Login',
-// };
+
+export const metadata: Metadata = {
+  title: 'Saints Community - Analytics Portal',
+  description: 'Saints Community Analytics Portal Login',
+};
 
 export default function RootLayout({
   children,
@@ -48,7 +50,7 @@ export default function RootLayout({
   return (
     <html lang='en'>
       <body
-        className={`${fontSans.variable} ${fontMono.variable} ${fontSerif.variable} ${fontSans600.variable} ${fontSans500.variable} ${fontSans300.variable} font-sans antialiased bg-white`}
+        className={`${fontSans.variable} ${fontMono.variable} ${fontSerif.variable} ${fontSans600.variable} ${fontSans500.variable} ${fontSans300.variable} font-sans antialiased bg-[#fafafa]`}
       >
         <Providers>{children}</Providers>
         <Toaster position='top-right' richColors />

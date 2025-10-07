@@ -13,7 +13,7 @@ export const SideBarTop = () => {
   const { data } = useMe();
 
   return (
-    <div className='bg-white flex-row flex items-center w-full justify-between p-2 sm:p-0'>
+    <div className='flex-row flex items-center w-full justify-between p-2 sm:p-0'>
       <div className='flex items-center gap-4 md:0 ml-4'>
         <Avatar className='sm:w-12 sm:h-12 w-12 h-12'>
           <AvatarImage src='https://github.com/shadcn.png' />
