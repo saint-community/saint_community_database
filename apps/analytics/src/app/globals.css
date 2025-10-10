@@ -121,3 +121,16 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* DatePicker popover background fix */
+[data-radix-popper-content-wrapper] {
+  background: white !important;
+}
+
+.rdp {
+  background: white !important;
+}
+
+[data-radix-popover-content] {
+  background: white !important;
+}

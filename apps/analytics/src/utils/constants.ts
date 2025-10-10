@@ -1,11 +1,13 @@
 export const STORAGE_KEYS = {
   TOKEN: 'token',
+  ADMIN_TOKEN: 'admin_token',
   IS_AUTHENTICATED: 'isAuthenticated',
   USER: 'user',
 };
 
 export const QUERY_PATHS = {
   // account
+  ADMIN_LOGIN: '/api/admin/account/login',
   LOGIN: '/api/account/login',
   REGISTER: '/api/account/create',
   LOGOUT: '/api/account/logout',
@@ -15,6 +17,7 @@ export const QUERY_PATHS = {
   UPDATE_PASSWORD: '/api/account/updatepassword',
   DELETE_ACCOUNT: '/api/account/delete/:id',
   UPDATE_ACCOUNT: '/api/account/update',
+
   // church
   CHURCHES: '/api/churches',
   CHURCH_DETAIL: '/api/church/:id',
@@ -54,11 +57,19 @@ export const QUERY_PATHS = {
   DEPARTMENT_DELETE: '/api/departments/:id',
 
   // prayer groups
-  PRAYER_GROUPS: '/api/prayer-groups',
-  PRAYER_GROUP_DETAIL: '/api/prayer-groups/:id',
-  PRAYER_GROUP_CREATE: '/api/prayer-groups',
-  PRAYER_GROUP_UPDATE: '/api/prayer-groups/:id',
-  PRAYER_GROUP_DELETE: '/api/prayer-groups/:id',
+  PRAYER_GROUP_CREATE: '/api/admin/prayer-group/create',
+  PRAYER_GROUP_LIST: '/api/admin/prayer-group/all',
+  PRAYER_GROUP_RECORDS: '/api/admin/prayer-group/record',
+  PRAYER_GROUP_ATTENDANCE_SUBMITTED: '/api/admin/prayer-group/attendance-submitted',
+  PRAYER_GROUP_ATTENDANCE_APPROVE_ONE: '/api/admin/prayer-group/mark-one-present',
+  PRAYER_GROUP_ATTENDANCE_APPROVE_ALL: '/api/admin/prayer-group/mark-all-present',
+  PRAYER_GROUP_ATTENDANCE_REJECT_ONE: '/api/admin/prayer-group/mark-one-absent',
+  PRAYER_GROUP_ATTENDANCE_REJECT_ALL: '/api/admin/prayer-group/mark-all-absent',
+  PRAYER_GROUP_ADD_PARTICIPANT: '/api/admin/prayer-group/add-member',
+  PRAYER_GROUP_REMOVE_PARTICIPANT: '/api/admin/prayer-group/remove-member',
+  PRAYER_GROUP_UPDATE: '/api/admin/prayer-group/update',
+  PRAYER_GROUP_DELETE: '/api/admin/prayer-group/delete',
+  PRAYER_MEETINGS_CREATE: '/api/admin/prayer-meetings/create',
 
   // statistics
   STATISTICS: '/api/statistics',

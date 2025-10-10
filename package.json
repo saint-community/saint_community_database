@@ -27,6 +27,8 @@
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "date-fns": "^4.1.0",
     "lodash": "^4.17.21",
+    "performance-now": "^2.1.0",
+    "react-charts": "2.0.0-beta.7",
     "zustand": "^5.0.6"
   }
 }

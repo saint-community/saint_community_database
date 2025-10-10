@@ -1,5 +1,5 @@
 import { STORAGE_KEYS, QUERY_PATHS } from '@/src/utils/constants';
-import { ApiCaller } from './init';
+import { AdminApiCaller, ApiCaller } from './init';
 
 export interface LoginResponse {
   error: string;
@@ -10,11 +10,13 @@ export async function loginUser(body: {
   email: string;
   password: string;
 }): Promise<LoginResponse> {
-  const { data } = await ApiCaller.post(QUERY_PATHS.LOGIN, body);
-
-  if (!data.error) {
+  const { data: adminData } = await AdminApiCaller.post(QUERY_PATHS.ADMIN_LOGIN, body);
+  const { data } = await AdminApiCaller.post(QUERY_PATHS.LOGIN, body);
+  
+  if (!data.error && data.token && typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEYS.ADMIN_TOKEN, data.token)
     localStorage.setItem(STORAGE_KEYS.IS_AUTHENTICATED, 'true');
-    localStorage.setItem(STORAGE_KEYS.TOKEN, data.token);
+    localStorage.setItem(STORAGE_KEYS.TOKEN, adminData.access_token);
     localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(data.data));
   }
 
@@ -33,7 +35,7 @@ export async function registerUser(body: {
   error: string;
   message: string;
 }> {
-  const { data } = await ApiCaller.post(QUERY_PATHS.REGISTER, body);
+  const { data } = await AdminApiCaller.post(QUERY_PATHS.REGISTER, body);
   return data;
 }
 
@@ -41,7 +43,7 @@ export async function resetPassword(body: { email: string }): Promise<{
   error: string;
   message: string;
 }> {
-  const { data } = await ApiCaller.post(QUERY_PATHS.RESET_PASSWORD, body);
+  const { data } = await AdminApiCaller.post(QUERY_PATHS.RESET_PASSWORD, body);
   return data;
 }
 
@@ -53,7 +55,7 @@ export async function updatePassword(body: {
   error: string;
   message: string;
 }> {
-  const { data } = await ApiCaller.post(QUERY_PATHS.UPDATE_PASSWORD, body);
+  const { data } = await AdminApiCaller.post(QUERY_PATHS.UPDATE_PASSWORD, body);
   return data;
 }
 
@@ -64,18 +66,18 @@ export async function updateAccount(body: {
   error?: string;
   message?: string;
 }> {
-  const { data } = await ApiCaller.put(QUERY_PATHS.UPDATE_ACCOUNT, body);
+  const { data } = await AdminApiCaller.put(QUERY_PATHS.UPDATE_ACCOUNT, body);
   return data;
 }
 
 export const logoutUser = async () => {
-  await ApiCaller.get(QUERY_PATHS.LOGOUT);
+  await AdminApiCaller.get(QUERY_PATHS.LOGOUT);
   localStorage.removeItem(STORAGE_KEYS.IS_AUTHENTICATED);
   localStorage.removeItem(STORAGE_KEYS.TOKEN);
 };
 
 export const getAccounts = async (page: number) => {
-  const { data } = await ApiCaller.get(QUERY_PATHS.ACCOUNTS, {
+  const { data } = await AdminApiCaller.get(QUERY_PATHS.ACCOUNTS, {
     params: {
       page,
     },
@@ -84,14 +86,14 @@ export const getAccounts = async (page: number) => {
 };
 
 export const getAccountById = async (id: string) => {
-  const { data } = await ApiCaller.get(
+  const { data } = await AdminApiCaller.get(
     QUERY_PATHS.ACCOUNT_DETAIL.replace(':id', id)
   );
   return data || {};
 };
 
 export const removeAccount = async (id: number) => {
-  const { data } = await ApiCaller.delete(
+  const { data } = await AdminApiCaller.delete(
     QUERY_PATHS.DELETE_ACCOUNT.replace(':id', id.toString())
   );
   return data;
