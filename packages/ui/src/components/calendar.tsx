@@ -18,7 +18,7 @@ function Calendar({
   return (
     <DayPicker
       fromDate={new Date(1950, 0, 1)}
-      toDate={new Date()}
+      toDate={new Date(3030, 0, 1)}
       fromYear={1950}
       showOutsideDays={showOutsideDays}
 
