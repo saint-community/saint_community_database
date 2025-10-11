@@ -5,17 +5,17 @@ import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { AppSidebar } from '@/src/components/app-sidebar';
 import { MainContent } from '@/src/components/main-content';
-import { useMe } from '@/src/hooks/useMe';
+import { useAuth, useMe } from '@/src/hooks/useMe';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { data, isLoading } = useMe();
+  // const { data, isLoading } = useMe();
   const router = useRouter();
-
+ const { isLoading, isLoggedIn}  = useAuth()
   useEffect(() => {
-    if (!data && !isLoading) {
+    if (!isLoggedIn && !isLoading) {
       router.push('/');
     }
-  }, [data, router, isLoading]);
+  }, [isLoggedIn, router, isLoading]);
 
   if (isLoading) {
     return (

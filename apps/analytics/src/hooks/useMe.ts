@@ -1,4 +1,5 @@
 import { ROLES, STORAGE_KEYS } from '@/src/utils/constants';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 // import { useStatistics } from './statistics';
 
@@ -46,4 +47,88 @@ export const useMe = () => {
   const isAdmin = data?.role === ROLES.ADMIN || data?.role === ROLES.PASTOR;
 
   return { data, isLoading: isLoading || isStatisticsLoading, isAdmin };
+};
+
+
+export const getCurrentUser = (): User | null => {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    const userStr = localStorage.getItem(STORAGE_KEYS.USER);
+    return userStr ? JSON.parse(userStr) : null;
+  } catch {
+    return null;
+  }
+};
+
+export const isAuthenticated = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(STORAGE_KEYS.IS_AUTHENTICATED) === 'true';
+};
+
+export const getToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(STORAGE_KEYS.TOKEN);
+};
+
+
+export const useAuth = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAuth = () => {
+      const authenticated = isAuthenticated();
+      const currentUser = getCurrentUser();
+      
+      setIsLoggedIn(authenticated);
+      setUser(currentUser);
+      setIsLoading(false);
+    };
+
+    checkAuth();
+
+    // Listen for storage changes (logout from another tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'isAuthenticated' || e.key === 'user') {
+        checkAuth();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  return {
+    user,
+    isLoggedIn,
+    isLoading,
+  };
+};
+
+export const useRequireAuth = () => {
+  const { isLoggedIn, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !isLoggedIn) {
+      router.push('/login');
+    }
+  }, [isLoggedIn, isLoading, router]);
+
+  return { isLoggedIn, isLoading };
+};
+
+export const useRedirectIfAuthenticated = () => {
+  const { isLoggedIn, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && isLoggedIn) {
+      router.push('/d');
+    }
+  }, [isLoggedIn, isLoading, router]);
+
+  return { isLoggedIn, isLoading };
 };
