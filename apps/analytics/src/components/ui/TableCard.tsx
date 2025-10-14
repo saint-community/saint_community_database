@@ -291,7 +291,7 @@ export function TableCard({
             <ListFilter className='text-primary' size={24} />
             Filter by
           </div> */}
-          {action}
+          {/* {action} */}
         </div>
         <div className='rounded-md border'>
           <Table>
