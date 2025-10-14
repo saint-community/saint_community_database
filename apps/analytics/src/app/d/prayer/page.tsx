@@ -73,14 +73,7 @@ export default function PrayerPage() {
               onViewDetails={handleViewDetails}
             />
 
-            {/* Pagination */}
-            {/* <div className="flex justify-center">
-              <Pagination 
-                currentPage={currentPage}
-                totalPages={10}
-                onPageChange={setCurrentPage}
-              />
-            </div> */}
+          
           </div>
         </>
       ) : (

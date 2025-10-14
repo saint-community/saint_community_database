@@ -45,8 +45,8 @@ export function PrayerMeetingsTable({
         },
         {
           name: "date",
-          title: "Date & Time",
-          compoundKey: "date,time",
+          title: "Time",
+          compoundKey: "time",
         },
         {
           name: "church",
