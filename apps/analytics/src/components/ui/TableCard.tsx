@@ -301,12 +301,10 @@ export function TableCard({
                   {headerGroup.headers.map((header) => {
                     return (
                       <TableHead key={header.id} className='text-white'>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
+                        {!header.isPlaceholder && flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                       </TableHead>
                     );
                   })}
