@@ -74,6 +74,26 @@ export const QUERY_PATHS = {
   // statistics
   STATISTICS: '/api/statistics',
   WORKER_STATISTICS: '/api/statistics/workers',
+
+  // study groups (assignments)
+  STUDY_GROUPS: '/api/admin/study-group',
+  STUDY_GROUP_CREATE: '/api/admin/study-group',
+  STUDY_GROUP_UPDATE: '/api/admin/study-group/:id',
+  STUDY_GROUP_DELETE: '/api/admin/study-group/:id',
+  STUDY_GROUP_DETAIL: '/api/admin/study-group/:id',
+  STUDY_GROUP_CURRENT_WEEK: '/api/admin/study-group/current-week',
+  STUDY_GROUP_WEEKLY: '/api/admin/study-group/weekly/:year',
+
+  // study group submissions
+  SUBMISSIONS: '/api/admin/submissions',
+  SUBMISSIONS_REVIEW: '/api/admin/submissions/review',
+  SUBMISSIONS_STATS: '/api/admin/submissions/admin/stats',
+  SUBMISSIONS_HISTORY: '/api/admin/submissions/history/filtered',
+  SUBMISSION_DETAIL: '/api/admin/submissions/:id',
+  SUBMISSION_GRADE: '/api/admin/submissions/:id/grade',
+  SUBMISSION_REQUEST_REDO: '/api/admin/submissions/:id/request-redo',
+  SUBMISSIONS_BULK_GRADE: '/api/admin/submissions/bulk/grade',
+  SUBMISSIONS_BULK_REDO: '/api/admin/submissions/bulk/request-redo',
 };
 
 export const COUNTRIES = Array.from(

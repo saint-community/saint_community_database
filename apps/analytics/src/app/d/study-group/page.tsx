@@ -1,12 +1,13 @@
 import { Button } from '@/@workspace/ui/components/button';
 import AssignmentsTab from '@/src/components/pages/study-group/Assignments';
+import SubmissionsTab from '@/src/components/pages/study-group/Submissions';
+import HistoryTab from '@/src/components/pages/study-group/History';
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from '@workspace/ui/components/tabs';
-import { Filter } from 'lucide-react';
 
 export default function StudyGroupPage() {
   return (
@@ -33,22 +34,15 @@ export default function StudyGroupPage() {
               History
             </TabsTrigger>
           </TabsList>
-          <Button
-            className='p-2 text-xl  px-4 bg-white text-black h-[56px]'
-            variant='secondary'
-          >
-            <Filter className='size-6' />
-            Filter
-          </Button>
         </div>
         <TabsContent value='assignments' className='pt-12'>
           <AssignmentsTab />
         </TabsContent>
         <TabsContent value='submissions' className='pt-12'>
-          Change your password here.
+          <SubmissionsTab />
         </TabsContent>
         <TabsContent value='history' className='pt-12'>
-          History here.
+          <HistoryTab />
         </TabsContent>
       </Tabs>
     </div>
