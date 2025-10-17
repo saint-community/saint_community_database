@@ -1,6 +1,6 @@
 'use client';
 
-import { ApiCaller } from './init';
+import { MemberApiCaller } from './init';
 import { QUERY_PATHS } from '@/utils/constants';
 
 export interface AdminPrayerGroupMeetingPayload {
@@ -12,14 +12,16 @@ export interface AdminPrayerGroupMeetingPayload {
 }
 
 export const getAdminPrayerGroupMeetings = async () => {
-  const { data } = await ApiCaller.get(QUERY_PATHS.ADMIN_PRAYER_GROUP_ALL);
-  return data || [];
+  const { data } = await MemberApiCaller.get(
+    QUERY_PATHS.ADMIN_PRAYER_GROUP_ALL
+  );
+  return data?.data || [];
 };
 
 export const createAdminPrayerGroupMeeting = async (
   body: AdminPrayerGroupMeetingPayload
 ) => {
-  const { data } = await ApiCaller.post(
+  const { data } = await MemberApiCaller.post(
     QUERY_PATHS.ADMIN_PRAYER_GROUP_CREATE,
     body
   );
@@ -30,7 +32,7 @@ export const updateAdminPrayerGroupMeeting = async (
   meetingId: string,
   body: AdminPrayerGroupMeetingPayload
 ) => {
-  const { data } = await ApiCaller.patch(
+  const { data } = await MemberApiCaller.patch(
     QUERY_PATHS.ADMIN_PRAYER_GROUP_UPDATE.replace(':id', meetingId),
     body
   );
@@ -38,7 +40,7 @@ export const updateAdminPrayerGroupMeeting = async (
 };
 
 export const deleteAdminPrayerGroupMeeting = async (meetingId: string) => {
-  const { data } = await ApiCaller.delete(
+  const { data } = await MemberApiCaller.delete(
     QUERY_PATHS.ADMIN_PRAYER_GROUP_DELETE.replace(':id', meetingId)
   );
   return data || {};

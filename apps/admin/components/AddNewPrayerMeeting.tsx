@@ -1,7 +1,6 @@
 'use client';
 
 import { Button } from '@workspace/ui/components/button';
-import { Input } from '@workspace/ui/components/input';
 import { Label } from '@workspace/ui/components/label';
 import { Modal } from '@workspace/ui/components/modal';
 import {
@@ -25,10 +24,13 @@ import { useWorkerOption } from '@/hooks/workers';
 import {
   createAdminPrayerGroupMeeting,
   updateAdminPrayerGroupMeeting,
+  AdminPrayerGroupMeetingPayload,
 } from '@/services/admin_prayer_group';
-import { MEETING_DAYS, QUERY_PATHS } from '@/utils/constants';
-
-const periodOptions = ['Morning', 'Afternoon', 'Evening'];
+import {
+  MEETING_DAYS,
+  PRAYER_GROUP_PERIODS,
+  QUERY_PATHS,
+} from '@/utils/constants';
 
 const formSchema = z.object({
   prayergroupDay: z
@@ -42,7 +44,7 @@ const formSchema = z.object({
 
 type AddNewPrayerMeetingProps = {
   mode?: 'create' | 'edit';
-  prayerGroup?: any;
+  prayerGroup?: AdminPrayerGroupMeetingPayload & { _id?: string };
   trigger?: ReactNode;
   onSuccess?: () => void;
 };
@@ -68,7 +70,7 @@ export function AddNewPrayerMeeting({
       period: prayerGroup?.period || '',
       startTime: prayerGroup?.start_time || '',
       endTime: prayerGroup?.end_time || '',
-      prayergroupLeader: prayerGroup?.prayergroup_leader?.toString?.() || '',
+      prayergroupLeader: prayerGroup?.prayergroup_leader || '',
     }),
     [prayerGroup]
   );
@@ -81,6 +83,7 @@ export function AddNewPrayerMeeting({
       queryClient.invalidateQueries({
         queryKey: [QUERY_PATHS.ADMIN_PRAYER_GROUP_ALL],
       });
+      form.reset();
       onSuccess?.();
     },
     onError: () => {
@@ -89,8 +92,13 @@ export function AddNewPrayerMeeting({
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: any }) =>
-      updateAdminPrayerGroupMeeting(id, payload),
+    mutationFn: ({
+      _id,
+      payload,
+    }: {
+      _id: string;
+      payload: AdminPrayerGroupMeetingPayload;
+    }) => updateAdminPrayerGroupMeeting(_id, payload),
     onSuccess: () => {
       toast.success('Prayer meeting updated');
       setOpen(false);
@@ -111,19 +119,24 @@ export function AddNewPrayerMeeting({
       onSubmit: formSchema,
     },
     onSubmit: async ({ value }) => {
+      const leaderName =
+        workerOptions?.find(
+          (worker: { value: string; label: string }) =>
+            worker.value === value.prayergroupLeader
+        )?.label ?? value.prayergroupLeader;
+
       const payload = {
-        // church_id: user?.church_id,
         prayergroup_day: value.prayergroupDay,
         period: value.period,
         start_time: value.startTime,
         end_time: value.endTime,
-        prayergroup_leader: value.prayergroupLeader,
+        prayergroup_leader: leaderName,
       };
 
-      if (isEdit && prayerGroup?.id) {
-        updateMutation.mutate({ id: String(prayerGroup.id), payload });
+      if (isEdit && prayerGroup?._id) {
+        updateMutation.mutate({ _id: prayerGroup._id, payload });
       } else {
-        createMutation.mutate(payload as any);
+        createMutation.mutate(payload);
       }
     },
   });
@@ -204,9 +217,9 @@ export function AddNewPrayerMeeting({
                     <SelectValue placeholder='Select period' />
                   </SelectTrigger>
                   <SelectContent>
-                    {periodOptions.map((period) => (
-                      <SelectItem key={period} value={period.toLowerCase()}>
-                        {period}
+                    {PRAYER_GROUP_PERIODS.map((period) => (
+                      <SelectItem key={period.value} value={period.value}>
+                        {period.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -269,11 +282,13 @@ export function AddNewPrayerMeeting({
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    {(workerOptions || []).map((worker: any) => (
-                      <SelectItem key={worker.value} value={worker.value}>
-                        {worker.label}
-                      </SelectItem>
-                    ))}
+                    {workerOptions?.map(
+                      (worker: { value: string; label: string }) => (
+                        <SelectItem key={worker.value} value={worker.value}>
+                          {worker.label}
+                        </SelectItem>
+                      )
+                    )}
                   </SelectContent>
                 </Select>
                 <FieldInfo field={field} />

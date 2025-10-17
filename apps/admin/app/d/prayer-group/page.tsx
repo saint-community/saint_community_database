@@ -7,6 +7,7 @@ import { useAdminPrayerGroupMeetings } from '@/hooks/admin_prayer_groups';
 import { useStatistics } from '@/hooks/statistics';
 import { useMe } from '@/hooks/useMe';
 import { ROLES, QUERY_PATHS } from '@/utils/constants';
+import { AdminPrayerGroupMeetingPayload } from '@/services/admin_prayer_group';
 import { Button } from '@workspace/ui/components/button';
 import { Badge } from '@workspace/ui/components/badge';
 import {
@@ -23,6 +24,12 @@ import { useModalStore } from '@/store';
 import { deleteAdminPrayerGroupMeeting } from '@/services/admin_prayer_group';
 import { toast } from '@workspace/ui/lib/sonner';
 
+type PrayerGroupMeeting = AdminPrayerGroupMeetingPayload & {
+  _id: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export default function Page() {
   const { data: user } = useMe();
   const { data: prayerGroups } = useAdminPrayerGroupMeetings();
@@ -30,13 +37,15 @@ export default function Page() {
   const queryClient = useQueryClient();
   const openAlertModal = useModalStore(({ openAlertModal }) => openAlertModal);
 
+  const prayerGroupList = (prayerGroups || []) as PrayerGroupMeeting[];
+
   const isAdmin =
     user?.role === ROLES.ADMIN ||
     user?.role === ROLES.PASTOR ||
     user?.role === ROLES.CHURCH_PASTOR;
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteAdminPrayerGroupMeeting(id),
+    mutationFn: (_id: string) => deleteAdminPrayerGroupMeeting(_id),
     onSuccess: () => {
       toast.success('Prayer meeting deleted');
       queryClient.invalidateQueries({
@@ -48,38 +57,39 @@ export default function Page() {
     },
   });
 
-  const handleDelete = (id?: string) => {
-    if (!id) return;
+  const handleDelete = (_id?: string) => {
+    if (!_id) return;
     openAlertModal({
       title: 'Delete prayer meeting',
       description: 'Are you sure you want to delete this prayer meeting?',
       okText: 'Yes, delete',
-      onConfirm: () => deleteMutation.mutate(id),
+      onConfirm: () => deleteMutation.mutate(_id),
     });
   };
 
-  const getDisplayTime = (pg: any) => {
-    if (pg?.start_time && pg?.end_time) {
-      return `${pg.start_time} - ${pg.end_time}`;
-    }
+  const formatTime = (time?: string) => {
+    if (!time) return '';
 
-    if (pg?.schedule) {
-      return pg.schedule;
-    }
+    const [hourStr, minuteStr = '00'] = time.split(':');
+    const hour24 = Number(hourStr);
+    const minute = Number(minuteStr);
 
-    if (pg?.period) {
-      return pg.period;
-    }
+    if (Number.isNaN(hour24)) return time;
 
-    return 'Time not set';
+    const period = hour24 >= 12 ? 'pm' : 'am';
+    const hour12 = ((hour24 + 11) % 12) + 1;
+    const minutesPart = minute === 0 ? '' : `:${minuteStr.padStart(2, '0')}`;
+
+    return `${hour12}${minutesPart}${period}`;
   };
 
-  const getPeriodBadge = (pg: any) => {
-    if (pg?.period && pg?.period !== getDisplayTime(pg)) {
-      return pg.period.toLowerCase();
-    }
-    return null;
-  };
+  const getDisplayTime = (pg: PrayerGroupMeeting) =>
+    pg?.start_time && pg?.end_time
+      ? `${formatTime(pg.start_time)} - ${formatTime(pg.end_time)}`
+      : 'Time not set';
+
+  const getLeaderName = (name?: string) =>
+    name?.replace(/\s*\(.*/, '').trim() || 'Prayer Leader';
 
   if (user && !isAdmin) {
     redirect('/d/cells');
@@ -101,8 +111,7 @@ export default function Page() {
               },
               {
                 title: 'Active Prayer Groups:',
-                value:
-                  prayerGroups?.filter((pg: any) => pg.active)?.length || 0,
+                value: prayerGroupList.length || 0,
                 icon: <Clock size={24} className='stroke-red-500' />,
               },
               {
@@ -123,24 +132,29 @@ export default function Page() {
         </div>
 
         <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-          {(prayerGroups || []).map((pg: any) => {
+          {prayerGroupList.map((pg) => {
             const displayTime = getDisplayTime(pg);
-            const periodBadge = getPeriodBadge(pg);
+            const periodBadge = pg.period?.toLowerCase() || null;
 
             return (
-              <Card
-                key={pg.id || pg.day}
-                className='bg-white shadow-md border-0'
-              >
+              <Card key={pg._id} className='bg-white shadow-md border-0'>
                 <CardHeader className='flex flex-row items-start justify-between gap-3'>
                   <div className='space-y-3'>
                     <CardTitle className='text-xl capitalize font-medium'>
-                      {pg?.prayergroup_day || pg?.day || 'Day'}
+                      {pg?.prayergroup_day || 'Day'}
                     </CardTitle>
                     {periodBadge && (
                       <Badge
                         variant='secondary'
-                        className='bg-amber-100 text-amber-800 px-2.5 py-0.5 text-sm rounded-full font-normal'
+                        className={`px-2.5 py-0.5 text-sm rounded-full font-normal text-foreground ${
+                          periodBadge === 'morning'
+                            ? 'bg-[#F3BDBC]'
+                            : periodBadge === 'afternoon'
+                              ? 'bg-[#D9E1FF]'
+                              : periodBadge === 'evening'
+                                ? 'bg-[#FFEABA]'
+                                : 'bg-amber-100'
+                        }`}
                       >
                         {periodBadge}
                       </Badge>
@@ -148,14 +162,9 @@ export default function Page() {
                   </div>
                   <div className='flex items-center gap-2 text-amber-700'>
                     <AddNewPrayerMeeting
-                      key={pg.id || pg.day}
+                      key={pg._id}
                       mode='edit'
                       prayerGroup={pg}
-                      onSuccess={() =>
-                        queryClient.invalidateQueries({
-                          queryKey: [QUERY_PATHS.PRAYER_GROUPS],
-                        })
-                      }
                       trigger={
                         <Button
                           variant='ghost'
@@ -172,7 +181,7 @@ export default function Page() {
                       size='icon'
                       className='h-9 w-9 rounded-full text-amber-700 hover:bg-amber-50 hover:text-amber-800'
                       aria-label='Delete prayer meeting'
-                      onClick={() => handleDelete(pg?.id)}
+                      onClick={() => handleDelete(pg?._id)}
                     >
                       <Trash2 className='h-5 w-5' />
                     </Button>
@@ -183,7 +192,7 @@ export default function Page() {
                     <User className='h-5 w-5 text-amber-600' />
                     <div>
                       <div className='text-base text-foreground'>
-                        {pg?.prayergroup_leader || 'Prayer Leader'}
+                        {getLeaderName(pg?.prayergroup_leader)}
                       </div>
                       <CardDescription className='text-xs'>
                         Prayer Leader

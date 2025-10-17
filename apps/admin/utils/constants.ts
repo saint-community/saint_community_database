@@ -105,3 +105,9 @@ export const MEETING_DAYS = [
   { value: '6', label: 'Friday' },
   { value: '7', label: 'Saturday' },
 ];
+
+export const PRAYER_GROUP_PERIODS = [
+  { value: 'morning', label: 'Morning' },
+  { value: 'afternoon', label: 'Afternoon' },
+  { value: 'evening', label: 'Evening' },
+];
