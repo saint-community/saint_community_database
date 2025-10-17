@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { usePrayerMeetings } from "@/hooks/usePrayerGroups";
 import { formatPrayerMeetingForTable } from "@/services/prayerGroup";
 import { TableCard } from "./TableCard";
@@ -17,7 +18,7 @@ export function PrayerMeetingsTable({
   onViewDetails,
   churchId,
   prayerGroupId,
-}: PrayerMeetingsTableProps) {
+}: PrayerMeetingsTableProps): React.JSX.Element {
   const {
     data: prayerMeetingsData,
     isLoading,

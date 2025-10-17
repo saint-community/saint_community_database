@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { Plus, Heart } from 'lucide-react';
 import { cn } from '@/libutils';
 
@@ -8,7 +9,7 @@ interface GenerateCodeButtonProps {
   onClick?: () => void;
 }
 
-export function GenerateCodeButton({ className, onClick }: GenerateCodeButtonProps) {
+export function GenerateCodeButton({ className, onClick }: GenerateCodeButtonProps): React.JSX.Element {
   return (
     <button
       onClick={onClick}

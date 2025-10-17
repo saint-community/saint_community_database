@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { useState } from 'react';
 import { cn } from '@/libutils';
 import { TableCard } from './TableCard';
@@ -65,7 +66,7 @@ const mockRequests: AttendanceRequest[] = [
 export function PrayerGroupAttendanceApproval({ 
   className, 
   requests = mockRequests 
-}: PrayerGroupAttendanceApprovalProps) {
+}: PrayerGroupAttendanceApprovalProps): React.JSX.Element {
   const [currentPage, setCurrentPage] = useState(1);
 
   const handleApprove = (id: string) => {

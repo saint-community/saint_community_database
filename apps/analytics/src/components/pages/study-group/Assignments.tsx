@@ -1,4 +1,5 @@
 'use client';
+import * as React from 'react';
 import { Button } from '@/@workspace/ui/components/button';
 import { Card, CardContent } from '@/@workspace/ui/components/card';
 import { Badge } from '@/@workspace/ui/components/badge';
@@ -6,7 +7,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Plus, Filter, X, Calendar, ChevronDown, ChevronUp, Edit, Trash2, ExternalLink, Star, Sparkles, Diamond } from 'lucide-react';
 import { studyGroupApi, StudyGroup, CreateStudyGroupDto, UpdateStudyGroupDto, mapStatusToBackend, mapStatusToFrontend } from '@/src/services/studyGroup';
 
-function CreateAssignmentModal({ isOpen, onClose, onSubmit }: { isOpen: boolean; onClose: () => void; onSubmit: (data: CreateStudyGroupDto) => Promise<void> }) {
+function CreateAssignmentModal({ isOpen, onClose, onSubmit }: { isOpen: boolean; onClose: () => void; onSubmit: (data: CreateStudyGroupDto) => Promise<void> }): React.JSX.Element | null {
   const [formData, setFormData] = useState({
     title: '',
     titleSummary: '',
@@ -209,7 +210,7 @@ function CreateAssignmentModal({ isOpen, onClose, onSubmit }: { isOpen: boolean;
   );
 }
 
-function EmptyState() {
+function EmptyState(): React.JSX.Element {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4">
       <div className="relative mb-8">
@@ -247,7 +248,7 @@ function EmptyState() {
   );
 }
 
-function AssignmentCard({ assignment, onUpdate, onDelete }: { assignment: StudyGroup; onUpdate: (id: string, data: UpdateStudyGroupDto) => Promise<void>; onDelete: (id: string) => Promise<void> }) {
+function AssignmentCard({ assignment, onUpdate, onDelete }: { assignment: StudyGroup; onUpdate: (id: string, data: UpdateStudyGroupDto) => Promise<void>; onDelete: (id: string) => Promise<void> }): React.JSX.Element {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const getStatusBadge = (status: string) => {
@@ -357,7 +358,7 @@ function AssignmentCard({ assignment, onUpdate, onDelete }: { assignment: StudyG
   );
 }
 
-function FilterDropdown({ onFilterChange }: { onFilterChange: (filter: string) => void }) {
+function FilterDropdown({ onFilterChange }: { onFilterChange: (filter: string) => void }): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState('all');
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -419,7 +420,7 @@ function FilterDropdown({ onFilterChange }: { onFilterChange: (filter: string) =
   );
 }
 
-function Pagination({ currentPage, totalPages, onPageChange }: { currentPage: number; totalPages: number; onPageChange: (page: number) => void }) {
+function Pagination({ currentPage, totalPages, onPageChange }: { currentPage: number; totalPages: number; onPageChange: (page: number) => void }): React.JSX.Element | null {
   const getVisiblePages = () => {
     const delta = 2;
     const range = [];
@@ -486,7 +487,7 @@ function Pagination({ currentPage, totalPages, onPageChange }: { currentPage: nu
   );
 }
 
-export default function AssignmentsTab() {
+export default function AssignmentsTab(): React.JSX.Element {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [hasAssignments, setHasAssignments] = useState(true); // Set to false to show empty state
   const [currentPage, setCurrentPage] = useState(1);

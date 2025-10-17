@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { useMemo } from 'react';
 import { Calendar, ChevronDown } from 'lucide-react';
 import { cn } from '@/libutils';
@@ -33,7 +34,7 @@ const chartConfig = {
   },
 };
 
-export function PrayerChart({ className }: PrayerChartProps) {
+export function PrayerChart({ className }: PrayerChartProps): React.JSX.Element {
   const data = useMemo(() => [
     { week: 'Week 1', value: 85 },
     { week: 'Week 2', value: 15 },

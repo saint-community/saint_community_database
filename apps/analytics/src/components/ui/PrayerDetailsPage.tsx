@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { AddParticipantModal } from "./AddParticipantModal";
@@ -47,7 +48,7 @@ interface PrayerDetailsPageProps {
 export default function PrayerDetailsPage({
   prayerGroupId: id,
   className,
-}: PrayerDetailsPageProps) {
+}: PrayerDetailsPageProps): React.JSX.Element {
   const searchParams = useParams();
   const prayergroup_id = searchParams.id as string;
   const router = useRouter();

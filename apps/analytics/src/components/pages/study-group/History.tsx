@@ -1,4 +1,5 @@
 'use client';
+import * as React from 'react';
 import { Button } from '@/@workspace/ui/components/button';
 import { Card, CardContent } from '@/@workspace/ui/components/card';
 import { Badge } from '@/@workspace/ui/components/badge';
@@ -79,7 +80,7 @@ const mockHistorySubmissions = [
   }
 ];
 
-function FilterModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+function FilterModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }): React.JSX.Element | null {
   const [searchTerm, setSearchTerm] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -193,7 +194,7 @@ function FilterModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
   );
 }
 
-function EmptyState() {
+function EmptyState(): React.JSX.Element {
   return (
     <div className="flex flex-col items-center justify-center py-20 px-4">
       {/* Decorative Elements */}
@@ -233,7 +234,7 @@ function EmptyState() {
   );
 }
 
-function HistoryCard({ submission }: { submission: any }) {
+function HistoryCard({ submission }: { submission: any }): React.JSX.Element {
   return (
     <Card className="mb-4 hover:shadow-md transition-shadow">
       <CardContent className="p-6">
@@ -285,7 +286,7 @@ function HistoryCard({ submission }: { submission: any }) {
   );
 }
 
-export default function HistoryTab() {
+export default function HistoryTab(): React.JSX.Element {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [hasHistory, setHasHistory] = useState(true); // Set to true to show history cards
   const [historyData, setHistoryData] = useState<StudyGroupSubmission[]>([]);

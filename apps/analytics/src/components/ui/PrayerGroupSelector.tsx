@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/libutils';
 
@@ -13,7 +14,7 @@ export function PrayerGroupSelector({
   className, 
   value = "Friday Morning",
   onChange 
-}: PrayerGroupSelectorProps) {
+}: PrayerGroupSelectorProps): React.JSX.Element {
   return (
     <div className={cn("relative", className)}>
       <button className="flex items-center justify-between gap-2 px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors w-full max-w-[319px]">

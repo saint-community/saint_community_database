@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useState, useEffect, useMemo } from "react";
 import { X, UserPlus, Loader2, CheckCircle } from "lucide-react";
 import { cn } from "@/libutils";
@@ -62,7 +63,7 @@ export function AddParticipantModal({
   onSave,
   prayerGroupId,
   className,
-}: AddParticipantModalProps) {
+}: AddParticipantModalProps): React.JSX.Element {
   const [showSuccess, setShowSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const queryClient = useQueryClient();
@@ -159,7 +160,7 @@ export function AddParticipantModal({
     onClose();
   };
 
-  if (!isOpen) return null;
+  if (!isOpen) return <></>;
 
   return (
     <div className="fixed inset-0 bg-black/30 bg-opacity-50 flex items-center justify-center z-50 p-4">

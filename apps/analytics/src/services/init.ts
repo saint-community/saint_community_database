@@ -26,7 +26,7 @@ import axios from 'axios';
 import { STORAGE_KEYS } from '@/utils/constants';
 
 const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+  process.env.NEXT_PUBLIC_API_URL || 'https://memberapi.lwmportal.com';
 
 export const ApiCaller = axios.create({
   baseURL: API_URL,
@@ -62,7 +62,7 @@ ApiCaller.interceptors.response.use(
 );
 
 const ADMIN_URL =
-  process.env.NEXT_PUBLIC_ADMIN_URL || 'http://localhost:3000';
+  process.env.NEXT_PUBLIC_ADMIN_URL || 'https://staging.lwmportal.com';
 
 export const AdminApiCaller = axios.create({
   baseURL: ADMIN_URL,
