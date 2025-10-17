@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { cn } from '@/libutils';
 
 interface ActivityTabsProps {
@@ -12,7 +13,7 @@ export function ActivityTabs({
   className, 
   activeTab = 'prayer',
   onTabChange 
-}: ActivityTabsProps) {
+}: ActivityTabsProps): React.JSX.Element {
   return (
     <div className={cn(
       'bg-gray-900 rounded-lg p-2 inline-flex',

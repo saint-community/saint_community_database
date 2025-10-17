@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/libutils';
 
@@ -15,7 +16,7 @@ export function Pagination({
   currentPage = 1,
   totalPages = 10,
   onPageChange 
-}: PaginationProps) {
+}: PaginationProps): React.JSX.Element {
   const pages = [];
   
   // Show first few pages

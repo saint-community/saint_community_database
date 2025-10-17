@@ -43,7 +43,7 @@ export const metadata: Metadata = {
   description: 'Saints Community Analytics Portal Login',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: { children: React.ReactNode }): React.JSX.Element {
   return (
     <html lang="en">
       <body

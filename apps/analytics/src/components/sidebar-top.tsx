@@ -1,4 +1,5 @@
 'use client';
+import * as React from 'react';
 import { usePathname } from 'next/navigation';
 import { Bell, Settings } from 'lucide-react';
 import {
@@ -8,7 +9,7 @@ import {
 } from '@workspace/ui/components/avatar';
 import { useMe } from '@/src/hooks/useMe';
 
-export const SideBarTop = () => {
+export const SideBarTop = (): React.JSX.Element => {
   const pathname = usePathname();
   // const { data } = useMe();
   const data = {}

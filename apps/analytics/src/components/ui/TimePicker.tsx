@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useState } from "react";
 import { Clock } from "lucide-react";
 import { cn } from "@/libutils";
@@ -17,7 +18,7 @@ interface TimePickerProps {
   placeholder?: string;
 }
 
-export function TimePicker({ value, onChange, className, placeholder = "Select time" }: TimePickerProps) {
+export function TimePicker({ value, onChange, className, placeholder = "Select time" }: TimePickerProps): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
 
   // Generate time options (every 15 minutes)

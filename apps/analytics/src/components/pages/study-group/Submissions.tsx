@@ -1,4 +1,5 @@
 'use client';
+import * as React from 'react';
 import { Button } from '@/@workspace/ui/components/button';
 import { Card, CardContent } from '@/@workspace/ui/components/card';
 import { Badge } from '@/@workspace/ui/components/badge';
@@ -102,7 +103,7 @@ const mockSubmissions = [
   }
 ];
 
-function FilterDropdown({ onFilterChange }: { onFilterChange: (filter: string) => void }) {
+function FilterDropdown({ onFilterChange }: { onFilterChange: (filter: string) => void }): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState('all');
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -165,16 +166,16 @@ function FilterDropdown({ onFilterChange }: { onFilterChange: (filter: string) =
   );
 }
 
-function StatusBadge({ status, grade }: { status: string; grade?: number | null }) {
+function StatusBadge({ status, grade }: { status: string; grade?: number | null }): React.JSX.Element {
   const statusConfig = {
-    pending: { label: 'Pending Review', className: 'bg-orange-100 text-orange-800' },
+    pending: { label: 'Pending Review', className: 'bg-orange-100 text-orange-800', icon: null },
     approved: { 
       label: grade ? `Approved (${grade}%)` : 'Approved', 
       className: 'bg-blue-100 text-blue-800',
       icon: <User className="w-3 h-3 mr-1" />
     },
-    redo: { label: 'Needs Redo', className: 'bg-red-100 text-red-800' },
-    rejected: { label: 'Rejected', className: 'bg-red-100 text-red-800' }
+    redo: { label: 'Needs Redo', className: 'bg-red-100 text-red-800', icon: null },
+    rejected: { label: 'Rejected', className: 'bg-red-100 text-red-800', icon: null }
   };
 
   const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
@@ -187,7 +188,7 @@ function StatusBadge({ status, grade }: { status: string; grade?: number | null 
   );
 }
 
-function UserRoleBadge({ role }: { role: string }) {
+function UserRoleBadge({ role }: { role: string }): React.JSX.Element {
   const roleConfig = {
     'worker-in-training': { label: 'Worker in Training', className: 'bg-blue-100 text-blue-800' },
     'cell-leader': { label: 'Cell Leader', className: 'bg-purple-100 text-purple-800' },
@@ -203,7 +204,7 @@ function UserRoleBadge({ role }: { role: string }) {
   );
 }
 
-function SubmissionCard({ submission }: { submission: any }) {
+function SubmissionCard({ submission }: { submission: any }): React.JSX.Element {
   const [isExpanded, setIsExpanded] = useState(false);
   const [grade, setGrade] = useState(submission.grade || '');
   const [graderNotes, setGraderNotes] = useState(submission.graderNotes || '');
@@ -398,7 +399,7 @@ function Pagination({
   currentPage: number; 
   totalPages: number; 
   onPageChange: (page: number) => void; 
-}) {
+}): React.JSX.Element {
   const getVisiblePages = () => {
     const pages = [];
     const maxVisible = 5;
@@ -476,7 +477,7 @@ function Pagination({
   );
 }
 
-export default function SubmissionsTab() {
+export default function SubmissionsTab(): React.JSX.Element {
   const [submissionsData, setSubmissionsData] = useState<StudyGroupSubmission[]>([]);
   const [filter, setFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -520,7 +521,7 @@ export default function SubmissionsTab() {
         assignment_link: sub.submissionUrl,
         submitted_at: sub.submittedAt,
         status: sub.status as any,
-        score: sub.grade,
+        score: sub.grade ?? undefined,
         feedback: sub.notes,
         is_late: sub.isLate,
         week_number: 1,

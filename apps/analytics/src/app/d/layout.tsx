@@ -1,4 +1,5 @@
 'use client';
+import * as React from 'react';
 import { SidebarProvider } from '@workspace/ui/components/sidebar';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -7,7 +8,7 @@ import { AppSidebar } from '@/src/components/app-sidebar';
 import { MainContent } from '@/src/components/main-content';
 import { useAuth, useMe } from '@/src/hooks/useMe';
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+export default function Layout({ children }: { children: React.ReactNode }): React.JSX.Element {
   // const { data, isLoading } = useMe();
   const router = useRouter();
  const { isLoading, isLoggedIn}  = useAuth()

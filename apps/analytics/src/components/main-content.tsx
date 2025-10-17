@@ -1,10 +1,11 @@
 'use client';
+import * as React from 'react';
 import { useSidebar, SidebarTrigger } from '@workspace/ui/components/sidebar';
 import useWindowDimensions from '@workspace/ui/hooks/useWindowDimensions';
 import { useMemo } from 'react';
 import { SideBarTop } from './sidebar-top';
 
-export const MainContent = ({ children }: { children: React.ReactNode }) => {
+export const MainContent = ({ children }: { children: React.ReactNode }): React.JSX.Element => {
   const sidebarData = useSidebar();
   const { width } = useWindowDimensions();
 

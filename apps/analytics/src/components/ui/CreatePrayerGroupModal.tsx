@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { cn } from '@/libutils';
@@ -16,7 +17,7 @@ export function CreatePrayerGroupModal({
   isOpen,
   onClose,
   onSuccess
-}: CreatePrayerGroupModalProps) {
+}: CreatePrayerGroupModalProps): React.JSX.Element | null {
   const [formData, setFormData] = useState<CreatePrayerGroupData>({
     name: '',
     description: '',

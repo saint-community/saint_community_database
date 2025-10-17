@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useState } from "react";
 import {
   X,
@@ -37,7 +38,7 @@ export function GeneratePrayerCodeModal({
   onClose,
   onSuccess,
   className,
-}: GeneratePrayerCodeModalProps) {
+}: GeneratePrayerCodeModalProps): React.JSX.Element | null {
   const [formData, setFormData] = useState<PrayerMeetingForm>({
     date: "",
     start_time: "",

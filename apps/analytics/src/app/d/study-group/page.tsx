@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { Button } from '@/@workspace/ui/components/button';
 import AssignmentsTab from '@/src/components/pages/study-group/Assignments';
 import SubmissionsTab from '@/src/components/pages/study-group/Submissions';
@@ -9,7 +10,7 @@ import {
   TabsTrigger,
 } from '@workspace/ui/components/tabs';
 
-export default function StudyGroupPage() {
+export default function StudyGroupPage(): React.JSX.Element {
   return (
     <div className='p-4 '>
       <Tabs defaultValue='assignments' className=''>

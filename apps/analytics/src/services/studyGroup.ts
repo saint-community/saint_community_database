@@ -1,4 +1,4 @@
-import { AdminApiCaller } from './init';
+import { AdminApiCaller, ApiCaller } from './init';
 import { QUERY_PATHS } from '@/src/utils/constants';
 
 // Types for Study Group (Assignments)
@@ -63,7 +63,7 @@ export interface PaginatedResponse<T> {
 export const studyGroupApi = {
   // Get all study groups with optional filtering
   async getAll(filters: StudyGroupFilters = {}): Promise<StudyGroup[]> {
-    const { data } = await AdminApiCaller.get(QUERY_PATHS.STUDY_GROUPS, {
+    const { data } = await ApiCaller.get(QUERY_PATHS.STUDY_GROUPS, {
       params: filters,
     });
     return data?.data || data || [];
@@ -71,7 +71,7 @@ export const studyGroupApi = {
 
   // Get study group by ID
   async getById(id: string): Promise<StudyGroup> {
-    const { data } = await AdminApiCaller.get(
+    const { data } = await ApiCaller.get(
       QUERY_PATHS.STUDY_GROUP_DETAIL.replace(':id', id)
     );
     return data?.data || data;
@@ -79,13 +79,13 @@ export const studyGroupApi = {
 
   // Create new study group
   async create(studyGroup: CreateStudyGroupDto): Promise<StudyGroup> {
-    const { data } = await AdminApiCaller.post(QUERY_PATHS.STUDY_GROUP_CREATE, studyGroup);
+    const { data } = await ApiCaller.post(QUERY_PATHS.STUDY_GROUP_CREATE, studyGroup);
     return data?.data || data;
   },
 
   // Update study group
   async update(id: string, studyGroup: UpdateStudyGroupDto): Promise<StudyGroup> {
-    const { data } = await AdminApiCaller.patch(
+    const { data } = await ApiCaller.patch(
       QUERY_PATHS.STUDY_GROUP_UPDATE.replace(':id', id),
       studyGroup
     );
@@ -94,12 +94,12 @@ export const studyGroupApi = {
 
   // Delete study group
   async delete(id: string): Promise<void> {
-    await AdminApiCaller.delete(QUERY_PATHS.STUDY_GROUP_DELETE.replace(':id', id));
+    await ApiCaller.delete(QUERY_PATHS.STUDY_GROUP_DELETE.replace(':id', id));
   },
 
   // Get current week assignment
   async getCurrentWeek(churchId?: number): Promise<StudyGroup> {
-    const { data } = await AdminApiCaller.get(QUERY_PATHS.STUDY_GROUP_CURRENT_WEEK, {
+    const { data } = await ApiCaller.get(QUERY_PATHS.STUDY_GROUP_CURRENT_WEEK, {
       params: { church_id: churchId },
     });
     return data?.data || data;
@@ -107,7 +107,7 @@ export const studyGroupApi = {
 
   // Get weekly assignments by year
   async getWeeklyByYear(year: number, churchId?: number): Promise<StudyGroup[]> {
-    const { data } = await AdminApiCaller.get(
+    const { data } = await ApiCaller.get(
       QUERY_PATHS.STUDY_GROUP_WEEKLY.replace(':year', year.toString()),
       {
         params: { church_id: churchId },
