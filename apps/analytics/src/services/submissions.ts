@@ -1,4 +1,4 @@
-import { AdminApiCaller } from './init';
+import { AdminApiCaller, ApiCaller } from './init';
 import { QUERY_PATHS } from '@/src/utils/constants';
 
 // Types for Study Group Submissions
@@ -96,7 +96,7 @@ export const submissionsApi = {
 
   // Get submissions for review with pagination and filtering
   async getForReview(filters: SubmissionFilters = {}): Promise<PaginatedResponse<StudyGroupSubmission>> {
-    const { data } = await AdminApiCaller.get(QUERY_PATHS.SUBMISSIONS_REVIEW, {
+    const { data } = await ApiCaller.get(QUERY_PATHS.SUBMISSIONS_REVIEW, {
       params: filters,
     });
     return data?.data || data;
@@ -109,7 +109,7 @@ export const submissionsApi = {
 
   // Get submission by ID
   async getById(id: string): Promise<StudyGroupSubmission> {
-    const { data } = await AdminApiCaller.get(
+    const { data } = await ApiCaller.get(
       QUERY_PATHS.SUBMISSION_DETAIL.replace(':id', id)
     );
     return data?.data || data;
@@ -117,7 +117,7 @@ export const submissionsApi = {
 
   // Grade a submission
   async grade(id: string, gradeData: GradeSubmissionDto): Promise<StudyGroupSubmission> {
-    const { data } = await AdminApiCaller.patch(
+    const { data } = await ApiCaller.patch(
       QUERY_PATHS.SUBMISSION_GRADE.replace(':id', id),
       gradeData
     );
@@ -131,7 +131,7 @@ export const submissionsApi = {
 
   // Request redo for a submission
   async requestRedo(id: string, redoData: RequestRedoDto): Promise<StudyGroupSubmission> {
-    const { data } = await AdminApiCaller.patch(
+    const { data } = await ApiCaller.patch(
       QUERY_PATHS.SUBMISSION_REQUEST_REDO.replace(':id', id),
       redoData
     );
@@ -140,17 +140,17 @@ export const submissionsApi = {
 
   // Bulk grade submissions
   async bulkGrade(bulkData: BulkGradeDto): Promise<void> {
-    await AdminApiCaller.patch(QUERY_PATHS.SUBMISSIONS_BULK_GRADE, bulkData);
+    await ApiCaller.patch(QUERY_PATHS.SUBMISSIONS_BULK_GRADE, bulkData);
   },
 
   // Bulk request redo
   async bulkRequestRedo(bulkData: BulkRedoDto): Promise<void> {
-    await AdminApiCaller.patch(QUERY_PATHS.SUBMISSIONS_BULK_REDO, bulkData);
+    await ApiCaller.patch(QUERY_PATHS.SUBMISSIONS_BULK_REDO, bulkData);
   },
 
   // Get submission statistics
   async getStats(churchId?: number, dateFrom?: string, dateTo?: string): Promise<SubmissionStats> {
-    const { data } = await AdminApiCaller.get(QUERY_PATHS.SUBMISSIONS_STATS, {
+    const { data } = await ApiCaller.get(QUERY_PATHS.SUBMISSIONS_STATS, {
       params: {
         church_id: churchId,
         date_from: dateFrom,
@@ -162,7 +162,7 @@ export const submissionsApi = {
 
   // Get filtered submission history
   async getFilteredHistory(filters: SubmissionFilters = {}): Promise<StudyGroupSubmission[]> {
-    const { data } = await AdminApiCaller.get(QUERY_PATHS.SUBMISSIONS_HISTORY, {
+    const { data } = await ApiCaller.get(QUERY_PATHS.SUBMISSIONS_HISTORY, {
       params: filters,
     });
     return data?.data || data || [];

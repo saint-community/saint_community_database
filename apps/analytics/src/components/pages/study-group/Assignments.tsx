@@ -4,17 +4,23 @@ import { Button } from '@/@workspace/ui/components/button';
 import { Card, CardContent } from '@/@workspace/ui/components/card';
 import { Badge } from '@/@workspace/ui/components/badge';
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Filter, X, Calendar, ChevronDown, ChevronUp, Edit, Trash2, ExternalLink, Star, Sparkles, Diamond } from 'lucide-react';
+import { Plus, Filter, X, Calendar, ChevronDown, ChevronUp, Edit, Trash2, ExternalLink, Star, Sparkles, Diamond, Loader2 } from 'lucide-react';
 import { studyGroupApi, StudyGroup, CreateStudyGroupDto, UpdateStudyGroupDto, mapStatusToBackend, mapStatusToFrontend } from '@/src/services/studyGroup';
+import { DatePicker } from '@workspace/ui/components/date-picker';
+import { TimePicker } from '@/src/components/ui/TimePicker';
+import dayjs from 'dayjs';
 
 function CreateAssignmentModal({ isOpen, onClose, onSubmit }: { isOpen: boolean; onClose: () => void; onSubmit: (data: CreateStudyGroupDto) => Promise<void> }): React.JSX.Element | null {
   const [formData, setFormData] = useState({
     title: '',
     titleSummary: '',
     downloadLink: '',
-    dueDate: '',
     studyQuestions: ''
   });
+
+  const [selectedDueDate, setSelectedDueDate] = useState<Date | undefined>();
+  const [dueTime, setDueTime] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -29,8 +35,12 @@ function CreateAssignmentModal({ isOpen, onClose, onSubmit }: { isOpen: boolean;
       newErrors.titleSummary = 'Title summary is required';
     }
     
-    if (!formData.dueDate) {
+    if (!selectedDueDate) {
       newErrors.dueDate = 'Due date is required';
+    }
+    
+    if (!dueTime) {
+      newErrors.dueTime = 'Due time is required';
     }
     
     if (!formData.studyQuestions.trim()) {
@@ -47,14 +57,30 @@ function CreateAssignmentModal({ isOpen, onClose, onSubmit }: { isOpen: boolean;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    setIsLoading(true);
+    
     try {
+      // Combine date and time using dayjs
+      const dueDateTimeString = selectedDueDate && dueTime 
+        ? dayjs(selectedDueDate).format('YYYY-MM-DD') + ' ' + dueTime
+        : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      
+      const dueDateTime = selectedDueDate && dueTime 
+        ? dayjs(dueDateTimeString).toISOString()
+        : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
       const assignmentData: CreateStudyGroupDto = {
         title: formData.title,
         description: formData.titleSummary,
         questions: formData.studyQuestions.split('\n').filter(q => q.trim()),
         week_start_date: new Date().toISOString(),
         week_end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        due_date: formData.dueDate ? new Date(formData.dueDate).toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        due_date: dueDateTime,
         church_id: 1, // Default church_id
         status: 'active',
       };
@@ -63,6 +89,8 @@ function CreateAssignmentModal({ isOpen, onClose, onSubmit }: { isOpen: boolean;
     } catch (error) {
       console.error('Error creating assignment:', error);
       // Error is handled by the parent component
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -71,16 +99,19 @@ function CreateAssignmentModal({ isOpen, onClose, onSubmit }: { isOpen: boolean;
       title: '',
       titleSummary: '',
       downloadLink: '',
-      dueDate: '',
       studyQuestions: ''
     });
+    setSelectedDueDate(undefined);
+    setDueTime('');
+    setIsLoading(false);
+    setErrors({});
     onClose();
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/30 bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Create New Assignment</h2>
@@ -103,9 +134,10 @@ function CreateAssignmentModal({ isOpen, onClose, onSubmit }: { isOpen: boolean;
               type="text"
               value={formData.title}
               onChange={(e) => handleInputChange('title', e.target.value)}
+              disabled={isLoading}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.title ? 'border-red-500' : 'border-gray-300'
-              }`}
+              } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               placeholder="Enter assignment title"
             />
             {errors.title && (
@@ -121,9 +153,10 @@ function CreateAssignmentModal({ isOpen, onClose, onSubmit }: { isOpen: boolean;
               type="text"
               value={formData.titleSummary}
               onChange={(e) => handleInputChange('titleSummary', e.target.value)}
+              disabled={isLoading}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.titleSummary ? 'border-red-500' : 'border-gray-300'
-              }`}
+              } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               placeholder="Brief description of the assignment"
             />
             {errors.titleSummary && (
@@ -139,7 +172,10 @@ function CreateAssignmentModal({ isOpen, onClose, onSubmit }: { isOpen: boolean;
               type="url"
               value={formData.downloadLink}
               onChange={(e) => handleInputChange('downloadLink', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={isLoading}
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                isLoading ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
               placeholder="https://example.com/download-link"
             />
             <p className="text-gray-500 text-sm mt-1">
@@ -147,24 +183,35 @@ function CreateAssignmentModal({ isOpen, onClose, onSubmit }: { isOpen: boolean;
             </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Due Date *
-            </label>
-            <div className="relative">
-              <input
-                type="datetime-local"
-                value={formData.dueDate}
-                onChange={(e) => handleInputChange('dueDate', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.dueDate ? 'border-red-500' : 'border-gray-300'
-                }`}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Due Date *
+              </label>
+              <DatePicker
+                value={selectedDueDate || new Date()}
+                onChange={isLoading ? () => {} : setSelectedDueDate}
+                className={`${errors.dueDate ? 'border-red-500' : ''} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               />
-              <Calendar className="absolute right-3 top-2.5 w-4 h-4 text-gray-400" />
+              {errors.dueDate && (
+                <p className="text-red-500 text-sm mt-1">{errors.dueDate}</p>
+              )}
             </div>
-            {errors.dueDate && (
-              <p className="text-red-500 text-sm mt-1">{errors.dueDate}</p>
-            )}
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Due Time *
+              </label>
+              <TimePicker
+                value={dueTime}
+                onChange={isLoading ? () => {} : setDueTime}
+                className={`${errors.dueTime ? 'border-red-500' : ''} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                placeholder="Select due time"
+              />
+              {errors.dueTime && (
+                <p className="text-red-500 text-sm mt-1">{errors.dueTime}</p>
+              )}
+            </div>
           </div>
 
           <div>
@@ -174,10 +221,11 @@ function CreateAssignmentModal({ isOpen, onClose, onSubmit }: { isOpen: boolean;
             <textarea
               value={formData.studyQuestions}
               onChange={(e) => handleInputChange('studyQuestions', e.target.value)}
+              disabled={isLoading}
               rows={6}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                 errors.studyQuestions ? 'border-red-500' : 'border-gray-300'
-              }`}
+              } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               placeholder="Enter study questions, one per line"
             />
             {errors.studyQuestions && (
@@ -193,15 +241,18 @@ function CreateAssignmentModal({ isOpen, onClose, onSubmit }: { isOpen: boolean;
               type="button"
               variant="outline"
               onClick={handleCancel}
+              disabled={isLoading}
               className="px-6"
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6"
+              disabled={isLoading}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 flex items-center gap-2"
             >
-              Create Assignment
+              {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+              {isLoading ? 'Creating...' : 'Create Assignment'}
             </Button>
           </div>
         </form>

@@ -6,7 +6,8 @@ import { Badge } from '@/@workspace/ui/components/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/@workspace/ui/components/avatar';
 import { useState, useEffect, useRef } from 'react';
 import { Filter, X, Calendar, Search, FileText, Star, Sparkles, Diamond } from 'lucide-react';
-import { submissionsApi, StudyGroupSubmission } from '@/src/services/submissions';
+import { submissionsApi, StudyGroupSubmission, mapSubmissionStatusToFrontend } from '@/src/services/submissions';
+import dayjs from 'dayjs';
 
 // Mock data for graded assignments (history) - fallback data
 const mockHistorySubmissions = [
@@ -235,16 +236,52 @@ function EmptyState(): React.JSX.Element {
 }
 
 function HistoryCard({ submission }: { submission: any }): React.JSX.Element {
+  const getStatusBadge = (status: string, grade: number) => {
+    if (status === 'pending' || status === 'submitted') {
+      return (
+        <Badge className="bg-orange-100 text-orange-800">
+          Pending Review
+        </Badge>
+      );
+    } else if (status === 'approved' || grade > 0) {
+      return (
+        <Badge className="bg-blue-100 text-blue-800">
+          Approved ({grade}%)
+        </Badge>
+      );
+    } else if (status === 'late') {
+      return (
+        <Badge className="bg-red-100 text-red-800">
+          Late Submission
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge className="bg-gray-100 text-gray-800">
+          {status}
+        </Badge>
+      );
+    }
+  };
+
   return (
     <Card className="mb-4 hover:shadow-md transition-shadow">
       <CardContent className="p-6">
         <div className="flex justify-between items-start mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 flex-1">
-            {submission.title}
-          </h3>
-          <Badge className="bg-blue-100 text-blue-800">
-            Approved ({submission.grade}%)
-          </Badge>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-gray-900">
+              {submission.title}
+            </h3>
+            {submission.week_number && submission.year && (
+              <p className="text-sm text-gray-500 mt-1">
+                Week {submission.week_number}, {submission.year}
+                {submission.is_late && (
+                  <span className="ml-2 text-red-500">• Late Submission</span>
+                )}
+              </p>
+            )}
+          </div>
+          {getStatusBadge(submission.status, submission.grade)}
         </div>
 
         <div className="flex items-center gap-4 mb-4">
@@ -270,9 +307,30 @@ function HistoryCard({ submission }: { submission: any }): React.JSX.Element {
 
         <div className="space-y-3">
           <div className="flex justify-between text-sm text-gray-600">
-            <span>Submitted: {submission.submittedAt}</span>
+            <div>
+              <span>Submitted: {submission.submittedAt}</span>
+              {submission.submission_method && (
+                <span className="ml-2 px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+                  {submission.submission_method.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+                </span>
+              )}
+            </div>
             <span>Graded: {submission.gradedAt}</span>
           </div>
+          
+          {/* Assignment Link */}
+          {submission.assignment_link && (
+            <div className="text-sm">
+              <a 
+                href={submission.assignment_link} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 hover:underline"
+              >
+                📎 View Assignment Submission
+              </a>
+            </div>
+          )}
           
           <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
             <p className="text-sm text-gray-700">
@@ -302,60 +360,169 @@ export default function HistoryTab(): React.JSX.Element {
     try {
       setLoading(true);
       setError(null);
-      // Get graded submissions (history)
-      const data = await submissionsApi.getHistory({ church_id: 1 });
-      // Map API data to include submitter object for HistoryCard component
-      const mappedData = data.map(submission => ({
-        ...submission,
-        // Add the submitter object that HistoryCard expects
-        submitter: {
-          name: submission.member_name || 'Unknown Member',
-          email: 'member@example.com',
-          phone: '+234 000 000 0000',
-          role: submission.submitter_role || 'worker',
-          avatar: '/avatars/default-avatar.jpg'
+      
+      // TEMPORARY: Test with the actual API response you provided for history
+      const testHistoryData = [
+        {
+          "id": "68c97b9ce0081c0a47c3e6b7",
+          "worker_id": 1,
+          "study_group_id": "68c7e09ebb41e2bb5a9b9266",
+          "study_group_title": "Discipleship Week 8",
+          "assignment_link": "https://google.com",
+          "submitted_at": "2025-09-16T15:00:44.595Z",
+          "status": "submitted",
+          "is_late": false,
+          "week_number": 38,
+          "year": 2025,
+          "redo_requested": false,
+          "submission_method": "online_by_member",
+          "submitter_role": "worker",
+          "submitter_id": 1,
+          "created_at": "2025-09-16T15:00:44.596Z",
+          "updated_at": "2025-09-16T15:00:44.596Z"
         },
-        grader: 'Pastor Michael' // Default grader name
-      }));
+        {
+          "id": "68c7d5e5bb41e2bb5a9b9109",
+          "worker_id": 1,
+          "study_group_id": "68c7d5dbbb41e2bb5a9b90c4",
+          "study_group_title": "Discipleship Week 7",
+          "assignment_link": "https://google.com",
+          "submitted_at": "2025-09-15T09:01:25.295Z",
+          "status": "submitted",
+          "is_late": false,
+          "week_number": 38,
+          "year": 2025,
+          "redo_requested": false,
+          "submission_method": "online_by_member",
+          "submitter_role": "worker",
+          "created_at": "2025-09-15T09:01:25.296Z",
+          "updated_at": "2025-09-15T11:03:03.391Z"
+        },
+        {
+          "id": "68c7d002bb41e2bb5a9b6520",
+          "worker_id": 1,
+          "study_group_id": "68c7cf69bb41e2bb5a9b6511",
+          "study_group_title": "Discipleship Week 6",
+          "assignment_link": "https://go.com",
+          "submitted_at": "2025-09-15T08:36:18.060Z",
+          "status": "submitted",
+          "is_late": false,
+          "week_number": 38,
+          "year": 2025,
+          "redo_requested": false,
+          "submission_method": "online_by_member",
+          "submitter_role": "worker",
+          "created_at": "2025-09-15T08:36:18.060Z",
+          "updated_at": "2025-09-15T11:04:10.571Z"
+        },
+        {
+          "id": "68c7ce5dbb41e2bb5a9b6508",
+          "worker_id": 1,
+          "study_group_id": "68c7ce4ebb41e2bb5a9b64fc",
+          "study_group_title": "Discipleship Week 5",
+          "assignment_link": "",
+          "submitted_at": "2025-09-15T08:29:17.562Z",
+          "status": "submitted",
+          "is_late": false,
+          "week_number": 38,
+          "year": 2025,
+          "redo_requested": false,
+          "submission_method": "online_by_member",
+          "submitter_role": "worker",
+          "created_at": "2025-09-15T08:29:17.564Z",
+          "updated_at": "2025-09-15T08:29:17.564Z"
+        },
+        {
+          "id": "68c7c3fabb41e2bb5a9b64b1",
+          "worker_id": 1,
+          "study_group_id": "68c7b8dabb41e2bb5a9b6487",
+          "study_group_title": "Discipleship Week 2",
+          "assignment_link": "",
+          "submitted_at": "2025-09-15T07:44:58.519Z",
+          "status": "late",
+          "is_late": true,
+          "week_number": 36,
+          "year": 2025,
+          "redo_requested": false,
+          "submission_method": "online_by_member",
+          "submitter_role": "worker",
+          "created_at": "2025-09-15T07:44:58.519Z",
+          "updated_at": "2025-09-15T07:44:58.519Z"
+        },
+        {
+          "id": "68c7bf00bb41e2bb5a9b6493",
+          "worker_id": 1,
+          "study_group_id": "68c0aaedbb41e2bb5a9b639f",
+          "study_group_title": "Discipleship Week 1",
+          "assignment_link": null,
+          "submitted_at": "2025-09-15T07:23:44.943Z",
+          "status": "late",
+          "is_late": true,
+          "week_number": 36,
+          "year": 2025,
+          "redo_requested": false,
+          "submission_method": "online_by_member",
+          "submitter_role": "worker",
+          "created_at": "2025-09-15T07:23:44.943Z",
+          "updated_at": "2025-09-15T07:23:44.943Z"
+        }
+      ];
+      
+      console.log('Using test history data:', testHistoryData); // Debug log
+      
+      // Get graded submissions (history)
+      // const data = await submissionsApi.getHistory({ church_id: 1 });
+      const data = testHistoryData;
+      console.log('Extracted history data:', data); // Debug log
+      
+      if (!Array.isArray(data)) {
+        console.log('History data is not an array:', typeof data, data);
+        setHistoryData(mockHistorySubmissions);
+        setHasHistory(true);
+        return;
+      }
+      
+      if (data.length === 0) {
+        console.log('History data array is empty');
+        setHistoryData([]);
+        setHasHistory(false);
+        return;
+      }
+      
+      // Map API data to include submitter object for HistoryCard component
+      const mappedData = data.map((submission: any) => {
+        const mapped = {
+          ...submission,
+          // Map API fields to component expectations
+          title: submission.study_group_title || 'Untitled Assignment',
+          submittedAt: dayjs(submission.submitted_at).format('MMMM D, YYYY [at] h:mm A'),
+          gradedAt: submission.graded_at ? dayjs(submission.graded_at).format('MMMM D, YYYY [at] h:mm A') : 'Not graded yet',
+          grade: submission.score || 0,
+          graderNotes: submission.feedback || 'No feedback provided',
+          status: mapSubmissionStatusToFrontend(submission.status),
+          // Add the submitter object that HistoryCard expects
+          submitter: {
+            name: `Worker ${submission.worker_id}`, // API doesn't provide worker name
+            email: 'worker@example.com',
+            phone: '+234 000 000 0000',
+            role: submission.submitter_role === 'worker' ? 'worker-in-training' : 'member',
+            avatar: '/avatars/default-avatar.jpg'
+          },
+          grader: 'Pastor Michael' // Default grader name
+        };
+        console.log('Original history submission:', submission);
+        console.log('Mapped history submission:', mapped);
+        return mapped;
+      });
+      
+      console.log('Final mapped history data:', mappedData); // Debug log
       setHistoryData(mappedData);
       setHasHistory(mappedData.length > 0);
     } catch (err) {
       setError('Failed to load history');
       console.error('Error loading history:', err);
       // Fallback to mock data
-      setHistoryData(mockHistorySubmissions.map(sub => ({
-        id: sub.id,
-        member_id: '1',
-        worker_id: 1,
-        study_group_id: '1',
-        study_group_title: sub.title,
-        assignment_link: '#',
-        submitted_at: sub.submittedAt,
-        status: sub.status as any,
-        score: sub.grade,
-        feedback: sub.graderNotes,
-        is_late: false,
-        week_number: 1,
-        year: 2025,
-        graded_at: sub.gradedAt,
-        graded_by: 1,
-        redo_requested: false,
-        submission_method: 'online_by_member',
-        submitter_role: 'worker',
-        member_name: sub.submitter.name,
-        member_church_id: 1,
-        created_at: sub.submittedAt,
-        updated_at: sub.gradedAt,
-        // Add the submitter object that HistoryCard expects
-        submitter: {
-          name: sub.submitter.name,
-          email: sub.submitter.email,
-          phone: sub.submitter.phone,
-          role: sub.submitter.role,
-          avatar: sub.submitter.avatar
-        },
-        grader: sub.grader
-      })));
+      setHistoryData(mockHistorySubmissions);
       setHasHistory(true);
     } finally {
       setLoading(false);
@@ -389,6 +556,44 @@ export default function HistoryTab(): React.JSX.Element {
           </Button>
         </div>
       </div>
+
+      {/* Quick Stats */}
+      {!loading && historyData.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold text-gray-900">{historyData.length}</div>
+              <div className="text-sm text-gray-600">Total Submissions</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold text-blue-600">
+                {historyData.filter(s => s.status === 'approved' || s.grade > 0).length}
+              </div>
+              <div className="text-sm text-gray-600">Approved</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold text-red-600">
+                {historyData.filter(s => s.is_late).length}
+              </div>
+              <div className="text-sm text-gray-600">Late Submissions</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold text-green-600">
+                {historyData.length > 0 ? 
+                  Math.round(historyData.reduce((sum, s) => sum + (s.grade || 0), 0) / historyData.length) 
+                  : 0}%
+              </div>
+              <div className="text-sm text-gray-600">Average Grade</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {loading ? (
         <div className="text-center py-12">

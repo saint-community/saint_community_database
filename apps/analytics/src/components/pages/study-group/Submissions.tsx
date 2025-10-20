@@ -6,7 +6,8 @@ import { Badge } from '@/@workspace/ui/components/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/@workspace/ui/components/avatar';
 import { useState, useEffect, useRef } from 'react';
 import { Plus, ExternalLink, ChevronDown, ChevronUp, AlertTriangle, User, Filter } from 'lucide-react';
-import { submissionsApi, StudyGroupSubmission, GradeSubmissionDto, RequestRedoDto } from '@/src/services/submissions';
+import { submissionsApi, StudyGroupSubmission, GradeSubmissionDto, RequestRedoDto, mapSubmissionStatusToFrontend } from '@/src/services/submissions';
+import dayjs from 'dayjs';
 
 // Mock data for testing - will be replaced with API data
 const mockSubmissions = [
@@ -213,9 +214,16 @@ function SubmissionCard({ submission }: { submission: any }): React.JSX.Element 
     <Card className="mb-4 hover:shadow-md transition-shadow">
       <CardContent className="p-6">
         <div className="flex justify-between items-start mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 flex-1">
-            {submission.title}
-          </h3>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-gray-900">
+              {submission.title}
+            </h3>
+            {submission.week_number && submission.year && (
+              <p className="text-sm text-gray-500 mt-1">
+                Week {submission.week_number}, {submission.year}
+              </p>
+            )}
+          </div>
           <StatusBadge status={submission.status} grade={submission.grade} />
         </div>
 
@@ -254,7 +262,11 @@ function SubmissionCard({ submission }: { submission: any }): React.JSX.Element 
         <div className="flex justify-between items-center mb-4">
           <div>
             {submission.submissionType === 'online' ? (
-              <Button variant="link" className="p-0 h-auto text-blue-600">
+              <Button 
+                variant="link" 
+                className="p-0 h-auto text-blue-600"
+                onClick={() => submission.submissionUrl && window.open(submission.submissionUrl, '_blank')}
+              >
                 <ExternalLink className="w-4 h-4 mr-1" />
                 View Submission
               </Button>
@@ -262,7 +274,12 @@ function SubmissionCard({ submission }: { submission: any }): React.JSX.Element 
               <span className="text-gray-600">Submitted offline</span>
             )}
             <p className="text-sm text-gray-500 mt-1">
-              Submitted: {submission.submittedAt}
+              Submitted: {submission.submittedAt} 
+              {submission.submission_method && (
+                <span className="ml-2 px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+                  {submission.submission_method.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </span>
+              )}
             </p>
           </div>
           
@@ -494,54 +511,105 @@ export default function SubmissionsTab(): React.JSX.Element {
     try {
       setLoading(true);
       setError(null);
-      const data = await submissionsApi.getAll({ church_id: 1 }); // Default church_id
-      // Map API data to include submitter object for SubmissionCard component
-      const mappedData = data.map(submission => ({
-        ...submission,
-        // Add the submitter object that SubmissionCard expects
-        submitter: {
-          name: submission.member_name || 'Unknown Member',
-          email: 'member@example.com',
-          phone: '+234 000 000 0000',
-          role: submission.submitter_role || 'worker',
-          avatar: '/avatars/default-avatar.jpg'
+      
+      // TEMPORARY: Test with the actual API response you provided
+      const testData = [
+        {
+          "id": "68c97b9ce0081c0a47c3e6b7",
+          "worker_id": 1,
+          "study_group_id": "68c7e09ebb41e2bb5a9b9266",
+          "study_group_title": "Discipleship Week 8",
+          "assignment_link": "https://google.com",
+          "submitted_at": "2025-09-16T15:00:44.595Z",
+          "status": "submitted",
+          "is_late": false,
+          "week_number": 38,
+          "year": 2025,
+          "redo_requested": false,
+          "submission_method": "online_by_member",
+          "submitter_role": "worker",
+          "submitter_id": 1,
+          "created_at": "2025-09-16T15:00:44.596Z",
+          "updated_at": "2025-09-16T15:00:44.596Z"
+        },
+        {
+          "id": "68c7d5e5bb41e2bb5a9b9109",
+          "worker_id": 1,
+          "study_group_id": "68c7d5dbbb41e2bb5a9b90c4",
+          "study_group_title": "Discipleship Week 7",
+          "assignment_link": "https://google.com",
+          "submitted_at": "2025-09-15T09:01:25.295Z",
+          "status": "submitted",
+          "is_late": false,
+          "week_number": 38,
+          "year": 2025,
+          "redo_requested": false,
+          "submission_method": "online_by_member",
+          "submitter_role": "worker",
+          "created_at": "2025-09-15T09:01:25.296Z",
+          "updated_at": "2025-09-15T11:03:03.391Z"
         }
-      }));
+      ];
+      
+      console.log('Using test data:', testData); // Debug log
+      
+      // Use getForReview directly to get the full paginated response
+      // const response = await submissionsApi.getForReview({ church_id: 1 });
+      // console.log('API Response:', response); // Debug log
+      
+      // Extract data array from response
+      const data = testData; // response?.data || [];
+      console.log('Extracted data:', data); // Debug log
+      
+      if (!Array.isArray(data)) {
+        console.log('Data is not an array:', typeof data, data);
+        setSubmissionsData(mockSubmissions);
+        return;
+      }
+      
+      if (data.length === 0) {
+        console.log('Data array is empty, using mock data for testing');
+        // Even if empty, still set the empty array so we can see stats
+        setSubmissionsData([]);
+        return;
+      }
+      
+      // Map API data to match SubmissionCard expectations
+      const mappedData = data.map((submission: any) => {
+        const mapped = {
+          ...submission,
+          // Map API fields to component expectations
+          title: submission.study_group_title || 'Untitled Assignment',
+          submittedAt: dayjs(submission.submitted_at).format('MMMM D, YYYY [at] h:mm A'),
+          submissionType: submission.assignment_link ? 'online' : 'offline',
+          submissionUrl: submission.assignment_link || '',
+          isLate: submission.is_late || false,
+          notes: '', // No notes field in API response
+          grade: submission.score || null, // Use score from API
+          graderNotes: submission.feedback || '',
+          // Map API status to UI status using the helper function
+          status: mapSubmissionStatusToFrontend(submission.status),
+          // Create submitter object from API data
+          submitter: {
+            name: `Worker ${submission.worker_id}`, // API doesn't provide worker name
+            email: 'worker@example.com', // Default email
+            phone: '+234 000 000 0000', // Default phone
+            role: submission.submitter_role === 'worker' ? 'worker-in-training' : 'member',
+            avatar: '/avatars/default-avatar.jpg'
+          }
+        };
+        console.log('Original submission:', submission);
+        console.log('Mapped submission:', mapped);
+        return mapped;
+      });
+      
+      console.log('Final mapped data:', mappedData); // Debug log
       setSubmissionsData(mappedData);
     } catch (err) {
       setError('Failed to load submissions');
       console.error('Error loading submissions:', err);
-      // Fallback to mock data for now
-      setSubmissionsData(mockSubmissions.map(sub => ({
-        id: sub.id,
-        member_id: '1',
-        worker_id: 1,
-        study_group_id: '1',
-        study_group_title: sub.title,
-        assignment_link: sub.submissionUrl,
-        submitted_at: sub.submittedAt,
-        status: sub.status as any,
-        score: sub.grade ?? undefined,
-        feedback: sub.notes,
-        is_late: sub.isLate,
-        week_number: 1,
-        year: 2025,
-        redo_requested: false,
-        submission_method: sub.submissionType === 'online' ? 'online_by_member' : 'offline_by_leader',
-        submitter_role: 'worker',
-        member_name: sub.submitter.name,
-        member_church_id: 1,
-        created_at: sub.submittedAt,
-        updated_at: sub.submittedAt,
-        // Add the submitter object that SubmissionCard expects
-        submitter: {
-          name: sub.submitter.name,
-          email: sub.submitter.email,
-          phone: sub.submitter.phone,
-          role: sub.submitter.role,
-          avatar: sub.submitter.avatar
-        }
-      })));
+      // For development, use mock data to show the UI
+      setSubmissionsData(mockSubmissions);
     } finally {
       setLoading(false);
     }
@@ -549,8 +617,14 @@ export default function SubmissionsTab(): React.JSX.Element {
 
   const filteredSubmissions = submissionsData.filter(submission => {
     if (filter === 'all') return true;
-    return submission.status === filter;
+    const matches = submission.status === filter;
+    console.log(`Filter: ${filter}, Submission status: ${submission.status}, Matches: ${matches}`); // Debug log
+    return matches;
   });
+  
+  console.log('Total submissions:', submissionsData.length);
+  console.log('Filtered submissions:', filteredSubmissions.length);
+  console.log('Current filter:', filter);
 
   const totalPages = Math.ceil(filteredSubmissions.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -608,6 +682,42 @@ export default function SubmissionsTab(): React.JSX.Element {
           </Button>
         </div>
       </div>
+
+      {/* Quick Stats */}
+      {!loading && submissionsData.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold text-gray-900">{submissionsData.length}</div>
+              <div className="text-sm text-gray-600">Total Submissions</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold text-orange-600">
+                {submissionsData.filter(s => s.status === 'pending').length}
+              </div>
+              <div className="text-sm text-gray-600">Pending Review</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold text-red-600">
+                {submissionsData.filter(s => s.isLate).length}
+              </div>
+              <div className="text-sm text-gray-600">Late Submissions</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold text-blue-600">
+                {submissionsData.filter(s => s.submissionType === 'online').length}
+              </div>
+              <div className="text-sm text-gray-600">Online Submissions</div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {loading ? (
         <div className="text-center py-12">
