@@ -10,74 +10,130 @@ import { submissionsApi, StudyGroupSubmission, mapSubmissionStatusToFrontend } f
 import dayjs from 'dayjs';
 
 // Mock data for graded assignments (history) - fallback data
-const mockHistorySubmissions = [
+const mockHistorySubmissions: StudyGroupSubmission[] = [
   {
     id: 'h1',
-    title: 'Kings and Priests in the Earth (2020) - Track 3',
+    member_id: 'member-1',
+    worker_id: 1001,
+    study_group_id: 'sg-1',
+    study_group_title: 'Kings and Priests in the Earth (2020) - Track 3',
+    assignment_link: undefined,
+    submitted_at: '2025-06-24T08:05:00Z',
     status: 'approved',
-    submitter: {
-      name: 'John Smith',
-      email: 'Johnsmith@gmail.com',
-      phone: '+234 8129969837',
-      role: 'member',
-      avatar: '/avatars/john-smith.jpg'
-    },
-    submittedAt: '24 June, 2025 at 8:05 AM',
-    gradedAt: '25 June, 2025 at 2:30 PM',
-    grade: 92,
-    graderNotes: 'Excellent work! Student demonstrated deep understanding of the material.',
-    grader: 'Pastor Michael'
+    score: 92,
+    feedback: 'Excellent work! Student demonstrated deep understanding of the material.',
+    is_late: false,
+    week_number: 3,
+    year: 2025,
+    graded_at: '2025-06-25T14:30:00Z',
+    graded_by: 2001,
+    redo_requested: false,
+    redo_note: undefined,
+    redo_requested_at: undefined,
+    redo_requested_by: undefined,
+    submission_method: 'online_by_member',
+    leader_id: undefined,
+    submitter_role: 'worker',
+    submitter_id: undefined,
+    member_name: 'John Smith',
+    member_church_id: 1,
+    member_fellowship_id: 1,
+    member_cell_id: 1,
+    created_at: '2025-06-24T08:05:00Z',
+    updated_at: '2025-06-25T14:30:00Z'
   },
   {
     id: 'h2',
-    title: 'Understanding Prayer and Intercession',
+    member_id: 'member-2',
+    worker_id: 1002,
+    study_group_id: 'sg-2',
+    study_group_title: 'Understanding Prayer and Intercession',
+    assignment_link: undefined,
+    submitted_at: '2025-06-20T15:30:00Z',
     status: 'approved',
-    submitter: {
-      name: 'Sarah Johnson',
-      email: 'sarah.johnson@gmail.com',
-      phone: '+234 8129969838',
-      role: 'cell-leader',
-      avatar: '/avatars/sarah-johnson.jpg'
-    },
-    submittedAt: '20 June, 2025 at 3:30 PM',
-    gradedAt: '21 June, 2025 at 10:15 AM',
-    grade: 88,
-    graderNotes: 'Good understanding of intercessory prayer concepts. Well done!',
-    grader: 'Pastor Michael'
+    score: 88,
+    feedback: 'Good understanding of intercessory prayer concepts. Well done!',
+    is_late: false,
+    week_number: 2,
+    year: 2025,
+    graded_at: '2025-06-21T10:15:00Z',
+    graded_by: 2001,
+    redo_requested: false,
+    redo_note: undefined,
+    redo_requested_at: undefined,
+    redo_requested_by: undefined,
+    submission_method: 'online_by_member',
+    leader_id: undefined,
+    submitter_role: 'worker',
+    submitter_id: undefined,
+    member_name: 'Sarah Johnson',
+    member_church_id: 1,
+    member_fellowship_id: 2,
+    member_cell_id: 2,
+    created_at: '2025-06-20T15:30:00Z',
+    updated_at: '2025-06-21T10:15:00Z'
   },
   {
     id: 'h3',
-    title: 'The Power of Faith and Healing',
+    member_id: 'member-3',
+    worker_id: 1003,
+    study_group_id: 'sg-3',
+    study_group_title: 'The Power of Faith and Healing',
+    assignment_link: undefined,
+    submitted_at: '2025-06-18T11:20:00Z',
     status: 'approved',
-    submitter: {
-      name: 'David Wilson',
-      email: 'david.wilson@gmail.com',
-      phone: '+234 8129969839',
-      role: 'worker-in-training',
-      avatar: '/avatars/david-wilson.jpg'
-    },
-    submittedAt: '18 June, 2025 at 11:20 AM',
-    gradedAt: '19 June, 2025 at 4:45 PM',
-    grade: 95,
-    graderNotes: 'Outstanding submission! Clear understanding of faith principles and excellent examples.',
-    grader: 'Pastor Sarah'
+    score: 95,
+    feedback: 'Outstanding submission! Clear understanding of faith principles and excellent examples.',
+    is_late: false,
+    week_number: 1,
+    year: 2025,
+    graded_at: '2025-06-19T16:45:00Z',
+    graded_by: 2002,
+    redo_requested: false,
+    redo_note: undefined,
+    redo_requested_at: undefined,
+    redo_requested_by: undefined,
+    submission_method: 'online_by_member',
+    leader_id: undefined,
+    submitter_role: 'worker',
+    submitter_id: undefined,
+    member_name: 'David Wilson',
+    member_church_id: 1,
+    member_fellowship_id: 1,
+    member_cell_id: 3,
+    created_at: '2025-06-18T11:20:00Z',
+    updated_at: '2025-06-19T16:45:00Z'
   },
   {
     id: 'h4',
-    title: 'Building Strong Relationships in Ministry',
+    member_id: 'member-4',
+    worker_id: 1004,
+    study_group_id: 'sg-4',
+    study_group_title: 'Building Strong Relationships in Ministry',
+    assignment_link: undefined,
+    submitted_at: '2025-06-15T14:15:00Z',
     status: 'approved',
-    submitter: {
-      name: 'Mary Brown',
-      email: 'mary.brown@gmail.com',
-      phone: '+234 8129969840',
-      role: 'member',
-      avatar: '/avatars/mary-brown.jpg'
-    },
-    submittedAt: '15 June, 2025 at 2:15 PM',
-    gradedAt: '16 June, 2025 at 9:30 AM',
-    grade: 85,
-    graderNotes: 'Good insights on relationship building. Could benefit from more practical examples.',
-    grader: 'Pastor Michael'
+    score: 85,
+    feedback: 'Good insights on relationship building. Could benefit from more practical examples.',
+    is_late: false,
+    week_number: 4,
+    year: 2025,
+    graded_at: '2025-06-16T09:30:00Z',
+    graded_by: 2001,
+    redo_requested: false,
+    redo_note: undefined,
+    redo_requested_at: undefined,
+    redo_requested_by: undefined,
+    submission_method: 'online_by_member',
+    leader_id: undefined,
+    submitter_role: 'worker',
+    submitter_id: undefined,
+    member_name: 'Mary Brown',
+    member_church_id: 1,
+    member_fellowship_id: 3,
+    member_cell_id: 4,
+    created_at: '2025-06-15T14:15:00Z',
+    updated_at: '2025-06-16T09:30:00Z'
   }
 ];
 
@@ -281,7 +337,7 @@ function HistoryCard({ submission }: { submission: any }): React.JSX.Element {
               </p>
             )}
           </div>
-          {getStatusBadge(submission.status, submission.grade)}
+          {getStatusBadge(submission.status, submission.score)}
         </div>
 
         <div className="flex items-center gap-4 mb-4">
@@ -569,7 +625,7 @@ export default function HistoryTab(): React.JSX.Element {
           <Card>
             <CardContent className="p-4">
               <div className="text-2xl font-bold text-blue-600">
-                {historyData.filter(s => s.status === 'approved' || s.grade > 0).length}
+                {historyData.filter(s => s.status === 'approved' || (s.score && s.score > 0)).length}
               </div>
               <div className="text-sm text-gray-600">Approved</div>
             </CardContent>
@@ -586,7 +642,7 @@ export default function HistoryTab(): React.JSX.Element {
             <CardContent className="p-4">
               <div className="text-2xl font-bold text-green-600">
                 {historyData.length > 0 ? 
-                  Math.round(historyData.reduce((sum, s) => sum + (s.grade || 0), 0) / historyData.length) 
+                  Math.round(historyData.reduce((sum, s) => sum + (s.score ?? 0), 0) / historyData.length) 
                   : 0}%
               </div>
               <div className="text-sm text-gray-600">Average Grade</div>

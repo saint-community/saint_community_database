@@ -10,97 +10,161 @@ import { submissionsApi, StudyGroupSubmission, GradeSubmissionDto, RequestRedoDt
 import dayjs from 'dayjs';
 
 // Mock data for testing - will be replaced with API data
-const mockSubmissions = [
+const mockSubmissions: StudyGroupSubmission[] = [
   {
     id: '1',
-    title: 'Kings and Priests in the Earth (2020) - Track 3',
-    status: 'pending',
-    submitter: {
-      name: 'John Smith',
-      email: 'Johnsmith@gmail.com',
-      phone: '+234 8129969837',
-      role: 'worker-in-training',
-      avatar: '/avatars/john-smith.jpg'
-    },
-    submittedAt: '24 June, 2025 at 8:05 AM',
-    submissionType: 'online',
-    submissionUrl: '#',
-    notes: 'Struggled with answering question 2 because i did not understand what pastor meant when he explained what a chimpanzee is and why it leaves in the zoo.',
-    isLate: true,
-    deadline: '19 June, 2025, 7:58 PM',
-    grade: null
+    member_id: 'member-1',
+    worker_id: 1001,
+    study_group_id: 'sg-1',
+    study_group_title: 'Kings and Priests in the Earth (2020) - Track 3',
+    assignment_link: '#',
+    submitted_at: '2025-06-24T08:05:00Z',
+    status: 'submitted',
+    score: undefined,
+    feedback: 'Struggled with answering question 2 because i did not understand what pastor meant when he explained what a chimpanzee is and why it leaves in the zoo.',
+    is_late: true,
+    week_number: 3,
+    year: 2025,
+    graded_at: undefined,
+    graded_by: undefined,
+    redo_requested: false,
+    redo_note: undefined,
+    redo_requested_at: undefined,
+    redo_requested_by: undefined,
+    submission_method: 'online_by_member',
+    leader_id: undefined,
+    submitter_role: 'worker',
+    submitter_id: undefined,
+    member_name: 'John Smith',
+    member_church_id: 1,
+    member_fellowship_id: 1,
+    member_cell_id: 1,
+    created_at: '2025-06-24T08:05:00Z',
+    updated_at: '2025-06-24T08:05:00Z'
   },
   {
     id: '2',
-    title: 'Kings and Priests in the Earth (2020) - Track 3',
-    status: 'pending',
-    submitter: {
-      name: 'John Smith',
-      email: 'Johnsmith@gmail.com',
-      phone: '+234 8129969837',
-      role: 'cell-leader',
-      avatar: '/avatars/john-smith.jpg'
-    },
-    submittedAt: '24 June, 2025 at 8:05 AM',
-    submissionType: 'offline',
-    notes: 'Completed all questions and thoroughly answered each one of them. I enjoyed learning about kings and priests in the earth.',
-    isLate: false,
-    grade: null
+    member_id: 'member-2',
+    worker_id: 1002,
+    study_group_id: 'sg-1',
+    study_group_title: 'Kings and Priests in the Earth (2020) - Track 3',
+    assignment_link: undefined,
+    submitted_at: '2025-06-24T08:05:00Z',
+    status: 'submitted',
+    score: undefined,
+    feedback: 'Completed all questions and thoroughly answered each one of them. I enjoyed learning about kings and priests in the earth.',
+    is_late: false,
+    week_number: 3,
+    year: 2025,
+    graded_at: undefined,
+    graded_by: undefined,
+    redo_requested: false,
+    redo_note: undefined,
+    redo_requested_at: undefined,
+    redo_requested_by: undefined,
+    submission_method: 'offline_by_leader',
+    leader_id: 2001,
+    submitter_role: 'leader',
+    submitter_id: undefined,
+    member_name: 'John Smith',
+    member_church_id: 1,
+    member_fellowship_id: 1,
+    member_cell_id: 1,
+    created_at: '2025-06-24T08:05:00Z',
+    updated_at: '2025-06-24T08:05:00Z'
   },
   {
     id: '3',
-    title: 'Kings and Priests in the Earth (2020) - Track 3',
+    member_id: 'member-3',
+    worker_id: 1003,
+    study_group_id: 'sg-1',
+    study_group_title: 'Kings and Priests in the Earth (2020) - Track 3',
+    assignment_link: '#',
+    submitted_at: '2025-06-24T08:05:00Z',
     status: 'approved',
-    submitter: {
-      name: 'John Smith',
-      email: 'Johnsmith@gmail.com',
-      phone: '+234 8129969837',
-      role: 'member',
-      avatar: '/avatars/john-smith.jpg'
-    },
-    submittedAt: '24 June, 2025 at 8:05 AM',
-    submissionType: 'online',
-    submissionUrl: '#',
-    notes: 'Completed all questions and thoroughly answered each one of them. I enjoyed learning about kings and priests in the earth.',
-    isLate: false,
-    grade: 92,
-    graderNotes: 'Excellent work! Student demonstrated deep understanding of the material and provided thoughtful responses to all questions.'
+    score: 92,
+    feedback: 'Excellent work! Student demonstrated deep understanding of the material and provided thoughtful responses to all questions.',
+    is_late: false,
+    week_number: 3,
+    year: 2025,
+    graded_at: '2025-06-25T14:30:00Z',
+    graded_by: 2001,
+    redo_requested: false,
+    redo_note: undefined,
+    redo_requested_at: undefined,
+    redo_requested_by: undefined,
+    submission_method: 'online_by_member',
+    leader_id: undefined,
+    submitter_role: 'worker',
+    submitter_id: undefined,
+    member_name: 'John Smith',
+    member_church_id: 1,
+    member_fellowship_id: 1,
+    member_cell_id: 1,
+    created_at: '2025-06-24T08:05:00Z',
+    updated_at: '2025-06-25T14:30:00Z'
   },
   {
     id: '4',
-    title: 'Kings and Priests in the Earth (2020) - Track 3',
-    status: 'pending',
-    submitter: {
-      name: 'John Smith',
-      email: 'Johnsmith@gmail.com',
-      phone: '+234 8129969837',
-      role: 'worker-in-training',
-      avatar: '/avatars/john-smith.jpg'
-    },
-    submittedAt: '24 June, 2025 at 8:05 AM',
-    submissionType: 'offline',
-    isLate: true,
-    deadline: '19 June, 2025, 7:58 PM',
-    grade: null
+    member_id: 'member-4',
+    worker_id: 1004,
+    study_group_id: 'sg-1',
+    study_group_title: 'Kings and Priests in the Earth (2020) - Track 3',
+    assignment_link: undefined,
+    submitted_at: '2025-06-24T08:05:00Z',
+    status: 'late',
+    score: undefined,
+    feedback: undefined,
+    is_late: true,
+    week_number: 3,
+    year: 2025,
+    graded_at: undefined,
+    graded_by: undefined,
+    redo_requested: false,
+    redo_note: undefined,
+    redo_requested_at: undefined,
+    redo_requested_by: undefined,
+    submission_method: 'offline_by_leader',
+    leader_id: 2001,
+    submitter_role: 'leader',
+    submitter_id: undefined,
+    member_name: 'John Smith',
+    member_church_id: 1,
+    member_fellowship_id: 1,
+    member_cell_id: 1,
+    created_at: '2025-06-24T08:05:00Z',
+    updated_at: '2025-06-24T08:05:00Z'
   },
   {
     id: '5',
-    title: 'Understanding Prayer and Intercession',
-    status: 'redo',
-    submitter: {
-      name: 'Sarah Johnson',
-      email: 'sarah.johnson@gmail.com',
-      phone: '+234 8129969838',
-      role: 'cell-leader',
-      avatar: '/avatars/sarah-johnson.jpg'
-    },
-    submittedAt: '20 June, 2025 at 3:30 PM',
-    submissionType: 'online',
-    submissionUrl: '#',
-    notes: 'Need to improve understanding of intercessory prayer concepts.',
-    isLate: false,
-    grade: 65,
-    graderNotes: 'Please review the material on intercessory prayer and resubmit with more detailed answers.'
+    member_id: 'member-5',
+    worker_id: 1005,
+    study_group_id: 'sg-2',
+    study_group_title: 'Understanding Prayer and Intercession',
+    assignment_link: '#',
+    submitted_at: '2025-06-20T15:30:00Z',
+    status: 'redo_requested',
+    score: 65,
+    feedback: 'Please review the material on intercessory prayer and resubmit with more detailed answers.',
+    is_late: false,
+    week_number: 2,
+    year: 2025,
+    graded_at: '2025-06-21T10:15:00Z',
+    graded_by: 2001,
+    redo_requested: true,
+    redo_note: 'Need to improve understanding of intercessory prayer concepts.',
+    redo_requested_at: '2025-06-21T10:15:00Z',
+    redo_requested_by: 2001,
+    submission_method: 'online_by_member',
+    leader_id: undefined,
+    submitter_role: 'worker',
+    submitter_id: undefined,
+    member_name: 'Sarah Johnson',
+    member_church_id: 1,
+    member_fellowship_id: 2,
+    member_cell_id: 2,
+    created_at: '2025-06-20T15:30:00Z',
+    updated_at: '2025-06-21T10:15:00Z'
   }
 ];
 
@@ -277,7 +341,7 @@ function SubmissionCard({ submission }: { submission: any }): React.JSX.Element 
               Submitted: {submission.submittedAt} 
               {submission.submission_method && (
                 <span className="ml-2 px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
-                  {submission.submission_method.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  {submission.submission_method.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
                 </span>
               )}
             </p>
@@ -321,7 +385,7 @@ function SubmissionCard({ submission }: { submission: any }): React.JSX.Element 
             )}
 
             {/* Grading Interface */}
-            {submission.status === 'pending' ? (
+            {submission.status === 'submitted' ? (
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
                   <label className="font-medium text-gray-900">Grade:</label>
@@ -695,7 +759,7 @@ export default function SubmissionsTab(): React.JSX.Element {
           <Card>
             <CardContent className="p-4">
               <div className="text-2xl font-bold text-orange-600">
-                {submissionsData.filter(s => s.status === 'pending').length}
+                {submissionsData.filter(s => s.status === 'submitted').length}
               </div>
               <div className="text-sm text-gray-600">Pending Review</div>
             </CardContent>
@@ -703,7 +767,7 @@ export default function SubmissionsTab(): React.JSX.Element {
           <Card>
             <CardContent className="p-4">
               <div className="text-2xl font-bold text-red-600">
-                {submissionsData.filter(s => s.isLate).length}
+                {submissionsData.filter(s => s.is_late).length}
               </div>
               <div className="text-sm text-gray-600">Late Submissions</div>
             </CardContent>
@@ -711,7 +775,7 @@ export default function SubmissionsTab(): React.JSX.Element {
           <Card>
             <CardContent className="p-4">
               <div className="text-2xl font-bold text-blue-600">
-                {submissionsData.filter(s => s.submissionType === 'online').length}
+                {submissionsData.filter(s => s.submission_method === 'online_by_member').length}
               </div>
               <div className="text-sm text-gray-600">Online Submissions</div>
             </CardContent>
