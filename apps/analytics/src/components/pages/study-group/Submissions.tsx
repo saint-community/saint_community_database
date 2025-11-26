@@ -7,166 +7,29 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/@workspace/ui/components/
 import { useState, useEffect, useRef } from 'react';
 import { Plus, ExternalLink, ChevronDown, ChevronUp, AlertTriangle, User, Filter } from 'lucide-react';
 import { submissionsApi, StudyGroupSubmission, GradeSubmissionDto, RequestRedoDto, mapSubmissionStatusToFrontend } from '@/src/services/submissions';
+import { AddSubmissionModal } from '@/components/ui/AddSubmissionModal';
 import dayjs from 'dayjs';
 
-// Mock data for testing - will be replaced with API data
-const mockSubmissions: StudyGroupSubmission[] = [
-  {
-    id: '1',
-    member_id: 'member-1',
-    worker_id: 1001,
-    study_group_id: 'sg-1',
-    study_group_title: 'Kings and Priests in the Earth (2020) - Track 3',
-    assignment_link: '#',
-    submitted_at: '2025-06-24T08:05:00Z',
-    status: 'submitted',
-    score: undefined,
-    feedback: 'Struggled with answering question 2 because i did not understand what pastor meant when he explained what a chimpanzee is and why it leaves in the zoo.',
-    is_late: true,
-    week_number: 3,
-    year: 2025,
-    graded_at: undefined,
-    graded_by: undefined,
-    redo_requested: false,
-    redo_note: undefined,
-    redo_requested_at: undefined,
-    redo_requested_by: undefined,
-    submission_method: 'online_by_member',
-    leader_id: undefined,
-    submitter_role: 'worker',
-    submitter_id: undefined,
-    member_name: 'John Smith',
-    member_church_id: 1,
-    member_fellowship_id: 1,
-    member_cell_id: 1,
-    created_at: '2025-06-24T08:05:00Z',
-    updated_at: '2025-06-24T08:05:00Z'
-  },
-  {
-    id: '2',
-    member_id: 'member-2',
-    worker_id: 1002,
-    study_group_id: 'sg-1',
-    study_group_title: 'Kings and Priests in the Earth (2020) - Track 3',
-    assignment_link: undefined,
-    submitted_at: '2025-06-24T08:05:00Z',
-    status: 'submitted',
-    score: undefined,
-    feedback: 'Completed all questions and thoroughly answered each one of them. I enjoyed learning about kings and priests in the earth.',
-    is_late: false,
-    week_number: 3,
-    year: 2025,
-    graded_at: undefined,
-    graded_by: undefined,
-    redo_requested: false,
-    redo_note: undefined,
-    redo_requested_at: undefined,
-    redo_requested_by: undefined,
-    submission_method: 'offline_by_leader',
-    leader_id: 2001,
-    submitter_role: 'leader',
-    submitter_id: undefined,
-    member_name: 'John Smith',
-    member_church_id: 1,
-    member_fellowship_id: 1,
-    member_cell_id: 1,
-    created_at: '2025-06-24T08:05:00Z',
-    updated_at: '2025-06-24T08:05:00Z'
-  },
-  {
-    id: '3',
-    member_id: 'member-3',
-    worker_id: 1003,
-    study_group_id: 'sg-1',
-    study_group_title: 'Kings and Priests in the Earth (2020) - Track 3',
-    assignment_link: '#',
-    submitted_at: '2025-06-24T08:05:00Z',
-    status: 'approved',
-    score: 92,
-    feedback: 'Excellent work! Student demonstrated deep understanding of the material and provided thoughtful responses to all questions.',
-    is_late: false,
-    week_number: 3,
-    year: 2025,
-    graded_at: '2025-06-25T14:30:00Z',
-    graded_by: 2001,
-    redo_requested: false,
-    redo_note: undefined,
-    redo_requested_at: undefined,
-    redo_requested_by: undefined,
-    submission_method: 'online_by_member',
-    leader_id: undefined,
-    submitter_role: 'worker',
-    submitter_id: undefined,
-    member_name: 'John Smith',
-    member_church_id: 1,
-    member_fellowship_id: 1,
-    member_cell_id: 1,
-    created_at: '2025-06-24T08:05:00Z',
-    updated_at: '2025-06-25T14:30:00Z'
-  },
-  {
-    id: '4',
-    member_id: 'member-4',
-    worker_id: 1004,
-    study_group_id: 'sg-1',
-    study_group_title: 'Kings and Priests in the Earth (2020) - Track 3',
-    assignment_link: undefined,
-    submitted_at: '2025-06-24T08:05:00Z',
-    status: 'late',
-    score: undefined,
-    feedback: undefined,
-    is_late: true,
-    week_number: 3,
-    year: 2025,
-    graded_at: undefined,
-    graded_by: undefined,
-    redo_requested: false,
-    redo_note: undefined,
-    redo_requested_at: undefined,
-    redo_requested_by: undefined,
-    submission_method: 'offline_by_leader',
-    leader_id: 2001,
-    submitter_role: 'leader',
-    submitter_id: undefined,
-    member_name: 'John Smith',
-    member_church_id: 1,
-    member_fellowship_id: 1,
-    member_cell_id: 1,
-    created_at: '2025-06-24T08:05:00Z',
-    updated_at: '2025-06-24T08:05:00Z'
-  },
-  {
-    id: '5',
-    member_id: 'member-5',
-    worker_id: 1005,
-    study_group_id: 'sg-2',
-    study_group_title: 'Understanding Prayer and Intercession',
-    assignment_link: '#',
-    submitted_at: '2025-06-20T15:30:00Z',
-    status: 'redo_requested',
-    score: 65,
-    feedback: 'Please review the material on intercessory prayer and resubmit with more detailed answers.',
-    is_late: false,
-    week_number: 2,
-    year: 2025,
-    graded_at: '2025-06-21T10:15:00Z',
-    graded_by: 2001,
-    redo_requested: true,
-    redo_note: 'Need to improve understanding of intercessory prayer concepts.',
-    redo_requested_at: '2025-06-21T10:15:00Z',
-    redo_requested_by: 2001,
-    submission_method: 'online_by_member',
-    leader_id: undefined,
-    submitter_role: 'worker',
-    submitter_id: undefined,
-    member_name: 'Sarah Johnson',
-    member_church_id: 1,
-    member_fellowship_id: 2,
-    member_cell_id: 2,
-    created_at: '2025-06-20T15:30:00Z',
-    updated_at: '2025-06-21T10:15:00Z'
-  }
-];
+// Helper interface for submission display
+interface SubmissionForDisplay extends StudyGroupSubmission {
+  title: string;
+  submittedAt: string;
+  submissionType: 'online' | 'offline';
+  submissionUrl: string;
+  isLate: boolean;
+  notes: string;
+  grade?: number | null;
+  graderNotes: string;
+  deadline?: string;
+  displayStatus: 'pending' | 'approved' | 'redo' | 'rejected';
+  submitter: {
+    name: string;
+    email: string;
+    phone: string;
+    role: string;
+    avatar: string;
+  };
+}
 
 function FilterDropdown({ onFilterChange }: { onFilterChange: (filter: string) => void }): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
@@ -269,10 +132,62 @@ function UserRoleBadge({ role }: { role: string }): React.JSX.Element {
   );
 }
 
-function SubmissionCard({ submission }: { submission: any }): React.JSX.Element {
+function SubmissionCard({ 
+  submission, 
+  onGradeSubmission, 
+  onRequestRedo 
+}: { 
+  submission: SubmissionForDisplay;
+  onGradeSubmission?: (id: string, gradeData: GradeSubmissionDto) => Promise<void>;
+  onRequestRedo?: (id: string, redoData: RequestRedoDto) => Promise<void>;
+}): React.JSX.Element {
   const [isExpanded, setIsExpanded] = useState(false);
   const [grade, setGrade] = useState(submission.grade || '');
   const [graderNotes, setGraderNotes] = useState(submission.graderNotes || '');
+  const [redoNote, setRedoNote] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleGradeSubmission = async () => {
+    if (!onGradeSubmission) return;
+    
+    const gradeNumber = Number(grade);
+    if (isNaN(gradeNumber) || gradeNumber < 0 || gradeNumber > 100) {
+      alert('Please enter a valid grade between 0 and 100');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await onGradeSubmission(submission.id, {
+        score: gradeNumber,
+        feedback: graderNotes
+      });
+    } catch (error) {
+      console.error('Failed to grade submission:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRequestRedo = async () => {
+    if (!onRequestRedo) return;
+    
+    if (!redoNote.trim()) {
+      alert('Please provide a reason for requesting redo');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await onRequestRedo(submission.id, {
+        redo_note: redoNote.trim()
+      });
+    } catch (error) {
+      console.error('Failed to request redo:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Card className="mb-4 hover:shadow-md transition-shadow">
@@ -288,7 +203,7 @@ function SubmissionCard({ submission }: { submission: any }): React.JSX.Element 
               </p>
             )}
           </div>
-          <StatusBadge status={submission.status} grade={submission.grade} />
+          <StatusBadge status={submission.displayStatus} grade={submission.grade} />
         </div>
 
         <div className="flex items-center gap-4 mb-4">
@@ -375,7 +290,7 @@ function SubmissionCard({ submission }: { submission: any }): React.JSX.Element 
             )}
 
             {/* Grader Notes Section */}
-            {submission.status === 'approved' && submission.graderNotes && (
+            {submission.displayStatus === 'approved' && submission.graderNotes && (
               <div>
                 <h4 className="font-semibold text-gray-900 mb-2">Grader Feedback:</h4>
                 <p className="text-gray-700 bg-blue-50 p-3 rounded-lg border border-blue-200">
@@ -385,7 +300,7 @@ function SubmissionCard({ submission }: { submission: any }): React.JSX.Element 
             )}
 
             {/* Grading Interface */}
-            {submission.status === 'submitted' ? (
+            {submission.displayStatus === 'pending' ? (
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
                   <label className="font-medium text-gray-900">Grade:</label>
@@ -415,7 +330,7 @@ function SubmissionCard({ submission }: { submission: any }): React.JSX.Element 
                   />
                 </div>
               </div>
-            ) : submission.status === 'approved' && submission.grade ? (
+            ) : submission.displayStatus === 'approved' && submission.grade ? (
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
                   <label className="font-medium text-gray-900">Grade:</label>
@@ -456,15 +371,40 @@ function SubmissionCard({ submission }: { submission: any }): React.JSX.Element 
               </div>
             ) : null}
 
-            {/* Action Buttons */}
-            <div className="flex gap-3">
-              <Button variant="outline" className="border-red-500 text-red-500 hover:bg-red-50">
-                Redo
-              </Button>
-              <Button className="bg-red-600 hover:bg-red-700 text-white">
-                Grade & Approve
-              </Button>
-            </div>
+            {/* Redo Note Input - Only show for pending submissions */}
+            {submission.displayStatus === 'pending' && (
+              <div className="mt-4">
+                <label className="font-medium text-gray-900 mb-2 block">Redo Note (optional):</label>
+                <textarea
+                  value={redoNote}
+                  onChange={(e) => setRedoNote(e.target.value)}
+                  placeholder="Provide reason for requesting redo..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none"
+                  rows={2}
+                />
+              </div>
+            )}
+
+            {/* Action Buttons - Only show for pending submissions */}
+            {submission.displayStatus === 'pending' && (
+              <div className="flex gap-3 mt-4">
+                <Button 
+                  variant="outline" 
+                  className="border-orange-500 text-orange-500 hover:bg-orange-50"
+                  onClick={handleRequestRedo}
+                  disabled={loading || !redoNote.trim()}
+                >
+                  {loading ? 'Requesting...' : 'Request Redo'}
+                </Button>
+                <Button 
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={handleGradeSubmission}
+                  disabled={loading || !grade}
+                >
+                  {loading ? 'Grading...' : 'Grade & Approve'}
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
@@ -559,141 +499,94 @@ function Pagination({
 }
 
 export default function SubmissionsTab(): React.JSX.Element {
-  const [submissionsData, setSubmissionsData] = useState<StudyGroupSubmission[]>([]);
+  const [submissionsData, setSubmissionsData] = useState<SubmissionForDisplay[]>([]);
   const [filter, setFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const itemsPerPage = 5; // Show 5 submissions per page
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    late: 0,
+    online: 0
+  });
+  const itemsPerPage = 10; // Show 10 submissions per page
 
-  // Load submissions on component mount
+  // Load submissions on component mount and when filters change
   useEffect(() => {
     loadSubmissions();
-  }, []);
+  }, [currentPage, filter]);
+
+  // Helper function to transform API submission to display format
+  const transformSubmission = (submission: StudyGroupSubmission): SubmissionForDisplay => {
+    const displayStatus = mapSubmissionStatusToFrontend(submission.status) as 'pending' | 'approved' | 'redo' | 'rejected';
+    
+    return {
+      ...submission,
+      title: submission.study_group_title || 'Untitled Assignment',
+      submittedAt: dayjs(submission.submitted_at).format('MMMM D, YYYY [at] h:mm A'),
+      submissionType: submission.assignment_link ? 'online' : 'offline',
+      submissionUrl: submission.assignment_link || '',
+      isLate: submission.is_late || false,
+      notes: submission.feedback || '',
+      grade: submission.score || null,
+      graderNotes: submission.feedback || '',
+      deadline: dayjs(submission.submitted_at).add(7, 'days').format('MMMM D, YYYY'), // Example deadline calculation
+      displayStatus,
+      submitter: {
+        name: submission.member_name || `Worker ${submission.worker_id}`,
+        email: 'worker@example.com', // Could be fetched from worker/member API
+        phone: '+234 000 000 0000', // Could be fetched from worker/member API
+        role: submission.submitter_role === 'worker' ? 'worker-in-training' : 'member',
+        avatar: '/avatars/default-avatar.jpg'
+      }
+    };
+  };
 
   const loadSubmissions = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // TEMPORARY: Test with the actual API response you provided
-      const testData = [
-        {
-          "id": "68c97b9ce0081c0a47c3e6b7",
-          "worker_id": 1,
-          "study_group_id": "68c7e09ebb41e2bb5a9b9266",
-          "study_group_title": "Discipleship Week 8",
-          "assignment_link": "https://google.com",
-          "submitted_at": "2025-09-16T15:00:44.595Z",
-          "status": "submitted",
-          "is_late": false,
-          "week_number": 38,
-          "year": 2025,
-          "redo_requested": false,
-          "submission_method": "online_by_member",
-          "submitter_role": "worker",
-          "submitter_id": 1,
-          "created_at": "2025-09-16T15:00:44.596Z",
-          "updated_at": "2025-09-16T15:00:44.596Z"
-        },
-        {
-          "id": "68c7d5e5bb41e2bb5a9b9109",
-          "worker_id": 1,
-          "study_group_id": "68c7d5dbbb41e2bb5a9b90c4",
-          "study_group_title": "Discipleship Week 7",
-          "assignment_link": "https://google.com",
-          "submitted_at": "2025-09-15T09:01:25.295Z",
-          "status": "submitted",
-          "is_late": false,
-          "week_number": 38,
-          "year": 2025,
-          "redo_requested": false,
-          "submission_method": "online_by_member",
-          "submitter_role": "worker",
-          "created_at": "2025-09-15T09:01:25.296Z",
-          "updated_at": "2025-09-15T11:03:03.391Z"
-        }
-      ];
+      // Prepare filters for API call
+      const apiFilters = {
+        page: currentPage,
+        limit: itemsPerPage,
+        status: filter === 'all' ? undefined : filter,
+        church_id: 1 // TODO: Get from user context or props
+      };
+
+      // Fetch submissions using the enhanced API
+      const response = await submissionsApi.getForReview(apiFilters);
       
-      console.log('Using test data:', testData); // Debug log
+      // Transform submissions to display format
+      const transformedSubmissions = response.data.map(transformSubmission);
       
-      // Use getForReview directly to get the full paginated response
-      // const response = await submissionsApi.getForReview({ church_id: 1 });
-      // console.log('API Response:', response); // Debug log
+      setSubmissionsData(transformedSubmissions);
+      setTotalPages(response.pagination?.totalPages || 1);
       
-      // Extract data array from response
-      const data = testData; // response?.data || [];
-      console.log('Extracted data:', data); // Debug log
-      
-      if (!Array.isArray(data)) {
-        console.log('Data is not an array:', typeof data, data);
-        setSubmissionsData(mockSubmissions);
-        return;
-      }
-      
-      if (data.length === 0) {
-        console.log('Data array is empty, using mock data for testing');
-        // Even if empty, still set the empty array so we can see stats
-        setSubmissionsData([]);
-        return;
-      }
-      
-      // Map API data to match SubmissionCard expectations
-      const mappedData = data.map((submission: any) => {
-        const mapped = {
-          ...submission,
-          // Map API fields to component expectations
-          title: submission.study_group_title || 'Untitled Assignment',
-          submittedAt: dayjs(submission.submitted_at).format('MMMM D, YYYY [at] h:mm A'),
-          submissionType: submission.assignment_link ? 'online' : 'offline',
-          submissionUrl: submission.assignment_link || '',
-          isLate: submission.is_late || false,
-          notes: '', // No notes field in API response
-          grade: submission.score || null, // Use score from API
-          graderNotes: submission.feedback || '',
-          // Map API status to UI status using the helper function
-          status: mapSubmissionStatusToFrontend(submission.status),
-          // Create submitter object from API data
-          submitter: {
-            name: `Worker ${submission.worker_id}`, // API doesn't provide worker name
-            email: 'worker@example.com', // Default email
-            phone: '+234 000 000 0000', // Default phone
-            role: submission.submitter_role === 'worker' ? 'worker-in-training' : 'member',
-            avatar: '/avatars/default-avatar.jpg'
-          }
-        };
-        console.log('Original submission:', submission);
-        console.log('Mapped submission:', mapped);
-        return mapped;
-      });
-      
-      console.log('Final mapped data:', mappedData); // Debug log
-      setSubmissionsData(mappedData);
-    } catch (err) {
-      setError('Failed to load submissions');
+      // Calculate stats from all submissions (not just current page)
+      const allSubmissions = await submissionsApi.getAll({ church_id: 1 });
+      const calculatedStats = {
+        total: allSubmissions.length,
+        pending: allSubmissions.filter(s => mapSubmissionStatusToFrontend(s.status) === 'pending').length,
+        late: allSubmissions.filter(s => s.is_late).length,
+        online: allSubmissions.filter(s => s.submission_method === 'online_by_member').length
+      };
+      setStats(calculatedStats);
+
+    } catch (err: any) {
       console.error('Error loading submissions:', err);
-      // For development, use mock data to show the UI
-      setSubmissionsData(mockSubmissions);
+      setError(err.message || 'Failed to load submissions. Please try again.');
+      setSubmissionsData([]);
+      setTotalPages(0);
+      setStats({ total: 0, pending: 0, late: 0, online: 0 });
     } finally {
       setLoading(false);
     }
   };
-
-  const filteredSubmissions = submissionsData.filter(submission => {
-    if (filter === 'all') return true;
-    const matches = submission.status === filter;
-    console.log(`Filter: ${filter}, Submission status: ${submission.status}, Matches: ${matches}`); // Debug log
-    return matches;
-  });
-  
-  console.log('Total submissions:', submissionsData.length);
-  console.log('Filtered submissions:', filteredSubmissions.length);
-  console.log('Current filter:', filter);
-
-  const totalPages = Math.ceil(filteredSubmissions.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentSubmissions = filteredSubmissions.slice(startIndex, endIndex);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -708,9 +601,9 @@ export default function SubmissionsTab(): React.JSX.Element {
     try {
       await submissionsApi.gradeSubmission(id, gradeData);
       await loadSubmissions(); // Reload submissions
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error grading submission:', err);
-      throw err;
+      setError(err.message || 'Failed to grade submission');
     }
   };
 
@@ -718,9 +611,9 @@ export default function SubmissionsTab(): React.JSX.Element {
     try {
       await submissionsApi.requestRedo(id, redoData);
       await loadSubmissions(); // Reload submissions
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error requesting redo:', err);
-      throw err;
+      setError(err.message || 'Failed to request redo');
     }
   };
 
@@ -730,7 +623,7 @@ export default function SubmissionsTab(): React.JSX.Element {
         <div>
           <h1 className='text-3xl font-bold text-gray-900'>Review Submissions</h1>
           <p className='text-sm text-gray-600 mt-1'>
-            {loading ? 'Loading submissions...' : `Showing ${currentSubmissions.length} of ${filteredSubmissions.length} submissions`}
+            {loading ? 'Loading submissions...' : `Showing ${submissionsData.length} of ${stats.total} submissions`}
             {filter !== 'all' && (
               <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-600 text-xs rounded-full">
                 Filtered by: {filter.charAt(0).toUpperCase() + filter.slice(1)}
@@ -740,7 +633,10 @@ export default function SubmissionsTab(): React.JSX.Element {
         </div>
         <div className="flex items-center gap-4">
           <FilterDropdown onFilterChange={handleFilterChange} />
-          <Button className='bg-red-600 hover:bg-red-700 text-white px-6 py-3'>
+          <Button 
+            className='bg-blue-600 hover:bg-blue-700 text-white px-6 py-3'
+            onClick={() => setIsAddModalOpen(true)}
+          >
             <Plus className='w-4 h-4 mr-2' />
             Add Submission
           </Button>
@@ -748,35 +644,29 @@ export default function SubmissionsTab(): React.JSX.Element {
       </div>
 
       {/* Quick Stats */}
-      {!loading && submissionsData.length > 0 && (
+      {!loading && stats.total > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardContent className="p-4">
-              <div className="text-2xl font-bold text-gray-900">{submissionsData.length}</div>
+              <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
               <div className="text-sm text-gray-600">Total Submissions</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <div className="text-2xl font-bold text-orange-600">
-                {submissionsData.filter(s => s.status === 'submitted').length}
-              </div>
+              <div className="text-2xl font-bold text-orange-600">{stats.pending}</div>
               <div className="text-sm text-gray-600">Pending Review</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <div className="text-2xl font-bold text-red-600">
-                {submissionsData.filter(s => s.is_late).length}
-              </div>
+              <div className="text-2xl font-bold text-red-600">{stats.late}</div>
               <div className="text-sm text-gray-600">Late Submissions</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <div className="text-2xl font-bold text-blue-600">
-                {submissionsData.filter(s => s.submission_method === 'online_by_member').length}
-              </div>
+              <div className="text-2xl font-bold text-blue-600">{stats.online}</div>
               <div className="text-sm text-gray-600">Online Submissions</div>
             </CardContent>
           </Card>
@@ -796,9 +686,14 @@ export default function SubmissionsTab(): React.JSX.Element {
         </div>
       ) : (
         <div className="space-y-4">
-          {currentSubmissions.length > 0 ? (
-            currentSubmissions.map((submission) => (
-              <SubmissionCard key={submission.id} submission={submission} />
+          {submissionsData.length > 0 ? (
+            submissionsData.map((submission) => (
+              <SubmissionCard 
+                key={submission.id} 
+                submission={submission}
+                onGradeSubmission={handleGradeSubmission}
+                onRequestRedo={handleRequestRedo}
+              />
             ))
           ) : (
             <div className="text-center py-12">
@@ -815,6 +710,15 @@ export default function SubmissionsTab(): React.JSX.Element {
           onPageChange={handlePageChange}
         />
       )}
+
+      {/* Add Submission Modal */}
+      <AddSubmissionModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={() => {
+          loadSubmissions(); // Refresh submissions list
+        }}
+      />
     </div>
   );
 }

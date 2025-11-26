@@ -49,6 +49,9 @@ export const QUERY_PATHS = {
   WORKER_REJECTED: '/api/workers/rejected',
   WORKER_APPROVED: '/api/workers/approved',
 
+  // members
+  MEMBERS_ALL: '/api/member/all',
+
   // departments
   DEPARTMENTS: '/api/departments',
   DEPARTMENT_DETAIL: '/api/departments/:id',
@@ -85,7 +88,7 @@ export const QUERY_PATHS = {
   STUDY_GROUP_WEEKLY: '/api/admin/study-group/weekly/:year',
 
   // study group submissions
-  SUBMISSIONS: '/api/admin/submissions',
+  SUBMISSIONS: '/api/study-group/submissions',
   SUBMISSIONS_REVIEW: '/api/admin/submissions/review',
   SUBMISSIONS_STATS: '/api/admin/submissions/admin/stats',
   SUBMISSIONS_HISTORY: '/api/admin/submissions/history/filtered',

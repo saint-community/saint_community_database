@@ -261,6 +261,279 @@ function CreateAssignmentModal({ isOpen, onClose, onSubmit }: { isOpen: boolean;
   );
 }
 
+function EditAssignmentModal({ 
+  isOpen, 
+  onClose, 
+  onSubmit, 
+  assignment 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onSubmit: (data: UpdateStudyGroupDto) => Promise<void>;
+  assignment: StudyGroup | null;
+}): React.JSX.Element | null {
+  const [formData, setFormData] = useState({
+    title: '',
+    titleSummary: '',
+    downloadLink: '',
+    studyQuestions: ''
+  });
+
+  const [selectedDueDate, setSelectedDueDate] = useState<Date | undefined>();
+  const [dueTime, setDueTime] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Populate form when assignment changes
+  useEffect(() => {
+    if (assignment) {
+      setFormData({
+        title: assignment.title || '',
+        titleSummary: assignment.description || '',
+        downloadLink: '', // Assignment model doesn't seem to have download_link
+        studyQuestions: assignment.questions?.join('\n') || ''
+      });
+      
+      if (assignment.due_date) {
+        const dueDate = new Date(assignment.due_date);
+        setSelectedDueDate(dueDate);
+        setDueTime(dayjs(dueDate).format('HH:mm'));
+      }
+    }
+  }, [assignment]);
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.title.trim()) {
+      newErrors.title = 'Title is required';
+    }
+    
+    if (!formData.titleSummary.trim()) {
+      newErrors.titleSummary = 'Title summary is required';
+    }
+    
+    if (!selectedDueDate) {
+      newErrors.dueDate = 'Due date is required';
+    }
+    
+    if (!dueTime) {
+      newErrors.dueTime = 'Due time is required';
+    }
+    
+    if (!formData.studyQuestions.trim()) {
+      newErrors.studyQuestions = 'Study questions are required';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm() || !assignment) {
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      // Combine date and time using dayjs
+      const dueDateTimeString = selectedDueDate && dueTime 
+        ? dayjs(selectedDueDate).format('YYYY-MM-DD') + ' ' + dueTime
+        : assignment.due_date;
+      
+      const dueDateTime = selectedDueDate && dueTime 
+        ? dayjs(dueDateTimeString).toISOString()
+        : assignment.due_date;
+
+      const updateData: UpdateStudyGroupDto = {
+        title: formData.title,
+        description: formData.titleSummary,
+        questions: formData.studyQuestions.split('\n').filter(q => q.trim()),
+        due_date: dueDateTime,
+      };
+      
+      await onSubmit(updateData);
+    } catch (error) {
+      console.error('Error updating assignment:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setFormData({
+      title: '',
+      titleSummary: '',
+      downloadLink: '',
+      studyQuestions: ''
+    });
+    setSelectedDueDate(undefined);
+    setDueTime('');
+    setIsLoading(false);
+    setErrors({});
+    onClose();
+  };
+
+  if (!isOpen || !assignment) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/30 bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Edit Assignment</h2>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Assignment Title *
+            </label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) => handleInputChange('title', e.target.value)}
+              disabled={isLoading}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                errors.title ? 'border-red-500' : 'border-gray-300'
+              } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              placeholder="Enter assignment title"
+            />
+            {errors.title && (
+              <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Title Summary *
+            </label>
+            <input
+              type="text"
+              value={formData.titleSummary}
+              onChange={(e) => handleInputChange('titleSummary', e.target.value)}
+              disabled={isLoading}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                errors.titleSummary ? 'border-red-500' : 'border-gray-300'
+              } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              placeholder="Brief description of the assignment"
+            />
+            {errors.titleSummary && (
+              <p className="text-red-500 text-sm mt-1">{errors.titleSummary}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Download Link
+            </label>
+            <input
+              type="url"
+              value={formData.downloadLink}
+              onChange={(e) => handleInputChange('downloadLink', e.target.value)}
+              disabled={isLoading}
+              className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                isLoading ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+              placeholder="https://example.com/download-link"
+            />
+            <p className="text-gray-500 text-sm mt-1">
+              Optional: Link to download assignment materials
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Due Date *
+              </label>
+              <DatePicker
+                value={selectedDueDate || new Date()}
+                onChange={isLoading ? () => {} : setSelectedDueDate}
+                className={`${errors.dueDate ? 'border-red-500' : ''} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              />
+              {errors.dueDate && (
+                <p className="text-red-500 text-sm mt-1">{errors.dueDate}</p>
+              )}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Due Time *
+              </label>
+              <TimePicker
+                value={dueTime}
+                onChange={isLoading ? () => {} : setDueTime}
+                className={`${errors.dueTime ? 'border-red-500' : ''} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                placeholder="Select due time"
+              />
+              {errors.dueTime && (
+                <p className="text-red-500 text-sm mt-1">{errors.dueTime}</p>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Study Questions *
+            </label>
+            <textarea
+              value={formData.studyQuestions}
+              onChange={(e) => handleInputChange('studyQuestions', e.target.value)}
+              disabled={isLoading}
+              rows={6}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                errors.studyQuestions ? 'border-red-500' : 'border-gray-300'
+              } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              placeholder="Enter study questions, one per line"
+            />
+            {errors.studyQuestions && (
+              <p className="text-red-500 text-sm mt-1">{errors.studyQuestions}</p>
+            )}
+            <p className="text-gray-500 text-sm mt-1">
+              Enter each question on a new line
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isLoading}
+              className="px-6"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 flex items-center gap-2"
+            >
+              {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+              {isLoading ? 'Updating...' : 'Update Assignment'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function EmptyState(): React.JSX.Element {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4">
@@ -299,7 +572,7 @@ function EmptyState(): React.JSX.Element {
   );
 }
 
-function AssignmentCard({ assignment, onUpdate, onDelete }: { assignment: StudyGroup; onUpdate: (id: string, data: UpdateStudyGroupDto) => Promise<void>; onDelete: (id: string) => Promise<void> }): React.JSX.Element {
+function AssignmentCard({ assignment, onEdit, onDelete }: { assignment: StudyGroup; onEdit: () => void; onDelete: (id: string) => Promise<void> }): React.JSX.Element {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const getStatusBadge = (status: string) => {
@@ -387,7 +660,7 @@ function AssignmentCard({ assignment, onUpdate, onDelete }: { assignment: StudyG
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onUpdate(assignment.id, {})}
+              onClick={onEdit}
               className="text-blue-600 hover:text-blue-800"
             >
               <Edit className="w-4 h-4 mr-1" />
@@ -540,6 +813,8 @@ function Pagination({ currentPage, totalPages, onPageChange }: { currentPage: nu
 
 export default function AssignmentsTab(): React.JSX.Element {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<StudyGroup | null>(null);
   const [hasAssignments, setHasAssignments] = useState(true); // Set to false to show empty state
   const [currentPage, setCurrentPage] = useState(1);
   const [filter, setFilter] = useState('all');
@@ -598,14 +873,28 @@ export default function AssignmentsTab(): React.JSX.Element {
     }
   };
 
-  const handleUpdateAssignment = async (id: string, assignmentData: UpdateStudyGroupDto) => {
+  const handleEditAssignment = (assignment: StudyGroup) => {
+    setSelectedAssignment(assignment);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateAssignment = async (assignmentData: UpdateStudyGroupDto) => {
+    if (!selectedAssignment) return;
+    
     try {
-      await studyGroupApi.update(id, assignmentData);
+      await studyGroupApi.update(selectedAssignment.id, assignmentData);
       await loadAssignments(); // Reload assignments
+      setIsEditModalOpen(false);
+      setSelectedAssignment(null);
     } catch (err) {
       console.error('Error updating assignment:', err);
       throw err;
     }
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setSelectedAssignment(null);
   };
 
   const handleDeleteAssignment = async (id: string) => {
@@ -670,7 +959,7 @@ export default function AssignmentsTab(): React.JSX.Element {
                   <AssignmentCard 
                     key={assignment.id} 
                     assignment={assignment}
-                    onUpdate={handleUpdateAssignment}
+                    onEdit={() => handleEditAssignment(assignment)}
                     onDelete={handleDeleteAssignment}
                   />
                 ))}
@@ -698,6 +987,13 @@ export default function AssignmentsTab(): React.JSX.Element {
         isOpen={isCreateModalOpen} 
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateAssignment}
+      />
+
+      <EditAssignmentModal 
+        isOpen={isEditModalOpen} 
+        onClose={handleCloseEditModal}
+        onSubmit={handleUpdateAssignment}
+        assignment={selectedAssignment}
       />
     </div>
   );
