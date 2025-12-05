@@ -56,6 +56,7 @@ interface TableCardProps {
   onMarkPresent?: (id: string) => void;
   onMarkAbsent?: (id: string) => void;
   onRemoveParticipant?: (id: string) => void;
+  onDeleteMeeting?: (id: string) => void;
 }
 
 function getCompoundKeyValue(row: Row<unknown>, compoundKey?: string) {
@@ -143,7 +144,8 @@ function buildColumns(
   pathName?: string,
   onMarkPresent?: (id: string) => void,
   onMarkAbsent?: (id: string) => void,
-  onRemoveParticipant?: (id: string) => void
+  onRemoveParticipant?: (id: string) => void,
+  onDeleteMeeting?: (id: string) => void
 ) {
   const columns: ColumnDef<unknown>[] = [];
 
@@ -167,7 +169,7 @@ function buildColumns(
             </Link>
           )}
           
-          {(onMarkPresent || onMarkAbsent || onRemoveParticipant) && (
+          {(onMarkPresent || onMarkAbsent || onRemoveParticipant || onDeleteMeeting) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 p-0">
@@ -203,6 +205,15 @@ function buildColumns(
                     Remove Participant
                   </DropdownMenuItem>
                 )}
+                {onDeleteMeeting && (
+                  <DropdownMenuItem
+                    onClick={() => onDeleteMeeting(participantId)}
+                    className="cursor-pointer text-red-600"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Meeting
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -232,6 +243,7 @@ export function TableCard({
   onMarkPresent,
   onMarkAbsent,
   onRemoveParticipant,
+  onDeleteMeeting,
 }: TableCardProps): React.JSX.Element {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -241,8 +253,8 @@ export function TableCard({
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const columns = React.useMemo(
-    () => buildColumns(columnKeys, pathName, onMarkPresent, onMarkAbsent, onRemoveParticipant),
-    [columnKeys, pathName, onMarkPresent, onMarkAbsent, onRemoveParticipant]
+    () => buildColumns(columnKeys, pathName, onMarkPresent, onMarkAbsent, onRemoveParticipant, onDeleteMeeting),
+    [columnKeys, pathName, onMarkPresent, onMarkAbsent, onRemoveParticipant, onDeleteMeeting]
   );
   const [search, setSearch] = React.useState('');
 

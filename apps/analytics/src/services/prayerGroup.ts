@@ -155,6 +155,10 @@ export const getPrayerMeetings = async (params?: PrayerMeetingsListParams) => {
   return response.data?.data || { data: [], total: 0, page: 1, limit: 10 };
 };
 
+export const deletePrayerMeeting = async (id: string): Promise<void> => {
+  await ApiCaller.delete(`${QUERY_PATHS.PRAYER_MEETINGS_DELETE}/${id}`);
+};
+
 // Helper functions for transforming data
 export const formatPrayerMeetingForTable = (meeting: PrayerMeeting) => ({
   id: meeting._id,

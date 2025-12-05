@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect, useMemo } from "react";
-import { X, UserPlus, Loader2, CheckCircle } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { X, UserPlus, Loader2, CheckCircle, ChevronDown } from "lucide-react";
 import { cn } from "@/libutils";
 import {
   useChurches,
@@ -11,6 +11,7 @@ import {
 } from "@/hooks/useOrganizational";
 import { useMe } from "@/hooks/useMe";
 import { useAddParticipant } from "@/hooks/usePrayerGroups";
+import { useMembersOptions } from "@/hooks/useMembers";
 import { Button } from "@workspace/ui/components/button";
 import { useForm } from "@workspace/ui/lib/react-hook-form";
 import { z } from "zod";
@@ -30,8 +31,8 @@ import { toast } from "@workspace/ui/lib/sonner";
 import router from "next/router";
 
 const formSchema = z.object({
-  name: z.string().min(2, {
-    message: "Participant name must be at least 2 characters.",
+  participant_name: z.string().min(1, {
+    message: "Please enter participant name.",
   }),
   church: z.string().min(1, {
     message: "Please select a church.",
@@ -48,7 +49,7 @@ interface AddParticipantModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (participant: {
-    name: string;
+    participant_name: string;
     church: string;
     fellowship: string;
     cell: string;
@@ -66,7 +67,10 @@ export function AddParticipantModal({
 }: AddParticipantModalProps): React.JSX.Element {
   const [showSuccess, setShowSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
   const queryClient = useQueryClient();
+  const inputRef = useRef<HTMLInputElement>(null);
   // Get current user info
   const { data: user } = useMe();
 
@@ -103,7 +107,7 @@ export function AddParticipantModal({
 
   const form = useForm({
     defaultValues: {
-      name: "",
+      participant_name: "",
       church: user?.church_id?.toString() || "",
       fellowship: user?.fellowship_id?.toString() || "",
       cell: user?.cell_id?.toString() || "",
@@ -132,7 +136,7 @@ export function AddParticipantModal({
       addParticipantMutation.mutate({
         prayergroup_id: prayerGroupId,
         fellowship_id: String(user?.fellowship_id),
-        name: value.name,
+        name: value.participant_name,
       });
     },
   });
@@ -153,10 +157,23 @@ export function AddParticipantModal({
     error: cellsError,
   } = useCells(user?.fellowship_id, user?.church_id);
 
+  // Fetch members for the church
+  const { data: members = [], isLoading: membersLoading, error: membersError } = useMembersOptions(user?.church_id);
+
+  // Filter members based on search value
+  const filteredMembers = useMemo(() => {
+    if (!searchValue) return members.slice(0, 10); // Show first 10 when no search
+    return members.filter(member => 
+      member.label.toLowerCase().includes(searchValue.toLowerCase())
+    ).slice(0, 10); // Limit to 10 results
+  }, [members, searchValue]);
+
   const handleClose = () => {
     form.reset();
     setShowSuccess(false);
     setIsLoading(false);
+    setShowDropdown(false);
+    setSearchValue("");
     onClose();
   };
 
@@ -317,21 +334,66 @@ export function AddParticipantModal({
             />
           </div>
 
-          {/* Name Field */}
-          <div className="space-y-2">
-            <Label htmlFor="name">Participant Name</Label>
+          {/* Participant Name Combobox Field */}
+          <div className="space-y-2 relative">
+            <Label htmlFor="participant_name">Participant Name *</Label>
             <form.Field
-              name="name"
+              name="participant_name"
               children={(field) => (
                 <>
-                  <Input
-                    id="name"
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    placeholder="Enter participant name"
-                    className="h-[48px]"
-                  />
+                  <div className="relative">
+                    <Input
+                      ref={inputRef}
+                      id="participant_name"
+                      value={field.state.value}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        field.handleChange(value);
+                        setSearchValue(value);
+                        setShowDropdown(true);
+                      }}
+                      onFocus={() => setShowDropdown(true)}
+                      onBlur={() => {
+                        // Delay hiding dropdown to allow for selection
+                        setTimeout(() => setShowDropdown(false), 150);
+                      }}
+                      placeholder={
+                        !user?.church_id
+                          ? "Select a church first"
+                          : membersLoading
+                            ? "Loading members..."
+                            : "Type participant name or select from list"
+                      }
+                      className="h-[48px] pr-10"
+                      disabled={!user?.church_id || membersLoading}
+                    />
+                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    
+                    {/* Dropdown with member suggestions */}
+                    {showDropdown && user?.church_id && !membersLoading && filteredMembers.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                        {filteredMembers.map((member) => (
+                          <button
+                            key={member.value}
+                            type="button"
+                            className="w-full px-3 py-2 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                            onMouseDown={(e) => {
+                              e.preventDefault(); // Prevent input blur
+                              field.handleChange(member.label);
+                              setSearchValue(member.label);
+                              setShowDropdown(false);
+                            }}
+                          >
+                            <div className="text-sm">{member.label}</div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <FieldInfo field={field} />
+                  {membersError && (
+                    <p className="text-sm text-red-500">Failed to load members</p>
+                  )}
                 </>
               )}
             />

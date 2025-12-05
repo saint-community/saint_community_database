@@ -73,6 +73,7 @@ export const QUERY_PATHS = {
   PRAYER_GROUP_UPDATE: '/api/admin/prayer-group/update',
   PRAYER_GROUP_DELETE: '/api/admin/prayer-group/delete',
   PRAYER_MEETINGS_CREATE: '/api/admin/prayer-meetings/create',
+  PRAYER_MEETINGS_DELETE: '/api/admin/prayer-group/meeting',
 
   // statistics
   STATISTICS: '/api/statistics',

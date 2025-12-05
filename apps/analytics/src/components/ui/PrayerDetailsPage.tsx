@@ -65,6 +65,10 @@ export default function PrayerDetailsPage({
     isLoading,
     error,
   } = usePrayerGroupAttendance({ prayergroup_id: prayergroup_id });
+  
+  const parts = attendanceData?.date?.split('-') ?? []; 
+
+  const rearrangedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
 
   // Attendance mutation hooks
   const markOnePresentMutation = useMutation({
@@ -335,9 +339,7 @@ export default function PrayerDetailsPage({
                     </div>
                   </div>
                   <div className="font-['Poppins'] font-semibold text-[28px] text-[#131313]">
-                    {attendanceData?.start_time 
-                      ? dayjs(`2025-01-01 ${attendanceData.start_time}`).format('h:mm A')
-                      : "--:-- --"}
+                    {attendanceData?.start_time}
                   </div>
                 </div>
               </div>
@@ -353,9 +355,7 @@ export default function PrayerDetailsPage({
                     </div>
                   </div>
                   <div className="font-['Poppins'] font-semibold text-[28px] text-[#131313]">
-                    {attendanceData?.end_time 
-                      ? dayjs(`2025-01-01 ${attendanceData.end_time}`).format('h:mm A')
-                      : "--:-- --"}
+                    {attendanceData?.end_time}
                   </div>
                 </div>
               </div>
@@ -373,8 +373,9 @@ export default function PrayerDetailsPage({
                   </div>
                   <div className="font-['Poppins'] font-semibold text-[28px] text-[#131313]">
                     {attendanceData?.date 
-                      ? dayjs(attendanceData.date, 'DD-MM-YYYY').format('ddd, D MMM YYYY')
+                      ? dayjs(rearrangedDate).format('D MMM YYYY')
                       : "--- --th ---"}
+                     
                   </div>
                 </div>
               </div>
