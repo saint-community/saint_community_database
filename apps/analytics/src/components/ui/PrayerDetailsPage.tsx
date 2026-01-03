@@ -143,7 +143,7 @@ export default function PrayerDetailsPage({
   };
 
   const handleSaveParticipant = async (newParticipant: {
-    name: string;
+    participant_name: string;
     church: string;
     fellowship: string;
     cell: string;
