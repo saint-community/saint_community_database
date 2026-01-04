@@ -1,4 +1,5 @@
 'use client';
+import React from 'react';
 import { ChurchChart } from '@/components/church-graph';
 import { ListLinkSection } from '@/components/ListLinkSection';
 import { Church, ListCheck, User2, Users2 } from 'lucide-react';
@@ -9,25 +10,44 @@ import { useStatistics } from '@/hooks/statistics';
 import { useMemo, useState } from 'react';
 import { useMe } from '@/hooks/useMe';
 import { ROLES } from '@/utils/constants';
-import { redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 export default function Page() {
   const [page, setPage] = useState(1);
-  const { data: user } = useMe();
-  const isAdmin = user?.role === ROLES.ADMIN || user?.role === ROLES.PASTOR;
-
-  if (user && !isAdmin) {
-    redirect('/d/fellowships');
-  }
-
+  const router = useRouter();
+  const { data: user, isLoading } = useMe();
+  const redirected = React.useRef(false);
+  
+  // Always call hooks first, before any conditional logic
   const { data } = useChurches(page);
   const { data: stats } = useStatistics();
+  
+  const isAdmin = React.useMemo(() => {
+    return user?.role === ROLES.ADMIN || user?.role === ROLES.PASTOR;
+  }, [user?.role]);
 
   const churches = data?.data || [];
 
   const perPage = useMemo(() => {
     return data?.per_page || 10;
   }, [data]);
+
+  React.useEffect(() => {
+    if (!isLoading && user && !isAdmin && !redirected.current) {
+      redirected.current = true;
+      router.replace('/d/fellowships');
+    }
+  }, [isLoading, user, isAdmin, router]);
+
+  // Show loading while checking user permissions
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  // Don't render if user is not admin
+  if (user && !isAdmin) {
+    return null;
+  }
 
   return (
     <div className='flex-1 flex p-4 sm:p-6 w-full flex-col sm:gap-6 gap-4 bg-[#fafafa]'>

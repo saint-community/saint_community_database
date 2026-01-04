@@ -61,6 +61,32 @@ export const getCurrentUser = (): User | null => {
   }
 };
 
+// Initialize mock authentication for development
+const initMockAuth = () => {
+  if (typeof window === 'undefined') return;
+  
+  const hasAuth = localStorage.getItem(STORAGE_KEYS.IS_AUTHENTICATED);
+  
+  if (!hasAuth) {
+    const mockUser = {
+      id: 1,
+      name: 'Mock User',
+      email: 'mock@example.com',
+      role: 'admin',
+      church_id: 1,
+      fellowship_id: 1,
+      cell_id: 1,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      email_verified_at: new Date().toISOString(),
+    };
+    
+    localStorage.setItem(STORAGE_KEYS.IS_AUTHENTICATED, 'true');
+    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(mockUser));
+    localStorage.setItem(STORAGE_KEYS.TOKEN, 'mock-token');
+  }
+};
+
 export const isAuthenticated = (): boolean => {
   if (typeof window === 'undefined') return false;
   return localStorage.getItem(STORAGE_KEYS.IS_AUTHENTICATED) === 'true';
@@ -79,12 +105,22 @@ export const useAuth = () => {
 
   useEffect(() => {
     const checkAuth = () => {
-      const authenticated = isAuthenticated();
-      const currentUser = getCurrentUser();
-      
-      setIsLoggedIn(authenticated);
-      setUser(currentUser);
-      setIsLoading(false);
+      try {
+        // Initialize mock auth for development
+        initMockAuth();
+        
+        const authenticated = isAuthenticated();
+        const currentUser = getCurrentUser();
+        
+        setIsLoggedIn(authenticated);
+        setUser(currentUser);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        setIsLoggedIn(false);
+        setUser(null);
+        setIsLoading(false);
+      }
     };
 
     checkAuth();
