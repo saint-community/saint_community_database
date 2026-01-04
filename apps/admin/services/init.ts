@@ -2,7 +2,7 @@ import axios from 'axios';
 import { STORAGE_KEYS } from '@/utils/constants';
 
 const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'https://staging.lwmportal.com';
+  process.env.NEXT_PUBLIC_API_URL || 'https://admin-service.saintscommunityportal.com';
 
 export const ApiCaller = axios.create({
   baseURL: API_URL,
