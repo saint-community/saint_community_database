@@ -30,92 +30,10 @@ import {
   AvatarFallback,
 } from "@workspace/ui/components/avatar";
 import { cn } from "@workspace/ui/lib/utils";
+import { formSchema } from "@/utils/registerSchema";
 
 const currentDate = new Date().toISOString();
 
-const formSchema = z.object({
-  profileImage: z
-    .any()
-    .optional()
-    .refine(
-      (file) => {
-        // Only validate if File is available (browser environment)
-        if (typeof window === 'undefined') return true;
-        if (!file) return true; // Allow empty file
-        if (!(file instanceof File)) return false;
-        return [
-          "image/png",
-          "image/jpeg",
-          "image/jpg",
-          "image/svg+xml",
-          "image/gif",
-        ].includes(file.type);
-      },
-      { message: "Invalid image file type" }
-    ),
-  firstName: z.string().min(2, {
-    message: "First name must be at least 2 characters.",
-  }),
-  lastName: z.string().min(2, {
-    message: "Surname must be at least 2 characters.",
-  }),
-  email: z.string().email({
-    message: "Please enter a valid email address.",
-  }),
-  country: z.string().min(1, { message: "Please select a country" }),
-  state: z.string().min(1, { message: "Please select a state" }),
-  gender: z.string().min(1, {
-    message: "Please select a gender.",
-  }),
-  phoneNumber: z.string().min(10, {
-    message: "Please enter a valid phone number.",
-  }),
-  church: z.string(),
-  fellowship: z.string(),
-  cell: z.string(),
-  homeAddress: z.string().min(5, {
-    message: "Please enter a valid home address.",
-  }),
-  workAddress: z.string(),
-  dateOfBirth: z
-    .date({
-      required_error: "Please select your date of birth",
-    })
-    .refine(
-      (value: any) =>
-        value === currentDate ||
-        !dayjs(value).isAfter(dayjs(currentDate).subtract(7, "days"), "day"),
-      {
-        message: "Oops, you can only select past dates",
-      }
-    ),
-  department: z.string(),
-  prayerGroup: z.string().min(1, {
-    message: "Please select a prayer group.",
-  }),
-  dateJoinedChurch: z
-    .date({
-      required_error: "Please select a valid date",
-    })
-    .refine(
-      (value: any) =>
-        value === currentDate || !dayjs(value).isAfter(dayjs(), "day"),
-      {
-        message: "Oops, you can only select past dates",
-      }
-    ),
-  dateBecameWorker: z
-    .date({
-      required_error: "Please select a valid date",
-    })
-    .refine(
-      (value: any) =>
-        value === currentDate || !dayjs(value).isAfter(dayjs(), "day"),
-      {
-        message: "Oops, you can only select past dates",
-      }
-    ),
-});
 
 const genders = [
   { id: "male", name: "Male" },
@@ -194,6 +112,9 @@ function RegisterPageMain() {
       return { church, fellowships, cells, prayerGroups, departments };
     }, [data]);
 
+    console.log(church, 'church ======>');
+    
+
   function normalizeServerErrors(
     errors: Record<string, string[] | string>
   ): Record<string, string> {
@@ -256,18 +177,21 @@ function RegisterPageMain() {
       prayerGroup: "",
       dateBecameWorker: dayjs(currentDate).subtract(7, "days").toDate(),
     },
-    // Temporarily removed validators to fix build issues
-    // validators: {
-    //   onSubmit: formSchema,
-    //   onChange: formSchema,
-    //   onChangeAsync: ({ formApi }) => {
-    //     formApi.setFieldValue("church", church?.id?.toString());
-    //     fellowships.length === 1 &&
-    //       formApi.setFieldValue("fellowship", fellowships?.[0]?.id?.toString());
-    //     cells.length === 1 &&
-    //       formApi.setFieldValue("cell", cells?.[0]?.id?.toString());
-    //   },
-    // },
+   
+    validators: {
+      // suppress type error as formSchema matches the expected type
+      /*@ts-ignore*/
+      onSubmit: formSchema,
+      /*@ts-ignore*/
+      onChange: formSchema,
+      onChangeAsync: ({ formApi }) => {
+        formApi.setFieldValue("church", church?.id?.toString());
+        fellowships.length === 1 &&
+          formApi.setFieldValue("fellowship", fellowships?.[0]?.id?.toString());
+        cells.length === 1 &&
+          formApi.setFieldValue("cell", cells?.[0]?.id?.toString());
+      },
+    },
     onSubmit: async ({ value }) => {
       // Handle form submission here
       
@@ -317,7 +241,7 @@ function RegisterPageMain() {
       );
 
       mutation.mutate(formData);
-    },
+    } ,
   });
 
   if (isLoading) {

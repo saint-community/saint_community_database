@@ -2,7 +2,7 @@ import { QUERY_PATHS } from '@/utils/constants';
 import { ApiCaller } from './init';
 
 export interface Worker {
-  profile_image?: Blob;
+  profileImage?: any;
   church_id: number;
   fellowship_id: number;
   cell_id: number;
