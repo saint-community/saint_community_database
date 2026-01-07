@@ -1,5 +1,5 @@
 import { STORAGE_KEYS, QUERY_PATHS } from '@/utils/constants';
-import { ApiCaller } from './init';
+import { AdminApiCaller, ApiCaller } from './init';
 
 export interface LoginResponse {
   error: string;
@@ -10,11 +10,16 @@ export async function loginUser(body: {
   email: string;
   password: string;
 }): Promise<LoginResponse> {
-  const { data } = await ApiCaller.post(QUERY_PATHS.LOGIN, body);
+  const { data } = await AdminApiCaller.post(QUERY_PATHS.LOGIN, body);
+  const { data: adminData } = await AdminApiCaller.post(
+    QUERY_PATHS.ADMIN_LOGIN,
+    body
+  );
 
   if (!data.error) {
     localStorage.setItem(STORAGE_KEYS.IS_AUTHENTICATED, 'true');
     localStorage.setItem(STORAGE_KEYS.TOKEN, data.token);
+    localStorage.setItem(STORAGE_KEYS.ADMIN_TOKEN, adminData.token);
     localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(data.data));
   }
 

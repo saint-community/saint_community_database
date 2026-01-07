@@ -4,6 +4,7 @@ import {
   ListCheck,
   Users2,
   User2,
+  LineChart,
 } from 'lucide-react';
 import { z } from 'zod';
 
@@ -34,6 +35,11 @@ const items = [
     icon: User2,
   },
   {
+    title: 'Prayer Group',
+    url: '/d/prayer-group',
+    icon: LineChart,
+  },
+  {
     title: 'Members',
     url: '/d/members',
     icon: User2,
@@ -48,4 +54,8 @@ export const optionalTextInput = (schema: z.ZodString) =>
     .union([z.string(), z.undefined()])
     .refine((val) => !val || schema.safeParse(val).success);
 
-    export const getInitials = (name: string) => name.split(" ").map(word => word[0]).join("");  
+export const getInitials = (name: string) =>
+  name
+    .split(' ')
+    .map((word) => word[0])
+    .join('');

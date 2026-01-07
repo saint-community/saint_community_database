@@ -1,11 +1,13 @@
 export const STORAGE_KEYS = {
   TOKEN: 'token',
+  ADMIN_TOKEN: 'admin_token',
   IS_AUTHENTICATED: 'isAuthenticated',
   USER: 'user',
 };
 
 export const QUERY_PATHS = {
   // account
+  ADMIN_LOGIN: '/api/admin/account/login',
   LOGIN: '/api/account/login',
   REGISTER: '/api/account/create',
   LOGOUT: '/api/account/logout',
@@ -59,6 +61,12 @@ export const QUERY_PATHS = {
   PRAYER_GROUP_CREATE: '/api/prayer-groups',
   PRAYER_GROUP_UPDATE: '/api/prayer-groups/:id',
   PRAYER_GROUP_DELETE: '/api/prayer-groups/:id',
+
+  // admin prayer group meetings
+  ADMIN_PRAYER_GROUP_ALL: '/api/admin/prayer-group/meeting/all',
+  ADMIN_PRAYER_GROUP_CREATE: '/api/admin/prayer-group/meeting/create',
+  ADMIN_PRAYER_GROUP_UPDATE: '/api/admin/prayer-group/meeting/:id',
+  ADMIN_PRAYER_GROUP_DELETE: '/api/admin/prayer-group/meeting/:id',
 
   // statistics
   STATISTICS: '/api/statistics',

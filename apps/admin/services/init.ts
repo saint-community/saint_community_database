@@ -2,7 +2,8 @@ import axios from 'axios';
 import { STORAGE_KEYS } from '@/utils/constants';
 
 const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'https://admin-service.saintscommunityportal.com';
+  process.env.NEXT_PUBLIC_API_URL ||
+  'https://member-service.saintscommunityportal.com';
 
 export const ApiCaller = axios.create({
   baseURL: API_URL,
@@ -34,3 +35,15 @@ ApiCaller.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+const ADMIN_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  'https://admin-service.saintscommunityportal.com';
+
+export const AdminApiCaller = axios.create({
+  baseURL: ADMIN_URL,
+  headers: {
+    'Content-Type': 'application/json',
+    'x-api-key': 'MzbjFEf2SBPViRKyfXHBDCoWoBhM8doJuXH8DNuf',
+  },
+});

@@ -7,6 +7,7 @@ import {
   ListCheck,
   LogOut,
   Settings2,
+  LineChart,
 } from 'lucide-react';
 import Logo from '@/assets/svgs/logo.svg';
 import {
@@ -108,6 +109,11 @@ export function AppSidebar() {
         title: 'Workers in Training',
         url: '/d/workers',
         icon: User2,
+      },
+      {
+        title: 'Prayer Group',
+        url: '/d/prayer-group',
+        icon: LineChart,
       },
     ];
 
