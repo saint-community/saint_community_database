@@ -1,8 +1,11 @@
 "use client";
 
-import { usePrayerMeetings } from "@/hooks/usePrayerGroups";
+import * as React from "react";
+import { usePrayerMeetings, useDeletePrayerMeeting } from "@/hooks/usePrayerGroups";
 import { formatPrayerMeetingForTable } from "@/services/prayerGroup";
 import { TableCard } from "./TableCard";
+import { useMemo } from "react";
+import { toast } from "@workspace/ui/lib/sonner";
 
 interface PrayerMeetingsTableProps {
   className?: string;
@@ -16,7 +19,7 @@ export function PrayerMeetingsTable({
   onViewDetails,
   churchId,
   prayerGroupId,
-}: PrayerMeetingsTableProps) {
+}: PrayerMeetingsTableProps): React.JSX.Element {
   const {
     data: prayerMeetingsData,
     isLoading,
@@ -27,7 +30,25 @@ export function PrayerMeetingsTable({
     limit: 10,
   });
 
-  const formattedData = prayerMeetingsData?.map(formatPrayerMeetingForTable) || [];
+  const deletePrayerMeetingMutation = useDeletePrayerMeeting();
+
+  const formattedData = useMemo(() => {
+    return prayerMeetingsData?.map(formatPrayerMeetingForTable) || [];
+  }, [prayerMeetingsData]);
+
+  const handleDeleteMeeting = async (meetingId: string) => {
+    if (!confirm("Are you sure you want to delete this prayer meeting? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      await deletePrayerMeetingMutation.mutateAsync(meetingId);
+      toast.success("Prayer meeting deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete prayer meeting. Please try again.");
+    }
+  };
+  
 
   return (
     <TableCard
@@ -35,36 +56,37 @@ export function PrayerMeetingsTable({
       data={formattedData}
       columnKeys={[
         {
-          name: 'day',
-          title: 'Day & Period',
-          compoundKey: 'day,period'
+          name: "day",
+          title: "Day & Period",
+          compoundKey: "day,period",
         },
         {
-          name: 'date',
-          title: 'Date & Time',
-          compoundKey: 'date,time'
+          name: "date",
+          title: "Time",
+          compoundKey: "time",
         },
         {
-          name: 'church',
-          title: 'Church',
+          name: "church",
+          title: "Church",
         },
         {
-          name: 'participants',
-          title: 'Participants',
-          type: 'number'
+          name: "participants",
+          title: "Participants",
+          type: "number",
         },
         {
-          name: 'status',
-          title: 'Status',
+          name: "status",
+          title: "Status",
         },
       ]}
-      searchKeys={['church', 'day']}
+      searchKeys={["church", "day"]}
       pathName="d/prayer"
-      isLoading={isLoading}
+      isLoading={isLoading || deletePrayerMeetingMutation.isPending}
       page={1}
       totalPages={1}
       hasNextPage={false}
       hasPreviousPage={false}
+      onDeleteMeeting={handleDeleteMeeting}
     />
   );
 }

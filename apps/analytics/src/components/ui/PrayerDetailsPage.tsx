@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { AddParticipantModal } from "./AddParticipantModal";
@@ -47,7 +48,7 @@ interface PrayerDetailsPageProps {
 export default function PrayerDetailsPage({
   prayerGroupId: id,
   className,
-}: PrayerDetailsPageProps) {
+}: PrayerDetailsPageProps): React.JSX.Element {
   const searchParams = useParams();
   const prayergroup_id = searchParams.id as string;
   const router = useRouter();
@@ -64,6 +65,10 @@ export default function PrayerDetailsPage({
     isLoading,
     error,
   } = usePrayerGroupAttendance({ prayergroup_id: prayergroup_id });
+  
+  const parts = attendanceData?.date?.split('-') ?? []; 
+
+  const rearrangedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
 
   // Attendance mutation hooks
   const markOnePresentMutation = useMutation({
@@ -138,7 +143,7 @@ export default function PrayerDetailsPage({
   };
 
   const handleSaveParticipant = async (newParticipant: {
-    name: string;
+    participant_name: string;
     church: string;
     fellowship: string;
     cell: string;
@@ -334,9 +339,7 @@ export default function PrayerDetailsPage({
                     </div>
                   </div>
                   <div className="font-['Poppins'] font-semibold text-[28px] text-[#131313]">
-                    {attendanceData?.start_time 
-                      ? dayjs(`2025-01-01 ${attendanceData.start_time}`).format('h:mm A')
-                      : "--:-- --"}
+                    {attendanceData?.start_time}
                   </div>
                 </div>
               </div>
@@ -352,9 +355,7 @@ export default function PrayerDetailsPage({
                     </div>
                   </div>
                   <div className="font-['Poppins'] font-semibold text-[28px] text-[#131313]">
-                    {attendanceData?.end_time 
-                      ? dayjs(`2025-01-01 ${attendanceData.end_time}`).format('h:mm A')
-                      : "--:-- --"}
+                    {attendanceData?.end_time}
                   </div>
                 </div>
               </div>
@@ -372,8 +373,9 @@ export default function PrayerDetailsPage({
                   </div>
                   <div className="font-['Poppins'] font-semibold text-[28px] text-[#131313]">
                     {attendanceData?.date 
-                      ? dayjs(attendanceData.date, 'DD-MM-YYYY').format('ddd, D MMM YYYY')
+                      ? dayjs(rearrangedDate).format('D MMM YYYY')
                       : "--- --th ---"}
+                     
                   </div>
                 </div>
               </div>

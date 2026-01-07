@@ -1,5 +1,6 @@
 /* eslint-disable react/no-children-prop */
 'use client';
+import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from '@workspace/ui/lib/react-hook-form';
 import { z } from 'zod';
@@ -26,7 +27,7 @@ const formSchema = z.object({
   password: z.string().min(4, 'Password must be at least 4 characters'),
 });
 
-export default function LoginPage() {
+export default function LoginPage(): React.JSX.Element {
   const router = useRouter();
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 

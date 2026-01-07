@@ -1,4 +1,5 @@
 // 'use client';
+/* eslint-disable react/no-children-prop */
 import './globals.css';
 import { Abhaya_Libre, Geist_Mono, Poppins } from 'next/font/google';
 import { Toaster } from '@workspace/ui/lib/sonner';
@@ -42,7 +43,7 @@ export const metadata: Metadata = {
   description: 'Saints Community Analytics Portal Login',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: { children: React.ReactNode }): React.JSX.Element {
   return (
     <html lang="en">
       <body

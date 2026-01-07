@@ -150,14 +150,13 @@ export const createPrayerMeeting = async (data: CreatePrayerMeetingData): Promis
   return response.data?.data || response.data;
 };
 
-export const getPrayerMeetings = async (params?: PrayerMeetingsListParams): Promise<{
-  data: PrayerMeeting[];
-  total: number;
-  page: number;
-  limit: number;
-}> => {
+export const getPrayerMeetings = async (params?: PrayerMeetingsListParams) => {
   const response = await ApiCaller.get(QUERY_PATHS.PRAYER_GROUP_LIST, { params });
   return response.data?.data || { data: [], total: 0, page: 1, limit: 10 };
+};
+
+export const deletePrayerMeeting = async (id: string): Promise<void> => {
+  await ApiCaller.delete(`${QUERY_PATHS.PRAYER_MEETINGS_DELETE}/${id}`);
 };
 
 // Helper functions for transforming data

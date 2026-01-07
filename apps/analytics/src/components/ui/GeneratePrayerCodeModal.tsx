@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useState } from "react";
 import {
   X,
@@ -37,7 +38,7 @@ export function GeneratePrayerCodeModal({
   onClose,
   onSuccess,
   className,
-}: GeneratePrayerCodeModalProps) {
+}: GeneratePrayerCodeModalProps): React.JSX.Element | null {
   const [formData, setFormData] = useState<PrayerMeetingForm>({
     date: "",
     start_time: "",
@@ -59,10 +60,10 @@ export function GeneratePrayerCodeModal({
     setValidationError("");
 
     // Validation
-    if (!selectedDate) {
-      setValidationError("Please select a meeting date");
-      return;
-    }
+    // if (!selectedDate) {
+    //   setValidationError("Please select a meeting date");
+    //   return;
+    // }
 
     if (!formData.start_time) {
       setValidationError("Please select a start time");
@@ -172,7 +173,7 @@ export function GeneratePrayerCodeModal({
           <div className="flex items-center space-x-3">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
-                Schedule Prayer Group Meeting
+                Generate Prayer Group Meeting Code
               </h2>
             </div>
           </div>
@@ -205,25 +206,25 @@ export function GeneratePrayerCodeModal({
 
             <div className="space-y-4">
               <h3 className="text-xl font-bold text-gray-900">
-                Prayer Meeting Scheduled!
+                Prayer Meeting Code Generated
               </h3>
 
-              <div className="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-xl p-4">
-                <p className="text-green-800 font-medium mb-2">
+              <div className=" rounded-xl p-4">
+                <p className=" font-medium mb-2">
                   Successfully scheduled for:
                 </p>
                 <div className="flex items-center justify-center space-x-4 text-sm">
-                  <div className="flex items-center space-x-1">
+                  {/* <div className="flex items-center space-x-1">
                     <Calendar className="w-4 h-4 text-green-600" />
                     <span className="font-semibold text-green-900">
                       {selectedDate
                         ? dayjs(selectedDate).format("dddd, MMMM D, YYYY")
                         : "Invalid Date"}
                     </span>
-                  </div>
+                  </div> */}
                   <div className="flex items-center space-x-1">
-                    <Clock className="w-4 h-4 text-green-600" />
-                    <span className="font-semibold text-green-900">
+                    <Clock className="w-4 h-4 " />
+                    <span className="font-semibold ">
                       {formData.start_time
                         ? dayjs(`2025-01-01 ${formData.start_time}`).format(
                             "h:mm A"
@@ -265,9 +266,8 @@ export function GeneratePrayerCodeModal({
                 </div>
               </div>
 
-              <p className="text-gray-600 text-sm text-center">
-                Share this code with participants so they can join the prayer
-                meeting.
+              <p className="text-rose-600 text-md font-semibold text-center">
+                PS: This generated code expires in 3 hours
               </p>
 
               <button
@@ -283,7 +283,7 @@ export function GeneratePrayerCodeModal({
           <form onSubmit={handleSubmit} className="flex-1 w-full space-y-6 p-6">
             <div className="space-y-4">
               {/* Date Field */}
-              <div className="space-y-2">
+              {/* <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Meeting Date
                 </label>
@@ -292,7 +292,7 @@ export function GeneratePrayerCodeModal({
                   onChange={handleDateChange}
                   className="h-[48px]"
                 />
-              </div>
+              </div> */}
 
               {/* Time Fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -348,7 +348,6 @@ export function GeneratePrayerCodeModal({
                 type="submit"
                 disabled={
                   isLoading ||
-                  !formData.date ||
                   !formData.start_time ||
                   !formData.end_time
                 }

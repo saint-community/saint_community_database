@@ -49,6 +49,9 @@ export const QUERY_PATHS = {
   WORKER_REJECTED: '/api/workers/rejected',
   WORKER_APPROVED: '/api/workers/approved',
 
+  // members
+  MEMBERS_ALL: '/api/member/all',
+
   // departments
   DEPARTMENTS: '/api/departments',
   DEPARTMENT_DETAIL: '/api/departments/:id',
@@ -70,10 +73,89 @@ export const QUERY_PATHS = {
   PRAYER_GROUP_UPDATE: '/api/admin/prayer-group/update',
   PRAYER_GROUP_DELETE: '/api/admin/prayer-group/delete',
   PRAYER_MEETINGS_CREATE: '/api/admin/prayer-meetings/create',
+  PRAYER_MEETINGS_DELETE: '/api/admin/prayer-group/meeting',
 
   // statistics
   STATISTICS: '/api/statistics',
   WORKER_STATISTICS: '/api/statistics/workers',
+
+  // study groups (assignments)
+  STUDY_GROUPS: '/api/admin/study-group',
+  STUDY_GROUP_CREATE: '/api/admin/study-group',
+  STUDY_GROUP_UPDATE: '/api/admin/study-group/:id',
+  STUDY_GROUP_DELETE: '/api/admin/study-group/:id',
+  STUDY_GROUP_DETAIL: '/api/admin/study-group/:id',
+  STUDY_GROUP_CURRENT_WEEK: '/api/admin/study-group/current-week',
+  STUDY_GROUP_WEEKLY: '/api/admin/study-group/weekly/:year',
+
+  // study group submissions
+  SUBMISSIONS: '/api/study-group/submissions',
+  SUBMISSIONS_REVIEW: '/api/admin/submissions/review',
+  SUBMISSIONS_STATS: '/api/admin/submissions/admin/stats',
+  SUBMISSIONS_HISTORY: '/api/admin/submissions/history/filtered',
+  SUBMISSION_DETAIL: '/api/admin/submissions/:id',
+  SUBMISSION_GRADE: '/api/admin/submissions/:id/grade',
+  SUBMISSION_REQUEST_REDO: '/api/admin/submissions/:id/request-redo',
+  SUBMISSIONS_BULK_GRADE: '/api/admin/submissions/bulk/grade',
+  SUBMISSIONS_BULK_REDO: '/api/admin/submissions/bulk/request-redo',
+
+  // evangelism groups
+  EVANGELISM_GROUP_CREATE: '/api/admin/evangelism-group/create',
+  EVANGELISM_GROUP_LIST: '/api/admin/evangelism-group/all',
+  EVANGELISM_GROUP_RECORDS: '/api/admin/evangelism-group/record',
+  EVANGELISM_GROUP_ATTENDANCE_SUBMITTED: '/api/admin/evangelism-group/attendance-submitted',
+  EVANGELISM_GROUP_ATTENDANCE_APPROVE_ONE: '/api/admin/evangelism-group/mark-one-present',
+  EVANGELISM_GROUP_ATTENDANCE_APPROVE_ALL: '/api/admin/evangelism-group/mark-all-present',
+  EVANGELISM_GROUP_ATTENDANCE_REJECT_ONE: '/api/admin/evangelism-group/mark-one-absent',
+  EVANGELISM_GROUP_ATTENDANCE_REJECT_ALL: '/api/admin/evangelism-group/mark-all-absent',
+  EVANGELISM_GROUP_ADD_PARTICIPANT: '/api/admin/evangelism-group/add-member',
+  EVANGELISM_GROUP_REMOVE_PARTICIPANT: '/api/admin/evangelism-group/remove-member',
+  EVANGELISM_GROUP_UPDATE: '/api/admin/evangelism-group/update',
+  EVANGELISM_GROUP_DELETE: '/api/admin/evangelism-group/delete',
+  EVANGELISM_SESSION_CREATE: '/api/admin/evangelism-sessions/create',
+  EVANGELISM_SESSION_LIST: '/api/admin/evangelism-sessions/all',
+  EVANGELISM_SESSION_DELETE: '/api/admin/evangelism-group/session',
+
+  // evangelism reports
+  EVANGELISM_REPORT_SUBMIT: '/api/evangelism',
+  EVANGELISM_WORKER_HISTORY: '/api/evangelism/worker/history',
+  EVANGELISM_ADMIN_ALL: '/api/evangelism/admin/all',
+  EVANGELISM_ADMIN_STATS: '/api/evangelism/admin/stats',
+  EVANGELISM_REPORT_DETAIL: '/api/evangelism',
+  EVANGELISM_REPORT_UPDATE: '/api/evangelism',
+  EVANGELISM_REPORT_DELETE: '/api/evangelism',
+
+  // follow-up groups
+  FOLLOWUP_GROUP_CREATE: '/api/admin/followup-group/create',
+  FOLLOWUP_GROUP_LIST: '/api/admin/followup-group/all',
+  FOLLOWUP_GROUP_RECORDS: '/api/admin/followup-group/record',
+  FOLLOWUP_GROUP_ATTENDANCE_SUBMITTED: '/api/admin/followup-group/attendance-submitted',
+  FOLLOWUP_GROUP_ATTENDANCE_APPROVE_ONE: '/api/admin/followup-group/mark-one-present',
+  FOLLOWUP_GROUP_ATTENDANCE_APPROVE_ALL: '/api/admin/followup-group/mark-all-present',
+  FOLLOWUP_GROUP_ATTENDANCE_REJECT_ONE: '/api/admin/followup-group/mark-one-absent',
+  FOLLOWUP_GROUP_ATTENDANCE_REJECT_ALL: '/api/admin/followup-group/mark-all-absent',
+  FOLLOWUP_GROUP_ADD_PARTICIPANT: '/api/admin/followup-group/add-member',
+  FOLLOWUP_GROUP_REMOVE_PARTICIPANT: '/api/admin/followup-group/remove-member',
+  FOLLOWUP_GROUP_UPDATE: '/api/admin/followup-group/update',
+  FOLLOWUP_GROUP_DELETE: '/api/admin/followup-group/delete',
+  FOLLOWUP_SESSION_CREATE: '/api/admin/followup-sessions/create',
+  FOLLOWUP_SESSION_LIST: '/api/admin/followup-sessions/all',
+  FOLLOWUP_SESSION_DELETE: '/api/admin/followup-group/session',
+
+  // follow-up reports
+  FOLLOWUP_REPORT_SUBMIT: '/api/follow-up',
+  FOLLOWUP_WORKER_HISTORY: '/api/follow-up/worker/history',
+  FOLLOWUP_ADMIN_ALL: '/api/follow-up/admin/all',
+  FOLLOWUP_ADMIN_STATS: '/api/follow-up/admin/stats',
+  FOLLOWUP_REPORT_DETAIL: '/api/follow-up',
+  FOLLOWUP_REPORT_UPDATE: '/api/follow-up',
+  FOLLOWUP_REPORT_DELETE: '/api/follow-up',
+
+  // church meetings / attendance
+  ATTENDANCE_ADMIN_MEETING_CREATE: '/api/attendance/admin/meeting',
+  ATTENDANCE_MARK: '/api/attendance/mark',
+  ATTENDANCE_HISTORY: '/api/attendance/history',
+  ATTENDANCE_ADMIN_MEETINGS: '/api/attendance/admin/meetings',
 };
 
 export const COUNTRIES = Array.from(

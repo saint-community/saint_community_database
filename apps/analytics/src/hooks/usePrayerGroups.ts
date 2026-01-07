@@ -6,6 +6,7 @@ import {
   createPrayerMeeting,
   updatePrayerGroup,
   deletePrayerGroup,
+  deletePrayerMeeting,
   getPrayerGroupAttendance,
   markOnePresent,
   markAllPresent,
@@ -80,6 +81,17 @@ export const useDeletePrayerGroup = () => {
     mutationFn: deletePrayerGroup,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prayerGroups'] });
+    },
+  });
+};
+
+export const useDeletePrayerMeeting = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: deletePrayerMeeting,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prayerMeetings'] });
     },
   });
 };

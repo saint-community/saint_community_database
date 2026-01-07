@@ -26,13 +26,13 @@ import axios from 'axios';
 import { STORAGE_KEYS } from '@/utils/constants';
 
 const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ||  'https://memberapi.lwmportal.com';
+  process.env.NEXT_PUBLIC_API_URL || 'https://member-service.saintscommunityportal.com';
 
 export const ApiCaller = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
-    'x-api-key': '2e4c9b93f5d18e72a1b0c6d4f8e7a9b1c3d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9',
+    'x-api-key': 'MzbjFEf2SBPViRKyfXHBDCoWoBhM8doJuXH8DNuf',
   },
 });
 
@@ -48,14 +48,27 @@ ApiCaller.interceptors.request.use(async (config) => {
   return config;
 });
 
+ApiCaller.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(STORAGE_KEYS.TOKEN);
+        window.location.href = '/';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 const ADMIN_URL =
-  process.env.NEXT_PUBLIC_ADMIN_URL || 'https://staging.lwmportal.com';
+  process.env.NEXT_PUBLIC_ADMIN_URL || 'https://admin-service.saintscommunityportal.com';
 
 export const AdminApiCaller = axios.create({
   baseURL: ADMIN_URL,
   headers: {
      'Content-Type': 'application/json',
-    'x-api-key': '2e4c9b93f5d18e72a1b0c6d4f8e7a9b1c3d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9',
+    'x-api-key': 'MzbjFEf2SBPViRKyfXHBDCoWoBhM8doJuXH8DNuf',
   },
 });
 
@@ -70,3 +83,16 @@ AdminApiCaller.interceptors.request.use(async (config) => {
 
   return config;
 });
+
+AdminApiCaller.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(STORAGE_KEYS.ADMIN_TOKEN);
+        window.location.href = '/';
+      }
+    }
+    return Promise.reject(error);
+  }
+);

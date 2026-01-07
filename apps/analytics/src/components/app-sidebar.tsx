@@ -1,4 +1,5 @@
 'use client';
+import * as React from 'react';
 import {
   Settings,
   Church,
@@ -74,7 +75,7 @@ const mainItems = [
   },
 ];
 
-export function AppSidebar() {
+export function AppSidebar(): React.JSX.Element {
   const { isMobile, toggleSidebar } = useSidebar();
 
   const signOutUser = () => {

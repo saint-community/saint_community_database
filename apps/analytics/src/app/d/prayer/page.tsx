@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { useState } from 'react';
 import { PrayerGroupSelector } from '@/components/ui/PrayerGroupSelector';
 import { ActivityTabs } from '@/components/ui/ActivityTabs';
@@ -11,7 +12,7 @@ import { GeneratePrayerCodeModal } from '@/components/ui/GeneratePrayerCodeModal
 import { PrayerGroupAttendanceApproval } from '@/components/ui/PrayerGroupAttendanceApproval';
 import { useRouter } from 'next/navigation';
 
-export default function PrayerPage() {
+export default function PrayerPage(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<'prayer' | 'activity'>('prayer');
   const [currentPage, setCurrentPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -73,14 +74,7 @@ export default function PrayerPage() {
               onViewDetails={handleViewDetails}
             />
 
-            {/* Pagination */}
-            {/* <div className="flex justify-center">
-              <Pagination 
-                currentPage={currentPage}
-                totalPages={10}
-                onPageChange={setCurrentPage}
-              />
-            </div> */}
+          
           </div>
         </>
       ) : (

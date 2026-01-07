@@ -1,9 +1,10 @@
 'use client';
 
+import * as React from 'react';
 import { useParams } from 'next/navigation';
 import PrayerDetailsPage from '@/components/ui/PrayerDetailsPage';
 
-export default function PrayerGroupDetailsPage() {
+export default function PrayerGroupDetailsPage(): React.JSX.Element {
   const params = useParams();
   const prayerGroupId = params.id as string;
 
