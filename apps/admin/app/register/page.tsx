@@ -3,7 +3,6 @@
 
 import { Button } from "@workspace/ui/components/button";
 import { useForm } from "@workspace/ui/lib/react-hook-form";
-import { z } from "zod";
 import { Input } from "@workspace/ui/components/input";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { Label } from "@workspace/ui/components/label";
@@ -111,8 +110,6 @@ function RegisterPageMain() {
 
       return { church, fellowships, cells, prayerGroups, departments };
     }, [data]);
-
-    console.log(church, 'church ======>');
     
 
   function normalizeServerErrors(
@@ -158,7 +155,7 @@ function RegisterPageMain() {
 
   const form = useForm({
     defaultValues: {
-      profileImage: null as any,
+      profileImage: null as File | null,
       firstName: "",
       lastName: "",
       country: "",
@@ -180,9 +177,9 @@ function RegisterPageMain() {
    
     validators: {
       // suppress type error as formSchema matches the expected type
-      /*@ts-ignore*/
+      /* @ts-ignore */
       onSubmit: formSchema,
-      /*@ts-ignore*/
+       /* @ts-ignore */
       onChange: formSchema,
       onChangeAsync: ({ formApi }) => {
         formApi.setFieldValue("church", church?.id?.toString());
@@ -197,7 +194,9 @@ function RegisterPageMain() {
       
       const formData = new FormData();
 
-      formData.append("profile_image", value.profileImage);
+      if (value.profileImage) {
+        formData.append("profile_image", value.profileImage);
+      }
       formData.append("church_id", String(value.church));
       formData.append("fellowship_id", String(value.fellowship));
       formData.append("cell_id", String(value.cell));
@@ -329,9 +328,8 @@ function RegisterPageMain() {
                       className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0] ?? null;
-                        file && field.handleChange(file);
+                        field.handleChange(file);
                         setFile(file);
-                        // form.setFieldValue("profileImage", previewUrl!);
                       }}
                     />
                   </Label>

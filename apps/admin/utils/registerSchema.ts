@@ -5,7 +5,7 @@ import dayjs from "dayjs";
 
 
 export const formSchema = z.object({
-  profileImage: z.string().optional(),
+  profileImage: z.any().nullable(),
   firstName: z.string().min(2, {
     message: "First name must be at least 2 characters.",
   }),
