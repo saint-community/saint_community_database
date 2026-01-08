@@ -4,7 +4,7 @@ import React from 'react';
 import { StatCard } from './StatCard';
 import { Music, BookOpen, Users, Home, Flame, Sparkles, TrendingUp, CheckCircle2 } from 'lucide-react';
 
-export const OverviewTab: React.FC = () => {
+export function OverviewTab() {
   return (
     <div className="space-y-10">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -10,11 +10,11 @@ interface MeetingsListTabProps {
   onDeleteMeeting: (id: string) => void;
 }
 
-export const MeetingsListTab: React.FC<MeetingsListTabProps> = ({
+export function MeetingsListTab({
   meetings,
   onEditMeeting,
   onDeleteMeeting
-}) => {
+}: MeetingsListTabProps) {
   return (
     <div className="bg-white border border-slate-200 rounded shadow-sm overflow-hidden">
       <table className="w-full text-left">

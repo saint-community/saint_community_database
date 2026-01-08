@@ -10,11 +10,14 @@ export async function loginUser(body: {
   email: string;
   password: string;
 }): Promise<LoginResponse> {
-  const { data: adminData } = await AdminApiCaller.post(QUERY_PATHS.ADMIN_LOGIN, body);
+  const { data: adminData } = await AdminApiCaller.post(
+    QUERY_PATHS.ADMIN_LOGIN,
+    body
+  );
   const { data } = await AdminApiCaller.post(QUERY_PATHS.LOGIN, body);
-  
+
   if (!data.error && data.token && typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_KEYS.ADMIN_TOKEN, data.token)
+    localStorage.setItem(STORAGE_KEYS.ADMIN_TOKEN, data.token);
     localStorage.setItem(STORAGE_KEYS.IS_AUTHENTICATED, 'true');
     localStorage.setItem(STORAGE_KEYS.TOKEN, adminData.access_token);
     localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(data.data));

@@ -25,7 +25,7 @@ interface AttendanceModalProps {
   onSubmit: () => void;
 }
 
-export const AttendanceModal: React.FC<AttendanceModalProps> = ({
+export function AttendanceModal({
   isOpen,
   onClose,
   selectedMeeting,
@@ -42,7 +42,7 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
   memberSearchTerm,
   setMemberSearchTerm,
   onSubmit
-}) => {
+}: AttendanceModalProps) {
   const filteredWorkers = useMemo(() => {
     return WORKERS_LIST.filter(w => w.toLowerCase().includes(workerSearchTerm.toLowerCase()));
   }, [workerSearchTerm]);

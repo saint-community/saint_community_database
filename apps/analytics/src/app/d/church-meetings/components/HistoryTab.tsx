@@ -16,7 +16,7 @@ interface HistoryTabProps {
   onRecordAttendance: (meeting: Meeting) => void;
 }
 
-export const HistoryTab: React.FC<HistoryTabProps> = ({
+export function HistoryTab({
   historySubTab,
   setHistorySubTab,
   submissions,
@@ -25,7 +25,7 @@ export const HistoryTab: React.FC<HistoryTabProps> = ({
   onViewSubmission,
   onGenerateMeetingCode,
   onRecordAttendance
-}) => {
+}: HistoryTabProps) {
   return (
     <div className="space-y-6">
       <div className="flex bg-slate-100 p-1 rounded w-fit">
