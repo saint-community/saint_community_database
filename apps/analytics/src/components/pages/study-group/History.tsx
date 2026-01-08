@@ -337,11 +337,7 @@ function HistoryCard({ submission }: { submission: any }): React.JSX.Element {
               </p>
             )}
           </div>
-<<<<<<< HEAD
           {getStatusBadge(submission.status, submission.score)}
-=======
-          {getStatusBadge(submission.status, submission.grade)}
->>>>>>> b93c96d (fix styudy group)
         </div>
 
         <div className="flex items-center gap-4 mb-4">
@@ -629,11 +625,7 @@ export default function HistoryTab(): React.JSX.Element {
           <Card>
             <CardContent className="p-4">
               <div className="text-2xl font-bold text-blue-600">
-<<<<<<< HEAD
                 {historyData.filter(s => s.status === 'approved' || (s.score && s.score > 0)).length}
-=======
-                {historyData.filter(s => s.status === 'approved' || s.grade > 0).length}
->>>>>>> b93c96d (fix styudy group)
               </div>
               <div className="text-sm text-gray-600">Approved</div>
             </CardContent>
@@ -650,11 +642,7 @@ export default function HistoryTab(): React.JSX.Element {
             <CardContent className="p-4">
               <div className="text-2xl font-bold text-green-600">
                 {historyData.length > 0 ? 
-<<<<<<< HEAD
                   Math.round(historyData.reduce((sum, s) => sum + (s.score ?? 0), 0) / historyData.length) 
-=======
-                  Math.round(historyData.reduce((sum, s) => sum + (s.grade || 0), 0) / historyData.length) 
->>>>>>> b93c96d (fix styudy group)
                   : 0}%
               </div>
               <div className="text-sm text-gray-600">Average Grade</div>

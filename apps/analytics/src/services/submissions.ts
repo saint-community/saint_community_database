@@ -103,7 +103,6 @@ export interface SubmissionStats {
 export const submissionsApi = {
   // Get submissions for review with pagination and filtering
   async getForReview(filters: SubmissionFilters = {}): Promise<PaginatedResponse<StudyGroupSubmission>> {
-<<<<<<< HEAD
     try {
       // Validate input parameters
       const validatedFilters = {
@@ -168,12 +167,6 @@ export const submissionsApi = {
       
       throw new Error('Failed to load submissions. Please check your connection and try again.');
     }
-=======
-    const { data } = await ApiCaller.get(QUERY_PATHS.SUBMISSIONS_REVIEW, {
-      params: filters,
-    });
-    return data?.data || data;
->>>>>>> b93c96d (fix styudy group)
   },
 
   // Get all submissions (alias for getForReview)
@@ -189,7 +182,6 @@ export const submissionsApi = {
 
   // Get submission by ID with enhanced validation
   async getById(id: string): Promise<StudyGroupSubmission> {
-<<<<<<< HEAD
     try {
       // Validate ID parameter
       if (!id || typeof id !== 'string' || id.trim().length === 0) {
@@ -220,17 +212,10 @@ export const submissionsApi = {
       
       throw error.message ? new Error(error.message) : new Error('Failed to load submission details.');
     }
-=======
-    const { data } = await ApiCaller.get(
-      QUERY_PATHS.SUBMISSION_DETAIL.replace(':id', id)
-    );
-    return data?.data || data;
->>>>>>> b93c96d (fix styudy group)
   },
 
   // Grade a submission with validation
   async grade(id: string, gradeData: GradeSubmissionDto): Promise<StudyGroupSubmission> {
-<<<<<<< HEAD
     try {
       // Validate input parameters
       if (!id || typeof id !== 'string' || id.trim().length === 0) {
@@ -270,13 +255,6 @@ export const submissionsApi = {
       
       throw error.message ? new Error(error.message) : new Error('Failed to grade submission.');
     }
-=======
-    const { data } = await ApiCaller.patch(
-      QUERY_PATHS.SUBMISSION_GRADE.replace(':id', id),
-      gradeData
-    );
-    return data?.data || data;
->>>>>>> b93c96d (fix styudy group)
   },
 
   // Grade a submission (alias for grade)
@@ -286,7 +264,6 @@ export const submissionsApi = {
 
   // Request redo for a submission with validation
   async requestRedo(id: string, redoData: RequestRedoDto): Promise<StudyGroupSubmission> {
-<<<<<<< HEAD
     try {
       // Validate input parameters
       if (!id || typeof id !== 'string' || id.trim().length === 0) {
@@ -326,18 +303,10 @@ export const submissionsApi = {
       
       throw error.message ? new Error(error.message) : new Error('Failed to request redo.');
     }
-=======
-    const { data } = await ApiCaller.patch(
-      QUERY_PATHS.SUBMISSION_REQUEST_REDO.replace(':id', id),
-      redoData
-    );
-    return data?.data || data;
->>>>>>> b93c96d (fix styudy group)
   },
 
   // Bulk grade submissions with validation
   async bulkGrade(bulkData: BulkGradeDto): Promise<void> {
-<<<<<<< HEAD
     try {
       // Validate input parameters
       if (!bulkData || !Array.isArray(bulkData.submission_ids) || bulkData.submission_ids.length === 0) {
@@ -376,14 +345,10 @@ export const submissionsApi = {
       
       throw error.message ? new Error(error.message) : new Error('Failed to bulk grade submissions.');
     }
-=======
-    await ApiCaller.patch(QUERY_PATHS.SUBMISSIONS_BULK_GRADE, bulkData);
->>>>>>> b93c96d (fix styudy group)
   },
 
   // Bulk request redo with validation
   async bulkRequestRedo(bulkData: BulkRedoDto): Promise<void> {
-<<<<<<< HEAD
     try {
       // Validate input parameters
       if (!bulkData || !Array.isArray(bulkData.submission_ids) || bulkData.submission_ids.length === 0) {
@@ -426,14 +391,10 @@ export const submissionsApi = {
       
       throw error.message ? new Error(error.message) : new Error('Failed to bulk request redo.');
     }
-=======
-    await ApiCaller.patch(QUERY_PATHS.SUBMISSIONS_BULK_REDO, bulkData);
->>>>>>> b93c96d (fix styudy group)
   },
 
   // Get submission statistics with validation
   async getStats(churchId?: number, dateFrom?: string, dateTo?: string): Promise<SubmissionStats> {
-<<<<<<< HEAD
     try {
       const params: any = {};
       
@@ -498,21 +459,10 @@ export const submissionsApi = {
       
       throw error.message ? new Error(error.message) : new Error('Failed to load submission statistics.');
     }
-=======
-    const { data } = await ApiCaller.get(QUERY_PATHS.SUBMISSIONS_STATS, {
-      params: {
-        church_id: churchId,
-        date_from: dateFrom,
-        date_to: dateTo,
-      },
-    });
-    return data?.data || data;
->>>>>>> b93c96d (fix styudy group)
   },
 
   // Get filtered submission history with validation
   async getFilteredHistory(filters: SubmissionFilters = {}): Promise<StudyGroupSubmission[]> {
-<<<<<<< HEAD
     try {
       // Validate and sanitize filters
       const validatedFilters = {
@@ -637,12 +587,6 @@ export const submissionsApi = {
       
       throw error.message ? new Error(error.message) : new Error('Failed to create submission.');
     }
-=======
-    const { data } = await ApiCaller.get(QUERY_PATHS.SUBMISSIONS_HISTORY, {
-      params: filters,
-    });
-    return data?.data || data || [];
->>>>>>> b93c96d (fix styudy group)
   },
 };
 
