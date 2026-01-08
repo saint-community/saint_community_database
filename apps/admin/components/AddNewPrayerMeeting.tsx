@@ -115,18 +115,12 @@ export function AddNewPrayerMeeting({
       onSubmit: formSchema,
     },
     onSubmit: async ({ value }) => {
-      const leaderName =
-        workerOptions?.find(
-          (worker: { value: string; label: string }) =>
-            worker.value === value.prayergroupLeader
-        )?.label ?? value.prayergroupLeader;
-
       const payload = {
         prayergroup_day: value.prayergroupDay,
         period: value.period,
         start_time: value.startTime,
         end_time: value.endTime,
-        prayergroup_leader: leaderName,
+        prayergroup_leader: value.prayergroupLeader,
       };
 
       if (isEdit && prayerGroup?._id) {
@@ -279,8 +273,8 @@ export function AddNewPrayerMeeting({
                   </SelectTrigger>
                   <SelectContent>
                     {workerOptions?.map(
-                      (worker: { value: string; label: string }) => (
-                        <SelectItem key={worker.value} value={worker.value}>
+                      (worker: { value: number; label: string }) => (
+                        <SelectItem key={worker.value} value={worker.label}>
                           {worker.label}
                         </SelectItem>
                       )
