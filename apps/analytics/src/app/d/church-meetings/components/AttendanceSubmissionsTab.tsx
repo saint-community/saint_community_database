@@ -11,12 +11,12 @@ interface AttendanceSubmissionsTabProps {
   onViewSubmission: (submission: AttendanceSubmission) => void;
 }
 
-export const AttendanceSubmissionsTab: React.FC<AttendanceSubmissionsTabProps> = ({
+export function AttendanceSubmissionsTab({
   submissions,
   submissionSubTab,
   setSubmissionSubTab,
   onViewSubmission
-}) => {
+}: AttendanceSubmissionsTabProps) {
   return (
     <div className="space-y-6">
       <div className="flex bg-slate-100 p-1 rounded w-fit">

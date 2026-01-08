@@ -9,7 +9,7 @@ interface ProvidersProps {
   children: React.ReactNode;
 }
 
-export function Providers({ children }: ProvidersProps): React.JSX.Element {
+export function Providers({ children }: any): React.JSX.Element {
   return (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );

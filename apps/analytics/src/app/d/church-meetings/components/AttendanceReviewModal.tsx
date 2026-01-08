@@ -19,7 +19,7 @@ interface AttendanceReviewModalProps {
   onToggleAll: () => void;
 }
 
-export const AttendanceReviewModal: React.FC<AttendanceReviewModalProps> = ({
+export function AttendanceReviewModal({
   submission,
   isOpen,
   onClose,
@@ -30,7 +30,7 @@ export const AttendanceReviewModal: React.FC<AttendanceReviewModalProps> = ({
   onApproveSelected,
   onRejectFull,
   onToggleAll
-}) => {
+}: AttendanceReviewModalProps) {
   const groupedPastAttendance = useMemo(() => {
     if (!submission || submission.status !== 'Approved') return null;
 

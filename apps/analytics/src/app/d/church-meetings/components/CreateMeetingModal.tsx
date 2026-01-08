@@ -24,7 +24,7 @@ interface CreateMeetingModalProps {
   onSave: () => void;
 }
 
-export const CreateMeetingModal: React.FC<CreateMeetingModalProps> = ({
+export function CreateMeetingModal({
   isOpen,
   onClose,
   editingMeeting,
@@ -41,7 +41,7 @@ export const CreateMeetingModal: React.FC<CreateMeetingModalProps> = ({
   mDate,
   setMDate,
   onSave
-}) => {
+}: CreateMeetingModalProps) {
   return (
     <Modal 
       isOpen={isOpen} 
