@@ -7,8 +7,9 @@ import {
   CardHeader,
   CardTitle,
 } from '@workspace/ui/components/card';
+import { Suspense } from 'react';
 
-export default function CompletedPage() {
+function CompletedPage() {
   return (
     <div className='min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4'>
       <Card className='w-full max-w-md shadow-2xl border-0 bg-white/90 backdrop-blur-sm'>
@@ -51,5 +52,14 @@ export default function CompletedPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+
+export default function CompletedMainPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CompletedPage/>
+    </Suspense>
   );
 }
