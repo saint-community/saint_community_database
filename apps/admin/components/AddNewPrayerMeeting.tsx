@@ -19,7 +19,6 @@ import { Loader2, SquarePlus } from 'lucide-react';
 import { ReactNode, useMemo, useState } from 'react';
 import { z } from 'zod';
 
-import { useMe } from '@/hooks/useMe';
 import { useWorkerOption } from '@/hooks/workers';
 import {
   createAdminPrayerGroupMeeting,
@@ -56,11 +55,8 @@ export function AddNewPrayerMeeting({
   onSuccess,
 }: AddNewPrayerMeetingProps) {
   const [open, setOpen] = useState(false);
-  const { data: user } = useMe();
   const queryClient = useQueryClient();
-  const { data: workerOptions, isLoading: workersLoading } = useWorkerOption(
-    user?.church_id?.toString()
-  );
+  const { data: workerOptions, isLoading: workersLoading } = useWorkerOption();
 
   const isEdit = mode === 'edit';
 
