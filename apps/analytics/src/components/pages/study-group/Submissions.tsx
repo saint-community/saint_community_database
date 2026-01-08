@@ -7,7 +7,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/@workspace/ui/components/
 import { useState, useEffect, useRef } from 'react';
 import { Plus, ExternalLink, ChevronDown, ChevronUp, AlertTriangle, User, Filter } from 'lucide-react';
 import { submissionsApi, StudyGroupSubmission, GradeSubmissionDto, RequestRedoDto, mapSubmissionStatusToFrontend } from '@/src/services/submissions';
+<<<<<<< HEAD
 import { AddSubmissionModal } from '@/components/ui/AddSubmissionModal';
+=======
+>>>>>>> b93c96d (fix styudy group)
 import dayjs from 'dayjs';
 
 // Helper interface for submission display
@@ -203,7 +206,11 @@ function SubmissionCard({
               </p>
             )}
           </div>
+<<<<<<< HEAD
           <StatusBadge status={submission.displayStatus} grade={submission.grade} />
+=======
+          <StatusBadge status={submission.status} grade={submission.grade} />
+>>>>>>> b93c96d (fix styudy group)
         </div>
 
         <div className="flex items-center gap-4 mb-4">
@@ -256,7 +263,11 @@ function SubmissionCard({
               Submitted: {submission.submittedAt} 
               {submission.submission_method && (
                 <span className="ml-2 px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+<<<<<<< HEAD
                   {submission.submission_method.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())}
+=======
+                  {submission.submission_method.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+>>>>>>> b93c96d (fix styudy group)
                 </span>
               )}
             </p>
@@ -550,6 +561,7 @@ export default function SubmissionsTab(): React.JSX.Element {
       setLoading(true);
       setError(null);
       
+<<<<<<< HEAD
       // Prepare filters for API call
       const apiFilters = {
         page: currentPage,
@@ -583,11 +595,130 @@ export default function SubmissionsTab(): React.JSX.Element {
       setSubmissionsData([]);
       setTotalPages(0);
       setStats({ total: 0, pending: 0, late: 0, online: 0 });
+=======
+      // TEMPORARY: Test with the actual API response you provided
+      const testData = [
+        {
+          "id": "68c97b9ce0081c0a47c3e6b7",
+          "worker_id": 1,
+          "study_group_id": "68c7e09ebb41e2bb5a9b9266",
+          "study_group_title": "Discipleship Week 8",
+          "assignment_link": "https://google.com",
+          "submitted_at": "2025-09-16T15:00:44.595Z",
+          "status": "submitted",
+          "is_late": false,
+          "week_number": 38,
+          "year": 2025,
+          "redo_requested": false,
+          "submission_method": "online_by_member",
+          "submitter_role": "worker",
+          "submitter_id": 1,
+          "created_at": "2025-09-16T15:00:44.596Z",
+          "updated_at": "2025-09-16T15:00:44.596Z"
+        },
+        {
+          "id": "68c7d5e5bb41e2bb5a9b9109",
+          "worker_id": 1,
+          "study_group_id": "68c7d5dbbb41e2bb5a9b90c4",
+          "study_group_title": "Discipleship Week 7",
+          "assignment_link": "https://google.com",
+          "submitted_at": "2025-09-15T09:01:25.295Z",
+          "status": "submitted",
+          "is_late": false,
+          "week_number": 38,
+          "year": 2025,
+          "redo_requested": false,
+          "submission_method": "online_by_member",
+          "submitter_role": "worker",
+          "created_at": "2025-09-15T09:01:25.296Z",
+          "updated_at": "2025-09-15T11:03:03.391Z"
+        }
+      ];
+      
+      console.log('Using test data:', testData); // Debug log
+      
+      // Use getForReview directly to get the full paginated response
+      // const response = await submissionsApi.getForReview({ church_id: 1 });
+      // console.log('API Response:', response); // Debug log
+      
+      // Extract data array from response
+      const data = testData; // response?.data || [];
+      console.log('Extracted data:', data); // Debug log
+      
+      if (!Array.isArray(data)) {
+        console.log('Data is not an array:', typeof data, data);
+        setSubmissionsData(mockSubmissions);
+        return;
+      }
+      
+      if (data.length === 0) {
+        console.log('Data array is empty, using mock data for testing');
+        // Even if empty, still set the empty array so we can see stats
+        setSubmissionsData([]);
+        return;
+      }
+      
+      // Map API data to match SubmissionCard expectations
+      const mappedData = data.map((submission: any) => {
+        const mapped = {
+          ...submission,
+          // Map API fields to component expectations
+          title: submission.study_group_title || 'Untitled Assignment',
+          submittedAt: dayjs(submission.submitted_at).format('MMMM D, YYYY [at] h:mm A'),
+          submissionType: submission.assignment_link ? 'online' : 'offline',
+          submissionUrl: submission.assignment_link || '',
+          isLate: submission.is_late || false,
+          notes: '', // No notes field in API response
+          grade: submission.score || null, // Use score from API
+          graderNotes: submission.feedback || '',
+          // Map API status to UI status using the helper function
+          status: mapSubmissionStatusToFrontend(submission.status),
+          // Create submitter object from API data
+          submitter: {
+            name: `Worker ${submission.worker_id}`, // API doesn't provide worker name
+            email: 'worker@example.com', // Default email
+            phone: '+234 000 000 0000', // Default phone
+            role: submission.submitter_role === 'worker' ? 'worker-in-training' : 'member',
+            avatar: '/avatars/default-avatar.jpg'
+          }
+        };
+        console.log('Original submission:', submission);
+        console.log('Mapped submission:', mapped);
+        return mapped;
+      });
+      
+      console.log('Final mapped data:', mappedData); // Debug log
+      setSubmissionsData(mappedData);
+    } catch (err) {
+      setError('Failed to load submissions');
+      console.error('Error loading submissions:', err);
+      // For development, use mock data to show the UI
+      setSubmissionsData(mockSubmissions);
+>>>>>>> b93c96d (fix styudy group)
     } finally {
       setLoading(false);
     }
   };
 
+<<<<<<< HEAD
+=======
+  const filteredSubmissions = submissionsData.filter(submission => {
+    if (filter === 'all') return true;
+    const matches = submission.status === filter;
+    console.log(`Filter: ${filter}, Submission status: ${submission.status}, Matches: ${matches}`); // Debug log
+    return matches;
+  });
+  
+  console.log('Total submissions:', submissionsData.length);
+  console.log('Filtered submissions:', filteredSubmissions.length);
+  console.log('Current filter:', filter);
+
+  const totalPages = Math.ceil(filteredSubmissions.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentSubmissions = filteredSubmissions.slice(startIndex, endIndex);
+
+>>>>>>> b93c96d (fix styudy group)
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
@@ -644,29 +775,55 @@ export default function SubmissionsTab(): React.JSX.Element {
       </div>
 
       {/* Quick Stats */}
+<<<<<<< HEAD
       {!loading && stats.total > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card>
             <CardContent className="p-4">
               <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+=======
+      {!loading && submissionsData.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-2xl font-bold text-gray-900">{submissionsData.length}</div>
+>>>>>>> b93c96d (fix styudy group)
               <div className="text-sm text-gray-600">Total Submissions</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
+<<<<<<< HEAD
               <div className="text-2xl font-bold text-orange-600">{stats.pending}</div>
+=======
+              <div className="text-2xl font-bold text-orange-600">
+                {submissionsData.filter(s => s.status === 'pending').length}
+              </div>
+>>>>>>> b93c96d (fix styudy group)
               <div className="text-sm text-gray-600">Pending Review</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
+<<<<<<< HEAD
               <div className="text-2xl font-bold text-red-600">{stats.late}</div>
+=======
+              <div className="text-2xl font-bold text-red-600">
+                {submissionsData.filter(s => s.isLate).length}
+              </div>
+>>>>>>> b93c96d (fix styudy group)
               <div className="text-sm text-gray-600">Late Submissions</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
+<<<<<<< HEAD
               <div className="text-2xl font-bold text-blue-600">{stats.online}</div>
+=======
+              <div className="text-2xl font-bold text-blue-600">
+                {submissionsData.filter(s => s.submissionType === 'online').length}
+              </div>
+>>>>>>> b93c96d (fix styudy group)
               <div className="text-sm text-gray-600">Online Submissions</div>
             </CardContent>
           </Card>
