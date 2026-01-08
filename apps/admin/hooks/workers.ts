@@ -1,11 +1,4 @@
-import {
-  getWorkerById,
-  getWorkers,
-  getWorkerForm,
-  rejectWorker,
-  approveWorker,
-  getWorkersRegistration,
-} from '@/services/workers';
+import { getWorkerById, getWorkers, getWorkerForm, rejectWorker, approveWorker, getWorkersRegistration } from '@/services/workers';
 import { QUERY_PATHS } from '@/utils/constants';
 import {
   keepPreviousData,
@@ -56,10 +49,10 @@ export const useWorkerForm = (token: string) => {
   });
 };
 
-export const useWorkerOption = (church_id?: string) => {
+export const useWorkerOption = () => {
   return useQuery({
-    queryKey: [QUERY_PATHS.WORKERS, church_id],
-    queryFn: () => getWorkers({ church_id: church_id || '' }),
+    queryKey: [QUERY_PATHS.WORKERS],
+    queryFn: () => getWorkers({ church_id: '' }),
     select: (data) => {
       return data?.data?.map(
         (worker: {
@@ -69,31 +62,25 @@ export const useWorkerOption = (church_id?: string) => {
           status: string;
         }) => ({
           label: `${worker.first_name} ${worker.last_name} (${worker.status})`,
-          // Ensure the value is always a string to match Select expectations
-          value: String(worker.id),
+          value: worker.id,
         })
       );
     },
   });
 };
 
-export const useInfiniteWorkersRegistration = ({
-  action,
-}: {
-  action: string;
-  page?: number;
-}) => {
+export const useInfiniteWorkersRegistration = ({action}: {action: string, page?: number}) => {
   return useInfiniteQuery({
     queryKey: [`${QUERY_PATHS.WORKERS}${action}`, action],
-    queryFn: ({ pageParam }) =>
-      getWorkersRegistration({ action, page: pageParam }),
+    queryFn: ({pageParam}) => getWorkersRegistration({action, page: pageParam}),
     enabled: !!action,
-    getNextPageParam: (lastPage) => {
+    getNextPageParam:  (lastPage) => {
       return lastPage.data.current_page < lastPage.data.last_page
         ? lastPage.data.current_page + 1
-        : undefined;
+        : undefined
     },
     initialPageParam: 1,
+    
   });
 };
 
