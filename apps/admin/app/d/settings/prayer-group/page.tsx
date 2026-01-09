@@ -30,7 +30,7 @@ type PrayerGroupMeeting = AdminPrayerGroupMeetingPayload & {
   updatedAt?: string;
 };
 
-export default function Page() {
+export default function PrayerGroupSettingsPage() {
   const { data: user } = useMe();
   const { data: prayerGroups } = useAdminPrayerGroupMeetings();
   const { data: stats } = useStatistics();
@@ -39,10 +39,7 @@ export default function Page() {
 
   const prayerGroupList = (prayerGroups || []) as PrayerGroupMeeting[];
 
-  const isAdmin =
-    user?.role === ROLES.ADMIN ||
-    user?.role === ROLES.PASTOR ||
-    user?.role === ROLES.CHURCH_PASTOR;
+  const isSuperAdmin = user?.role === ROLES.ADMIN;
 
   const deleteMutation = useMutation({
     mutationFn: (_id: string) => deleteAdminPrayerGroupMeeting(_id),
@@ -91,12 +88,19 @@ export default function Page() {
   const getLeaderName = (name?: string) =>
     name?.replace(/\s*\(.*/, '').trim() || 'Prayer Leader';
 
-  if (user && !isAdmin) {
+  if (user && !isSuperAdmin) {
     redirect('/d/cells');
   }
 
   return (
-    <div className='flex-1 flex p-4 sm:p-6 w-full flex-col sm:gap-6 gap-4 bg-[#fafafa]'>
+    <div className='space-y-6 bg-white p-4 sm:p-6'>
+      <div>
+        <h3 className='text-lg font-medium'>Prayer Group Settings</h3>
+        <p className='text-sm text-muted-foreground'>
+          Manage prayer group meetings and configurations
+        </p>
+      </div>
+
       <div className='flex gap-6 sm:flex-row flex-col'>
         <div className='flex-auto'>
           <ChurchChart />
