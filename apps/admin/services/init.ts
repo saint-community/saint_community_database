@@ -10,7 +10,7 @@ export const ApiCaller = axios.create({
   headers: {
     'Content-Type': 'application/json',
     // Authorization: `Bearer ${storage.getString(StorageKeys.TOKEN)}`,
-    'x-api-key': 'MzbjFEf2SBPViRKyfXHBDCoWoBhM8doJuXH8DNuf',
+    'x-api-key': '113c53c9e26574039e24ce0cc63a6f7b3be020e5',
   },
 });
 
@@ -45,7 +45,7 @@ export const MemberApiCaller = axios.create({
   baseURL: MEMBER_URL,
   headers: {
     'Content-Type': 'application/json',
-    'x-api-key': 'MzbjFEf2SBPViRKyfXHBDCoWoBhM8doJuXH8DNuf',
+    'x-api-key': '113c53c9e26574039e24ce0cc63a6f7b3be020e5',
   },
 });
 

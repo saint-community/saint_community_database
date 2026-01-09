@@ -36,7 +36,7 @@ const items = [
   },
   {
     title: 'Prayer Group',
-    url: '/d/prayer-group',
+    url: '/d/settings/prayer-group',
     icon: LineChart,
   },
   {

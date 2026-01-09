@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@workspace/ui/components/select';
+import { MultiSelect } from './ui/multi-select';
 import { FieldInfo } from '@workspace/ui/components/field-info';
 import { TimePicker } from './ui/TimePicker';
 import { useForm } from '@workspace/ui/lib/react-hook-form';
@@ -38,7 +39,7 @@ const formSchema = z.object({
   period: z.string().min(1, { message: 'Please select a period.' }),
   startTime: z.string().min(1, { message: 'Start time is required.' }),
   endTime: z.string().min(1, { message: 'End time is required.' }),
-  prayergroupLeader: z.string().min(1, { message: 'Please select a leader.' }),
+  prayergroupLeader: z.array(z.string()).min(1, { message: 'Please select at least one leader.' }),
 });
 
 type AddNewPrayerMeetingProps = {
@@ -66,7 +67,11 @@ export function AddNewPrayerMeeting({
       period: prayerGroup?.period || '',
       startTime: prayerGroup?.start_time || '',
       endTime: prayerGroup?.end_time || '',
-      prayergroupLeader: prayerGroup?.prayergroup_leader || '',
+      prayergroupLeader: prayerGroup?.prayergroup_leader
+        ? Array.isArray(prayerGroup.prayergroup_leader)
+          ? prayerGroup.prayergroup_leader
+          : [prayerGroup.prayergroup_leader]
+        : [],
     }),
     [prayerGroup]
   );
@@ -120,7 +125,7 @@ export function AddNewPrayerMeeting({
         period: value.period,
         start_time: value.startTime,
         end_time: value.endTime,
-        prayergroup_leader: value.prayergroupLeader,
+        prayergroup_leader: value.prayergroupLeader.join(', '),
       };
 
       if (isEdit && prayerGroup?._id) {
@@ -255,32 +260,23 @@ export function AddNewPrayerMeeting({
         </div>
 
         <div className='space-y-2'>
-          <Label htmlFor='prayergroupLeader'>Prayer Group Leader</Label>
+          <Label htmlFor='prayergroupLeader'>Prayer Group Leaders</Label>
           <form.Field
             name='prayergroupLeader'
             children={(field) => (
               <>
-                <Select
+                <MultiSelect
+                  options={workerOptions?.map((worker: { value: number; label: string }) => ({
+                    value: worker.label,
+                    label: worker.label
+                  })) || []}
                   value={field.state.value}
                   onValueChange={(value) => field.handleChange(value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue
-                      placeholder={
-                        workersLoading ? 'Loading leaders...' : 'Select leader'
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {workerOptions?.map(
-                      (worker: { value: number; label: string }) => (
-                        <SelectItem key={worker.value} value={worker.label}>
-                          {worker.label}
-                        </SelectItem>
-                      )
-                    )}
-                  </SelectContent>
-                </Select>
+                  placeholder={
+                    workersLoading ? 'Loading leaders...' : 'Select leaders'
+                  }
+                  searchable={false}
+                />
                 <FieldInfo field={field} />
               </>
             )}
