@@ -1,0 +1,1326 @@
+
+import React, { useState, useMemo, useEffect } from 'react';
+import { 
+  LayoutDashboard, Users, UserPlus, BarChart3, 
+  Settings, LogOut, Search, Bell, Filter, Plus, 
+  Download, Calendar, MapPin, CheckCircle2, Clock, MoreVertical, 
+  X, TrendingUp, ShieldCheck, Building2, Edit2, 
+  Trash2, Phone, MessageSquare, HeartPulse, UserCheck, Flame, ChevronRight,
+  Sparkles, MessageCircle, Crown, Info, MoreHorizontal, HelpCircle,
+  Home, List, User, Activity, Sliders, ChevronDown, Check, FileText, Music,
+  CalendarCheck, UserCircle, QrCode, FileSpreadsheet, BookOpen, Clock3,
+  History as HistoryIcon, BarChart as BarChartIcon, Hash, Timer, UserSearch,
+  CheckSquare, Square, RotateCcw, AlertCircle, PlusCircle, UserMinus, SearchIcon,
+  LayoutGrid
+} from 'lucide-react';
+import { 
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, 
+  CartesianGrid, Tooltip, BarChart, Bar, Legend, Cell
+} from 'recharts';
+import { 
+  EvangelismSession, EvangelismRecord, FollowUpSession, FollowUpRecord,
+  Meeting, AttendanceSubmission, MeetingType, MeetingFrequency, MeetingScope
+} from './types';
+import { Logo, COLORS } from './constants';
+import { 
+  mockEvangelismSessions, mockFollowUpSessions, mockAttendance, 
+  attendanceTrend, subjectDistribution, evangelismMonthlyTrend,
+  mockMeetings, mockAttendanceSubmissions, attendanceComparisonData
+} from './mockData';
+
+/** 
+ * REUSABLE UI COMPONENTS
+ */
+
+const StatCard: React.FC<{ 
+  title: string; 
+  value: string | number; 
+  icon: React.ReactNode; 
+  trend?: string;
+  variant?: 'default' | 'gold' | 'red' | 'green';
+}> = ({ title, value, icon, trend, variant = 'default' }) => {
+  const variantStyles = {
+    default: "text-[#2D3E50] group-hover:bg-[#CCA856] group-hover:text-white",
+    gold: "text-[#CCA856] bg-gold/5 border-gold/10",
+    red: "text-[#E74C3C] bg-red-50 border-red-100",
+    green: "text-green-600 bg-green-50 border-green-100"
+  };
+
+  return (
+    <div className="bg-white p-6 rounded border border-slate-200 shadow-sm hover:shadow-md transition-all group">
+      <div className="flex justify-between items-start">
+        <div className="flex items-center gap-4">
+          <div className={`p-3 rounded transition-colors border ${variantStyles[variant]}`}>
+            {icon}
+          </div>
+          <div className="flex flex-col">
+            <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">{title}</p>
+            <h3 className="text-2xl font-black text-[#1A1C1E] mt-0.5">{value}</h3>
+          </div>
+        </div>
+        {trend && (
+          <div className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded ${trend.startsWith('+') ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-red-50 text-red-600 border border-red-100'}`}>
+            {trend}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode; size?: 'md' | 'lg' | 'xl' }> = ({ isOpen, onClose, title, children, size = 'lg' }) => {
+  if (!isOpen) return null;
+  const sizeClasses = {
+    md: 'max-w-md',
+    lg: 'max-w-2xl',
+    xl: 'max-w-5xl'
+  };
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#1A1C1E]/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className={`bg-white rounded w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-200`}>
+        <div className="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
+          <div>
+            <h3 className="text-lg font-black text-[#1A1C1E] tracking-tight uppercase tracking-[0.1em]">{title}</h3>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded text-slate-400 transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-[#FAFAFA]">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const WORKERS_LIST = [
+  'Pastor Robert', 'Pastor John', 'Sarah Smith', 'David K.', 
+  'Jane Doe', 'Michael B.', 'Peter P.', 'Alex G.',
+  'Gbenga Adeniji', 'Funmi Adeniji'
+];
+
+const MEMBERS_LIST = [
+  'Adebayo T.', 'Chioma N.', 'Emeka O.', 'Funmi A.', 'Gideon S.', 'Hassan M.',
+  'Ibrahim K.', 'Joy E.', 'Kelechi U.', 'Lekan B.', 'Mary J.', 'Nkechi W.',
+  'Olawale D.', 'Priscilla T.', 'Quincy R.', 'Samuel P.', 'Tunde G.', 'Victor L.',
+  'Aanu Lawson', 'Chinwe Onwe', 'Gbemi Goriola', 'Stephen King'
+];
+
+const FIRST_TIMERS_EXAMPLES = ['Razak Okoya', 'Bola Ahmed Tinubu', 'Layal Tinubu'];
+
+const FELLOWSHIPS = ['Oke-afa Fellowship', 'Ire-Akari Fellowship', 'Ago-Ejigbo Fellowship'];
+const CELLS = ['Oke-afa Cell 1', 'Aswan Cell', 'Ile-Iwe Cell'];
+
+const getMemberGroup = (name: string): string => {
+  const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const groups = [...FELLOWSHIPS, ...CELLS];
+  return groups[hash % groups.length];
+};
+
+const CodeCountdown: React.FC<{ expiresAt: number; onExpire?: () => void }> = ({ expiresAt, onExpire }) => {
+  const [timeLeft, setTimeLeft] = useState<number>(expiresAt - Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const remaining = expiresAt - Date.now();
+      if (remaining <= 0) {
+        clearInterval(timer);
+        setTimeLeft(0);
+        if (onExpire) onExpire();
+      } else {
+        setTimeLeft(remaining);
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [expiresAt, onExpire]);
+
+  if (timeLeft <= 0) return <span className="text-red-500 font-black">EXPIRED</span>;
+
+  const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+  const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+  return (
+    <span className="font-mono font-black text-xs text-[#CCA856]">
+      {hours.toString().padStart(2, '0')}:{minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
+    </span>
+  );
+};
+
+/** 
+ * EVANGELISM MODULE
+ */
+
+const EvangelismModule = () => {
+  const [activeTab, setActiveTab] = useState('Overview');
+  const [sessions, setSessions] = useState<EvangelismSession[]>(mockEvangelismSessions);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [viewingSession, setViewingSession] = useState<EvangelismSession | null>(null);
+  const [search, setSearch] = useState('');
+
+  const stats = useMemo(() => {
+    let saved = 0, filled = 0, healed = 0;
+    const workerSet = new Set<string>();
+    sessions.forEach(s => {
+      s.participants.forEach(p => workerSet.add(p));
+      s.records.forEach(r => {
+        if (r.isSaved) saved++;
+        if (r.isFilled) filled++;
+        if (r.isHealed) healed++;
+      });
+    });
+    return { saved, filled, healed, workersInvolved: workerSet.size, membersInvolved: 4 };
+  }, [sessions]);
+
+  const filteredSessions = useMemo(() => {
+    return sessions.filter(s => 
+      s.participants.join(', ').toLowerCase().includes(search.toLowerCase()) ||
+      s.location.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [sessions, search]);
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="flex justify-between items-center">
+        <div><h2 className="text-2xl font-black text-[#1A1C1E] tracking-tight">Evangelism Outreach</h2><p className="text-slate-500 text-sm mt-1">Impact tracking and soul-winning directory.</p></div>
+        <button onClick={() => setIsFormOpen(true)} className="bg-[#E74C3C] text-white px-6 py-3 rounded text-sm font-bold shadow hover:bg-red-600 transition-all flex items-center gap-2"><Plus size={18} /> Add Outreach Report</button>
+      </div>
+      <div className="flex gap-4 border-b border-slate-200">
+        {['Overview', 'Records'].map(tab => (<button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-3 text-sm font-bold transition-all border-b-2 ${activeTab === tab ? 'border-[#CCA856] text-[#1A1C1E]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>{tab}</button>))}
+      </div>
+      
+      {activeTab === 'Overview' && (
+        <div className="space-y-10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <StatCard title="Total Saved" value={stats.saved} icon={<UserCheck size={20} />} variant="red" />
+            <StatCard title="Total Filled" value={stats.filled} icon={<Flame size={20} />} variant="gold" />
+            <StatCard title="Total Healed" value={stats.healed} icon={<HeartPulse size={20} />} variant="green" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white p-6 rounded border border-slate-200 flex items-center justify-between">
+              <div><p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Workers Engaged</p><h4 className="text-2xl font-black text-[#1A1C1E] mt-1">{stats.workersInvolved} / {WORKERS_LIST.length}</h4></div>
+              <TrendingUp className="text-[#CCA856]" size={24} />
+            </div>
+            <div className="bg-white p-6 rounded border border-slate-200 flex items-center justify-between">
+              <div><p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Growth Rate</p><h4 className="text-2xl font-black text-green-600 mt-1">+14.2%</h4></div>
+              <Sparkles className="text-green-500" size={24} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'Records' && (
+        <div className="bg-white border border-slate-200 rounded shadow-sm overflow-hidden">
+          <table className="w-full text-left">
+            <thead className="bg-[#F8F9FA] text-slate-500 border-b border-slate-200">
+              <tr>
+                <th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider">Participants</th>
+                <th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider">Date & Time</th>
+                <th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider">Soul Records</th>
+                <th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredSessions.map(session => (
+                <tr key={session.id} onClick={() => setViewingSession(session)} className="hover:bg-slate-50 transition-colors cursor-pointer group">
+                  <td className="px-6 py-5 font-bold text-sm text-[#1A1C1E]">{session.participants.join(', ')}</td>
+                  <td className="px-6 py-5 text-xs text-slate-600 font-medium">{session.date} @ {session.time}</td>
+                  <td className="px-6 py-5"><span className="px-2.5 py-1 bg-slate-100 text-slate-700 text-[11px] font-black rounded border border-slate-200">{session.records.length} Souls Reached</span></td>
+                  <td className="px-6 py-5 text-right"><MoreHorizontal size={18} className="text-slate-300 ml-auto" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/** 
+ * FOLLOW UP MODULE
+ */
+
+const FollowUpModule = () => {
+  const [activeTab, setActiveTab] = useState('Overview');
+  const [sessions, setSessions] = useState<FollowUpSession[]>(mockFollowUpSessions);
+  const [search, setSearch] = useState('');
+
+  const stats = useMemo(() => {
+    let totalRecords = 0;
+    const workers = new Set<string>();
+    const subjects: Record<string, number> = {};
+    sessions.forEach(s => {
+      workers.add(s.worker);
+      s.records.forEach(r => {
+        totalRecords++;
+        subjects[r.subjectTaught] = (subjects[r.subjectTaught] || 0) + 1;
+      });
+    });
+    const topSubject = Object.entries(subjects).sort((a,b) => b[1] - a[1])[0]?.[0] || 'N/A';
+    return { totalRecords, workerCount: workers.size, topSubject };
+  }, [sessions]);
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="flex justify-between items-center">
+        <div><h2 className="text-2xl font-black text-[#1A1C1E] tracking-tight">Follow-Up Management</h2><p className="text-slate-500 text-sm mt-1">Nurturing new believers and tracking progress.</p></div>
+        <button className="bg-[#CCA856] text-white px-6 py-3 rounded text-sm font-bold shadow hover:bg-[#b8954d] transition-all flex items-center gap-2"><Plus size={18} /> New Follow-up Report</button>
+      </div>
+
+      <div className="flex gap-4 border-b border-slate-200">
+        {['Overview', 'Records'].map(tab => (<button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-3 text-sm font-bold transition-all border-b-2 ${activeTab === tab ? 'border-[#CCA856] text-[#1A1C1E]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>{tab}</button>))}
+      </div>
+
+      {activeTab === 'Overview' && (
+        <div className="space-y-10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <StatCard title="Total Follow-ups" value={stats.totalRecords} icon={<UserCheck size={20} />} variant="gold" trend="+12%" />
+            <StatCard title="Active Workers" value={stats.workerCount} icon={<ShieldCheck size={20} />} variant="default" />
+            <StatCard title="Focus Subject" value={stats.topSubject} icon={<BookOpen size={20} />} variant="default" />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 bg-white p-8 rounded border border-slate-200 shadow-sm">
+              <h3 className="text-xs font-black uppercase tracking-[0.2em] mb-6 text-[#1A1C1E]">Activity Breakdown</h3>
+              <div className="h-[250px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={subjectDistribution}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F3F5" /><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 800}} /><YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 800}} /><Tooltip cursor={{fill: '#F8F9FA'}} /><Bar dataKey="value" fill="#CCA856" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></div>
+            </div>
+            <div className="bg-[#1A1C1E] p-8 rounded border border-slate-800 shadow-xl text-white">
+              <h3 className="text-xs font-black uppercase tracking-[0.2em] mb-6 text-[#CCA856]">Leaderboard</h3>
+              <div className="space-y-5">
+                {WORKERS_LIST.slice(0, 4).map((worker, i) => (
+                  <div key={i} className="flex items-center justify-between border-b border-white/5 pb-3">
+                    <span className="text-sm font-bold">{worker}</span>
+                    <span className="text-xs font-black text-[#CCA856]">{Math.floor(Math.random() * 15) + 5} reports</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'Records' && (
+        <div className="bg-white border border-slate-200 rounded shadow-sm overflow-hidden">
+          <table className="w-full text-left">
+            <thead className="bg-[#F8F9FA] text-slate-500 border-b border-slate-200">
+              <tr>
+                <th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider">Follow-up Worker</th>
+                <th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider">Date</th>
+                <th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider">Subject Taught</th>
+                <th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {sessions.map(session => (
+                <tr key={session.id} className="hover:bg-slate-50 transition-colors cursor-pointer group">
+                  <td className="px-6 py-5 font-bold text-sm text-[#1A1C1E]">{session.worker}</td>
+                  <td className="px-6 py-5 text-xs text-slate-600 font-medium">{session.date}</td>
+                  <td className="px-6 py-5"><span className="px-2.5 py-1 bg-slate-100 text-slate-700 text-[10px] font-black rounded uppercase">{session.records[0]?.subjectTaught}</span></td>
+                  <td className="px-6 py-5 text-right"><ChevronRight size={18} className="text-slate-300 ml-auto group-hover:text-[#CCA856] transition-all" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/** 
+ * CHURCH MEETINGS MODULE
+ */
+
+const ChurchMeetingsModule = () => {
+  const [activeTab, setActiveTab] = useState('Overview');
+  const [historySubTab, setHistorySubTab] = useState<'Past' | 'Upcoming'>('Past');
+  const [submissionSubTab, setSubmissionSubTab] = useState<'Pending' | 'Approved' | 'Rejected'>('Pending');
+  const [meetings, setMeetings] = useState<Meeting[]>(mockMeetings);
+  const [submissions, setSubmissions] = useState<AttendanceSubmission[]>(mockAttendanceSubmissions);
+  const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
+  const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
+  const [viewingSubmission, setViewingSubmission] = useState<AttendanceSubmission | null>(null);
+  const [activeCodes, setActiveCodes] = useState<Record<string, { code: string; expiresAt: number }>>({});
+  const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
+  const [selectedMeetingForAttendance, setSelectedMeetingForAttendance] = useState<Meeting | null>(null);
+
+  // Manual Attendance Form State
+  const [attendanceFellowship, setAttendanceFellowship] = useState<string>('');
+  const [attendanceWorkers, setAttendanceWorkers] = useState<string[]>([]);
+  const [attendanceMembers, setAttendanceMembers] = useState<string[]>([]);
+  const [attendanceFirstTimers, setAttendanceFirstTimers] = useState<string[]>(['']);
+  const [workerSearchTerm, setWorkerSearchTerm] = useState('');
+  const [memberSearchTerm, setMemberSearchTerm] = useState('');
+
+  // Workflow for Granular Approvals
+  const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
+  const [selectedFirstTimers, setSelectedFirstTimers] = useState<string[]>([]);
+
+  // Form State for Meetings
+  const [mTitle, setMTitle] = useState('');
+  const [mType, setMType] = useState<MeetingType>('Sunday Service');
+  const [mFreq, setMFreq] = useState<MeetingFrequency>('Weekly');
+  const [mScope, setMScope] = useState<MeetingScope>('Church-wide');
+  const [mTime, setMTime] = useState('08:00');
+  const [mDate, setMDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const filteredWorkers = useMemo(() => {
+    return WORKERS_LIST.filter(w => w.toLowerCase().includes(workerSearchTerm.toLowerCase()));
+  }, [workerSearchTerm]);
+
+  const filteredMembers = useMemo(() => {
+    return MEMBERS_LIST.filter(m => m.toLowerCase().includes(memberSearchTerm.toLowerCase()));
+  }, [memberSearchTerm]);
+
+  const handleFullRejection = (subId: string) => {
+    setSubmissions(submissions.map(s => s.id === subId ? { ...s, status: 'Rejected' } : s));
+    setViewingSubmission(null);
+  };
+
+  const handleApproveSelected = () => {
+    if (!viewingSubmission) return;
+
+    const remainingParticipants = viewingSubmission.participants.filter(p => !selectedParticipants.includes(p));
+    const remainingFirstTimers = viewingSubmission.firstTimers.filter(ft => !selectedFirstTimers.includes(ft));
+
+    const isFullApproval = remainingParticipants.length === 0 && remainingFirstTimers.length === 0;
+
+    if (isFullApproval) {
+      setSubmissions(submissions.map(s => s.id === viewingSubmission.id ? { ...s, status: 'Approved' } : s));
+    } else {
+      const approvedSub: AttendanceSubmission = {
+        ...viewingSubmission,
+        id: `sub-appr-${Date.now()}`,
+        participants: [...selectedParticipants],
+        firstTimers: [...selectedFirstTimers],
+        status: 'Approved',
+        createdAt: new Date().toISOString()
+      };
+
+      const updatedPendingSub: AttendanceSubmission = {
+        ...viewingSubmission,
+        participants: remainingParticipants,
+        firstTimers: remainingFirstTimers,
+        status: 'Pending'
+      };
+
+      setSubmissions(prev => [
+        ...prev.filter(s => s.id !== viewingSubmission.id),
+        updatedPendingSub,
+        approvedSub
+      ]);
+    }
+
+    setViewingSubmission(null);
+  };
+
+  const handleRevertIndividual = (name: string, isFirstTimer: boolean) => {
+    if (!viewingSubmission) return;
+
+    const updatedSubmission: AttendanceSubmission = {
+      ...viewingSubmission,
+      participants: isFirstTimer ? viewingSubmission.participants : viewingSubmission.participants.filter(n => n !== name),
+      firstTimers: isFirstTimer ? viewingSubmission.firstTimers.filter(n => n !== name) : viewingSubmission.firstTimers,
+    };
+
+    const pendingSub = submissions.find(s => 
+      s.meetingId === viewingSubmission.meetingId && 
+      s.date === viewingSubmission.date && 
+      s.status === 'Pending'
+    );
+
+    let updatedSubmissions = [...submissions.filter(s => s.id !== viewingSubmission.id)];
+
+    if (pendingSub) {
+      const updatedPending: AttendanceSubmission = {
+        ...pendingSub,
+        participants: isFirstTimer ? pendingSub.participants : Array.from(new Set([...pendingSub.participants, name])),
+        firstTimers: isFirstTimer ? Array.from(new Set([...pendingSub.firstTimers, name])) : pendingSub.firstTimers,
+      };
+      updatedSubmissions = [...updatedSubmissions.filter(s => s.id !== pendingSub.id), updatedPending];
+    } else {
+      const newPending: AttendanceSubmission = {
+        ...viewingSubmission,
+        id: `sub-pending-revert-${Date.now()}`,
+        participants: isFirstTimer ? [] : [name],
+        firstTimers: isFirstTimer ? [name] : [],
+        status: 'Pending',
+        createdAt: new Date().toISOString()
+      };
+      updatedSubmissions.push(newPending);
+    }
+
+    if (updatedSubmission.participants.length > 0 || updatedSubmission.firstTimers.length > 0) {
+      updatedSubmissions.push(updatedSubmission);
+    }
+
+    setSubmissions(updatedSubmissions);
+    setViewingSubmission(null);
+  };
+
+  const generateMeetingCode = (meetingId: string) => {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 12 * 60 * 60 * 1000;
+    setActiveCodes({ ...activeCodes, [meetingId]: { code, expiresAt } });
+  };
+
+  const openCreateModal = () => {
+    setEditingMeeting(null);
+    setMTitle('');
+    setMType('Sunday Service');
+    setMFreq('Weekly');
+    setMScope('Church-wide');
+    setMTime('08:00');
+    setMDate(new Date().toISOString().split('T')[0]);
+    setIsMeetingModalOpen(true);
+  };
+
+  const openEditModal = (meeting: Meeting) => {
+    setEditingMeeting(meeting);
+    setMTitle(meeting.title);
+    setMType(meeting.type);
+    setMFreq(meeting.frequency);
+    setMScope(meeting.scope);
+    setMTime(meeting.time);
+    setMDate(meeting.date || new Date().toISOString().split('T')[0]);
+    setIsMeetingModalOpen(true);
+  };
+
+  const deleteMeeting = (id: string) => {
+    if (window.confirm('Are you sure you want to delete this meeting? This action cannot be undone.')) {
+      setMeetings(meetings.filter(m => m.id !== id));
+    }
+  };
+
+  const saveMeeting = () => {
+    if (editingMeeting) {
+      setMeetings(meetings.map(m => m.id === editingMeeting.id ? {
+        ...m,
+        title: mTitle,
+        type: mType,
+        frequency: mFreq,
+        scope: mScope,
+        time: mTime,
+        date: mDate
+      } : m));
+    } else {
+      const newM: Meeting = {
+        id: `meet-${Date.now()}`,
+        title: mTitle,
+        type: mType,
+        frequency: mFreq,
+        scope: mScope,
+        time: mTime,
+        date: mDate,
+        location: 'Main Auditorium',
+        assignedEntities: [mScope],
+        status: 'Active'
+      };
+      setMeetings([newM, ...meetings]);
+    }
+    setIsMeetingModalOpen(false);
+  };
+
+  const submitManualAttendance = () => {
+    if (!selectedMeetingForAttendance) return;
+
+    const newSub: AttendanceSubmission = {
+      id: `manual-sub-${Date.now()}`,
+      meetingId: selectedMeetingForAttendance.id,
+      meetingTitle: selectedMeetingForAttendance.title,
+      submittedBy: attendanceWorkers.join(', '),
+      date: selectedMeetingForAttendance.date || new Date().toISOString().split('T')[0],
+      participants: attendanceMembers,
+      firstTimers: attendanceFirstTimers.filter(ft => ft.trim() !== ''),
+      code: 'MANUAL',
+      status: 'Pending',
+      createdAt: new Date().toISOString()
+    };
+
+    setSubmissions([newSub, ...submissions]);
+    setIsAttendanceModalOpen(false);
+    setSelectedMeetingForAttendance(null);
+    setAttendanceFellowship('');
+    setAttendanceWorkers([]);
+    setAttendanceMembers([]);
+    setAttendanceFirstTimers(['']);
+    setWorkerSearchTerm('');
+    setMemberSearchTerm('');
+  };
+
+  const toggleAllInSubmission = (submission: AttendanceSubmission) => {
+    const isAllSelected = selectedParticipants.length === submission.participants.length && 
+                          selectedFirstTimers.length === submission.firstTimers.length;
+    
+    if (isAllSelected) {
+      setSelectedParticipants([]);
+      setSelectedFirstTimers([]);
+    } else {
+      setSelectedParticipants([...submission.participants]);
+      setSelectedFirstTimers([...submission.firstTimers]);
+    }
+  };
+
+  // Grouping logic for Detailed History View
+  const groupedPastAttendance = useMemo(() => {
+    if (!viewingSubmission || viewingSubmission.status !== 'Approved') return null;
+
+    const fellowships: Record<string, { workers: string[], members: string[], firstTimers: string[] }> = {};
+    
+    // Process Workers (from submittedBy)
+    const workers = viewingSubmission.submittedBy.split(',').map(w => w.trim());
+    workers.forEach(w => {
+      const group = getMemberGroup(w);
+      if (!fellowships[group]) fellowships[group] = { workers: [], members: [], firstTimers: [] };
+      fellowships[group].workers.push(w);
+    });
+
+    // Process Members (from participants)
+    viewingSubmission.participants.forEach(m => {
+      const group = getMemberGroup(m);
+      if (!fellowships[group]) fellowships[group] = { workers: [], members: [], firstTimers: [] };
+      fellowships[group].members.push(m);
+    });
+
+    // Process First Timers
+    viewingSubmission.firstTimers.forEach(ft => {
+      const group = getMemberGroup(ft); // Simulating group for first timers too
+      if (!fellowships[group]) fellowships[group] = { workers: [], members: [], firstTimers: [] };
+      fellowships[group].firstTimers.push(ft);
+    });
+
+    return fellowships;
+  }, [viewingSubmission]);
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="flex justify-between items-center">
+        <div><h2 className="text-2xl font-black text-[#1A1C1E] tracking-tight">Church Meetings</h2><p className="text-slate-500 text-sm mt-1">Manage global and local services, fellowships, and attendance records.</p></div>
+        <button onClick={openCreateModal} className="bg-[#1A1C1E] text-white px-6 py-3 rounded text-sm font-bold shadow hover:bg-slate-800 transition-all flex items-center gap-2"><Plus size={18} /> Create Meeting</button>
+      </div>
+
+      <div className="flex gap-4 border-b border-slate-200">
+        {['Overview', 'Meetings', 'Attendance Submissions', 'History'].map(tab => (
+          <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-3 text-sm font-bold transition-all border-b-2 ${activeTab === tab ? 'border-[#CCA856] text-[#1A1C1E]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>{tab}</button>
+        ))}
+      </div>
+
+      {activeTab === 'Overview' && (
+        <div className="space-y-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+             <StatCard title="Sunday Service" value="450" icon={<Music size={18} />} variant="default" trend="+5%" />
+             <StatCard title="Midweek Service" value="280" icon={<BookOpen size={18} />} variant="default" trend="+2%" />
+             <StatCard title="Fellowship Meeting" value="120" icon={<Users size={18} />} variant="default" />
+             <StatCard title="Cell Meeting" value="85" icon={<Home size={18} />} variant="default" />
+             <StatCard title="Charis Campmeeting" value="1,200" icon={<Flame size={18} />} variant="gold" />
+             <StatCard title="Believers Convention" value="950" icon={<Sparkles size={18} />} variant="gold" />
+             <StatCard title="World Changers" value="1,100" icon={<TrendingUp size={18} />} variant="gold" />
+             <StatCard title="Avg. Retention" value="78%" icon={<CheckCircle2 size={18} />} variant="green" />
+          </div>
+          <div className="bg-white p-8 rounded border border-slate-200 shadow-sm">
+            <div className="h-[350px]"><ResponsiveContainer width="100%" height="100%"><BarChart data={attendanceComparisonData}><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F3F5" /><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 800}} /><YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 800}} /><Tooltip cursor={{fill: '#F8F9FA'}} /><Bar dataKey="value" fill="#CCA856" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'Meetings' && (
+        <div className="bg-white border border-slate-200 rounded shadow-sm overflow-hidden">
+          <table className="w-full text-left">
+            <thead className="bg-[#F8F9FA] text-slate-500 border-b border-slate-200">
+              <tr><th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider">Title & Type</th><th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider">Frequency / Scope</th><th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider text-right">Actions</th></tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {meetings.map(meeting => (
+                <tr key={meeting.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-6 py-5 font-bold text-sm text-[#1A1C1E]">{meeting.title}</td>
+                  <td className="px-6 py-5 text-xs text-slate-600 font-medium">{meeting.frequency} • {meeting.type}</td>
+                  <td className="px-6 py-5 text-right">
+                    <div className="flex justify-end gap-1">
+                      <button onClick={() => openEditModal(meeting)} className="p-2 text-slate-300 hover:text-[#CCA856] transition-colors" title="Edit Meeting"><Edit2 size={16} /></button>
+                      <button onClick={() => deleteMeeting(meeting.id)} className="p-2 text-slate-300 hover:text-[#E74C3C] transition-colors" title="Delete Meeting"><Trash2 size={16} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {activeTab === 'Attendance Submissions' && (
+        <div className="space-y-6">
+          <div className="flex bg-slate-100 p-1 rounded w-fit">
+            {(['Pending', 'Approved', 'Rejected'] as const).map(tab => (
+              <button 
+                key={tab} 
+                onClick={() => setSubmissionSubTab(tab)} 
+                className={`px-6 py-2 rounded text-xs font-black uppercase tracking-widest transition-all ${submissionSubTab === tab ? 'bg-white shadow text-[#1A1C1E]' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+          
+          <div className="bg-white border border-slate-200 rounded shadow-sm overflow-hidden">
+            <table className="w-full text-left">
+              <thead className="bg-[#F8F9FA] text-slate-500 border-b border-slate-200">
+                <tr>
+                  <th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider">Meeting Title</th>
+                  <th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider">Submitted By</th>
+                  <th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider">Total Count</th>
+                  <th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {submissions.filter(s => s.status === submissionSubTab).map(sub => (
+                  <tr key={sub.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-5 font-bold text-sm text-[#1A1C1E]">{sub.meetingTitle}</td>
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-400 border border-slate-200">{sub.submittedBy.split(' ').map(n=>n[0]).join('')}</div>
+                        <span className="text-xs font-bold text-slate-600 truncate max-w-[150px]">{sub.submittedBy}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <span className={`px-2.5 py-1 text-[11px] font-black rounded border ${submissionSubTab === 'Pending' ? 'bg-[#CCA856]/10 text-[#CCA856] border-[#CCA856]/20' : submissionSubTab === 'Approved' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-red-50 text-red-600 border-red-100'}`}>
+                        {sub.participants.length + sub.firstTimers.length} People
+                      </span>
+                    </td>
+                    <td className="px-6 py-5 text-xs text-slate-500 font-medium">{sub.date}</td>
+                    <td className="px-6 py-5 text-right">
+                      <button 
+                        onClick={() => {
+                          setViewingSubmission(sub);
+                          setSelectedParticipants([...sub.participants]);
+                          setSelectedFirstTimers([...sub.firstTimers]);
+                        }} 
+                        className={`px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ml-auto ${submissionSubTab === 'Pending' ? 'bg-[#1A1C1E] text-white hover:bg-slate-800' : 'bg-white border border-slate-200 text-[#1A1C1E] hover:border-[#CCA856]'}`}
+                      >
+                        {submissionSubTab === 'Pending' ? <><CheckCircle2 size={12} /> Review</> : <><Info size={12} /> Details</>}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {submissions.filter(s => s.status === submissionSubTab).length === 0 && (
+                  <tr><td colSpan={5} className="px-6 py-12 text-center text-slate-400 text-xs italic uppercase tracking-widest">No {submissionSubTab.toLowerCase()} submissions found.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'History' && (
+        <div className="space-y-6">
+          <div className="flex bg-slate-100 p-1 rounded w-fit">
+            <button onClick={() => setHistorySubTab('Past')} className={`px-6 py-2 rounded text-xs font-black uppercase tracking-widest transition-all ${historySubTab === 'Past' ? 'bg-white shadow text-[#1A1C1E]' : 'text-slate-500 hover:text-slate-700'}`}>Past</button>
+            <button onClick={() => setHistorySubTab('Upcoming')} className={`px-6 py-2 rounded text-xs font-black uppercase tracking-widest transition-all ${historySubTab === 'Upcoming' ? 'bg-white shadow text-[#1A1C1E]' : 'text-slate-500 hover:text-slate-700'}`}>Upcoming</button>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded shadow-sm overflow-hidden">
+            {historySubTab === 'Past' ? (
+              <table className="w-full text-left">
+                <thead className="bg-[#F8F9FA] text-slate-500 border-b border-slate-200">
+                  <tr><th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider">Date</th><th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider">Meeting Title</th><th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider text-right">Actions</th></tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {submissions.filter(s => s.status === 'Approved').map(sub => (
+                    <tr key={sub.id} className="hover:bg-slate-50 transition-colors group">
+                      <td className="px-6 py-5 text-sm font-bold text-[#1A1C1E]">{sub.date}</td>
+                      <td className="px-6 py-5 font-bold text-sm text-slate-700">{sub.meetingTitle}</td>
+                      <td className="px-6 py-5 text-right">
+                        <button 
+                          onClick={() => setViewingSubmission(sub)}
+                          className="p-2 text-slate-300 hover:text-[#CCA856] transition-colors" 
+                          title="View Attendance Details"
+                        >
+                          <FileText size={18} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {submissions.filter(s => s.status === 'Approved').length === 0 && (
+                    <tr><td colSpan={3} className="px-6 py-12 text-center text-slate-400 text-xs italic uppercase tracking-widest">No past meeting records found.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            ) : (
+              <table className="w-full text-left">
+                <thead className="bg-[#F8F9FA] text-slate-500 border-b border-slate-200">
+                  <tr><th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider">Timeline Date</th><th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider">Meeting Title</th><th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider">Attendance Code</th><th className="px-6 py-4 text-[11px] font-black uppercase tracking-wider text-right">Actions</th></tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {meetings.map((m, idx) => (
+                    <tr key={m.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="px-6 py-5 text-xs font-black text-[#1A1C1E]">{m.date || `May ${25 + idx}, 2024`}</td>
+                      <td className="px-6 py-5 font-bold text-sm text-slate-700">{m.title}</td>
+                      <td className="px-6 py-5">{activeCodes[m.id] ? <div className="flex items-center gap-3"><span className="px-3 py-1 bg-gold/10 text-[#CCA856] rounded font-mono font-black text-sm border border-gold/20">{activeCodes[m.id].code}</span><CodeCountdown expiresAt={activeCodes[m.id].expiresAt} /></div> : <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest italic">No code</span>}</td>
+                      <td className="px-6 py-5 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button onClick={() => generateMeetingCode(m.id)} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded text-[10px] font-black uppercase hover:border-[#CCA856] transition-all"><QrCode size={14} /> Generate Code</button>
+                          <button onClick={() => { setSelectedMeetingForAttendance(m); setIsAttendanceModalOpen(true); }} className="flex items-center gap-2 px-3 py-1.5 bg-[#1A1C1E] text-white border border-[#1A1C1E] rounded text-[10px] font-black uppercase hover:bg-slate-800 transition-all shadow-sm">
+                            <PlusCircle size={14} /> Record Attendance
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* DETAILED ATTENDANCE REVIEW / HISTORY MODAL */}
+      <Modal 
+        isOpen={!!viewingSubmission} 
+        onClose={() => setViewingSubmission(null)} 
+        title={viewingSubmission?.status === 'Pending' ? "Approve Attendance Submission" : "Attendance Record Details"} 
+        size="xl"
+      >
+        {viewingSubmission && viewingSubmission.status !== 'Approved' && (
+          <div className="space-y-8 pb-10">
+            <div className={`p-6 rounded-lg text-white border-l-8 shadow-xl flex justify-between items-center ${viewingSubmission.status === 'Rejected' ? 'bg-[#1A1C1E] border-red-500' : 'bg-[#1A1C1E] border-[#CCA856]'}`}>
+              <div>
+                <h4 className="text-lg font-black uppercase tracking-widest">{viewingSubmission.meetingTitle}</h4>
+                <div className="flex items-center gap-4 mt-2">
+                  <p className="text-[11px] text-slate-400 font-bold uppercase flex items-center gap-2">
+                    <Calendar size={12} /> {viewingSubmission.date}
+                  </p>
+                  <p className="text-[11px] text-[#CCA856] font-black uppercase flex items-center gap-2">
+                    <User size={12} /> Submitted By: {viewingSubmission.submittedBy}
+                  </p>
+                  <p className="text-[11px] font-black uppercase flex items-center gap-2">
+                    <AlertCircle size={12} /> Status: <span className={viewingSubmission.status === 'Rejected' ? 'text-red-400' : 'text-[#CCA856]'}>{viewingSubmission.status}</span>
+                  </p>
+                </div>
+              </div>
+              {viewingSubmission.status === 'Pending' && (
+                <button 
+                  onClick={() => toggleAllInSubmission(viewingSubmission)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded text-[10px] font-black uppercase tracking-widest transition-all"
+                >
+                  { (selectedParticipants.length === viewingSubmission.participants.length && selectedFirstTimers.length === viewingSubmission.firstTimers.length) 
+                    ? <CheckSquare size={14} className="text-[#CCA856]" /> 
+                    : <Square size={14} /> 
+                  } Mark All Present
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Members Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h5 className="text-[11px] font-black text-[#1A1C1E] uppercase tracking-widest flex items-center gap-2">
+                    <Users size={16} className="text-[#CCA856]" /> Regular Members
+                  </h5>
+                  {viewingSubmission.status === 'Pending' && <span className="text-[10px] font-black text-slate-400">{selectedParticipants.length} Selected</span>}
+                </div>
+                <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden divide-y divide-slate-50 max-h-[400px] overflow-y-auto custom-scrollbar">
+                  {viewingSubmission.participants.map(name => {
+                    const isSelected = selectedParticipants.includes(name);
+                    return (
+                      <div 
+                        key={name} 
+                        onClick={() => {
+                          if (viewingSubmission.status === 'Pending') {
+                            setSelectedParticipants(prev => isSelected ? prev.filter(n => n !== name) : [...prev, name]);
+                          }
+                        }}
+                        className={`flex items-center justify-between p-4 transition-all ${viewingSubmission.status === 'Pending' ? 'cursor-pointer hover:bg-slate-50' : ''} ${isSelected && viewingSubmission.status === 'Pending' ? 'bg-[#CCA856]/5' : ''}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          {viewingSubmission.status === 'Pending' ? (
+                            isSelected ? <CheckCircle2 size={18} className="text-[#CCA856]" /> : <Square size={18} className="text-slate-300" />
+                          ) : (
+                            <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
+                          )}
+                          <span className={`text-sm font-bold ${viewingSubmission.status !== 'Pending' ? 'text-[#1A1C1E]' : isSelected ? 'text-[#1A1C1E]' : 'text-slate-500'}`}>{name}</span>
+                        </div>
+                        <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{getMemberGroup(name)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* First Timers Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h5 className="text-[11px] font-black text-[#1A1C1E] uppercase tracking-widest flex items-center gap-2">
+                    <Sparkles size={16} className="text-gold" /> First Timers
+                  </h5>
+                  {viewingSubmission.status === 'Pending' && <span className="text-[10px] font-black text-slate-400">{selectedFirstTimers.length} Selected</span>}
+                </div>
+                <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden divide-y divide-slate-50 max-h-[400px] overflow-y-auto custom-scrollbar">
+                  {viewingSubmission.firstTimers.length > 0 ? viewingSubmission.firstTimers.map(name => {
+                    const isSelected = selectedFirstTimers.includes(name);
+                    return (
+                      <div 
+                        key={name} 
+                        onClick={() => {
+                          if (viewingSubmission.status === 'Pending') {
+                            setSelectedFirstTimers(prev => isSelected ? prev.filter(n => n !== name) : [...prev, name]);
+                          }
+                        }}
+                        className={`flex items-center justify-between p-4 transition-all ${viewingSubmission.status === 'Pending' ? 'cursor-pointer hover:bg-slate-50' : ''} ${isSelected && viewingSubmission.status === 'Pending' ? 'bg-gold/5' : ''}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          {viewingSubmission.status === 'Pending' ? (
+                            isSelected ? <CheckCircle2 size={18} className="text-gold" /> : <Square size={18} className="text-slate-300" />
+                          ) : (
+                            <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
+                          )}
+                          <span className={`text-sm font-bold ${viewingSubmission.status !== 'Pending' ? 'text-[#1A1C1E]' : isSelected ? 'text-[#1A1C1E]' : 'text-slate-500'}`}>{name}</span>
+                        </div>
+                        <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">New Soul</span>
+                      </div>
+                    );
+                  }) : (
+                    <div className="p-8 text-center text-slate-300 italic text-[10px] uppercase tracking-widest">No first timers in this batch</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {viewingSubmission.status === 'Pending' && (
+              <div className="flex gap-4 pt-6">
+                <button 
+                  onClick={() => handleFullRejection(viewingSubmission.id)}
+                  className="flex-1 py-4 border border-red-200 text-red-500 rounded-lg font-black text-[10px] uppercase tracking-[0.2em] hover:bg-red-50 transition-all"
+                >
+                  Reject Entire Batch
+                </button>
+                <button 
+                  onClick={handleApproveSelected}
+                  disabled={selectedParticipants.length === 0 && selectedFirstTimers.length === 0}
+                  className={`flex-[2] py-4 bg-[#1A1C1E] text-white rounded-lg font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-[#CCA856] transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-200`}
+                >
+                  Approve {selectedParticipants.length + selectedFirstTimers.length} Selected Entries
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* PAST ATTENDANCE DETAILED VIEW */}
+        {viewingSubmission && viewingSubmission.status === 'Approved' && groupedPastAttendance && (
+          <div className="space-y-10 pb-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            {/* Header / Top Stats Row */}
+            <div className="bg-[#1A1C1E] p-8 rounded border-l-8 border-[#CCA856] shadow-2xl text-white">
+               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                 <div>
+                   <h2 className="text-2xl font-black tracking-tight">{viewingSubmission.meetingTitle}</h2>
+                   <div className="flex flex-wrap items-center gap-5 mt-3">
+                     <div className="flex items-center gap-2 text-[11px] font-black text-[#CCA856] uppercase tracking-[0.15em] bg-white/5 px-3 py-1.5 rounded border border-white/5">
+                        <Calendar size={14} /> {viewingSubmission.date}
+                     </div>
+                     <div className="flex items-center gap-2 text-[11px] font-black text-slate-400 uppercase tracking-[0.15em] bg-white/5 px-3 py-1.5 rounded border border-white/5">
+                        <Clock size={14} /> 08:00 AM
+                     </div>
+                   </div>
+                 </div>
+                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full lg:w-auto">
+                    <div className="text-center p-3 bg-white/5 rounded border border-white/10 min-w-[100px]">
+                      <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">Total</p>
+                      <h4 className="text-xl font-black text-white">{viewingSubmission.participants.length + viewingSubmission.firstTimers.length + viewingSubmission.submittedBy.split(',').length}</h4>
+                    </div>
+                    <div className="text-center p-3 bg-white/5 rounded border border-white/10 min-w-[100px]">
+                      <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">Workers</p>
+                      <h4 className="text-xl font-black text-[#CCA856]">{viewingSubmission.submittedBy.split(',').length}</h4>
+                    </div>
+                    <div className="text-center p-3 bg-white/5 rounded border border-white/10 min-w-[100px]">
+                      <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">Members</p>
+                      <h4 className="text-xl font-black text-white">{viewingSubmission.participants.length}</h4>
+                    </div>
+                    <div className="text-center p-3 bg-white/5 rounded border border-white/10 min-w-[100px]">
+                      <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">First Timers</p>
+                      <h4 className="text-xl font-black text-gold">{viewingSubmission.firstTimers.length}</h4>
+                    </div>
+                 </div>
+               </div>
+            </div>
+
+            {/* Attendance List per Fellowship */}
+            <div className="space-y-8">
+              <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-400 border-b border-slate-200 pb-3 flex items-center gap-3">
+                <LayoutGrid size={16} /> Attendance Breakdown By Unit
+              </h3>
+              
+              <div className="grid grid-cols-1 gap-8">
+                {/* DO explicitly cast Object.entries result to fix 'unknown' type property access errors */}
+                {(Object.entries(groupedPastAttendance) as [string, { workers: string[], members: string[], firstTimers: string[] }][]).map(([fellowship, data]) => (
+                  <div key={fellowship} className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all">
+                    <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                      <h4 className="text-sm font-black text-[#1A1C1E] uppercase tracking-widest flex items-center gap-3">
+                        <Home size={16} className="text-[#CCA856]" /> {fellowship}
+                      </h4>
+                      <div className="flex gap-4">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">W: {data.workers.length}</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">M: {data.members.length}</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">FT: {data.firstTimers.length}</span>
+                      </div>
+                    </div>
+                    <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+                      {/* Workers Subsection */}
+                      <div className="space-y-4">
+                        <p className="text-[10px] font-black text-[#CCA856] uppercase tracking-[0.2em] border-b border-gold/10 pb-2">Workers</p>
+                        <div className="space-y-2">
+                          {data.workers.map(w => (
+                            <div key={w} className="flex items-center gap-3 group">
+                              <div className="w-1.5 h-1.5 rounded-full bg-[#CCA856] group-hover:scale-125 transition-transform"></div>
+                              <span className="text-sm font-bold text-slate-700">{w}</span>
+                            </div>
+                          ))}
+                          {data.workers.length === 0 && <span className="text-[11px] text-slate-300 italic">No workers listed</span>}
+                        </div>
+                      </div>
+
+                      {/* Members Subsection */}
+                      <div className="space-y-4">
+                        <p className="text-[10px] font-black text-[#1A1C1E] uppercase tracking-[0.2em] border-b border-slate-100 pb-2">Members</p>
+                        <div className="space-y-2">
+                          {data.members.map(m => (
+                            <div key={m} className="flex items-center gap-3 group">
+                              <div className="w-1.5 h-1.5 rounded-full bg-slate-300 group-hover:bg-[#1A1C1E] transition-colors"></div>
+                              <span className="text-sm font-bold text-slate-700">{m}</span>
+                            </div>
+                          ))}
+                          {data.members.length === 0 && <span className="text-[11px] text-slate-300 italic">No members listed</span>}
+                        </div>
+                      </div>
+
+                      {/* First Timers Subsection */}
+                      <div className="space-y-4">
+                        <p className="text-[10px] font-black text-gold uppercase tracking-[0.2em] border-b border-gold/10 pb-2">First Timers</p>
+                        <div className="space-y-2">
+                          {data.firstTimers.map(ft => (
+                            <div key={ft} className="flex items-center gap-3 group">
+                              <Sparkles size={12} className="text-gold group-hover:rotate-12 transition-transform" />
+                              <span className="text-sm font-bold text-slate-700">{ft}</span>
+                            </div>
+                          ))}
+                          {data.firstTimers.length === 0 && <span className="text-[11px] text-slate-300 italic">No first timers listed</span>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-6">
+              <button 
+                onClick={() => setViewingSubmission(null)}
+                className="px-8 py-3 bg-[#1A1C1E] text-white rounded font-black text-[11px] uppercase tracking-widest hover:bg-[#CCA856] transition-all shadow-xl"
+              >
+                Close Record
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* RECORD ATTENDANCE MODAL (Enhanced Flow) */}
+      <Modal 
+        isOpen={isAttendanceModalOpen} 
+        onClose={() => {
+          setIsAttendanceModalOpen(false);
+          setWorkerSearchTerm('');
+          setMemberSearchTerm('');
+        }} 
+        title={`Record Attendance: ${selectedMeetingForAttendance?.title}`}
+        size="lg"
+      >
+        <div className="space-y-10 pb-6">
+          {/* Fellowship/Cell Selection */}
+          <div className="space-y-4">
+            <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+              <MapPin size={14} className="text-[#CCA856]" /> 1. Select Fellowship or Cell
+            </label>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {[...FELLOWSHIPS, ...CELLS].map(unit => (
+                <button 
+                  key={unit}
+                  onClick={() => setAttendanceFellowship(unit)}
+                  className={`px-3 py-2.5 rounded border text-[11px] font-black uppercase tracking-tight transition-all ${attendanceFellowship === unit ? 'bg-[#1A1C1E] text-white border-[#1A1C1E] shadow-md' : 'bg-white text-slate-500 border-slate-200 hover:border-[#CCA856]'}`}
+                >
+                  {unit}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Workers Selection with Search */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                <ShieldCheck size={14} className="text-[#CCA856]" /> 2. Select Worker(s)
+              </label>
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
+                <input 
+                  type="text" 
+                  placeholder="Search workers..."
+                  value={workerSearchTerm}
+                  onChange={(e) => setWorkerSearchTerm(e.target.value)}
+                  className="pl-9 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-xs font-bold outline-none focus:border-[#CCA856] w-[180px]"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-[160px] overflow-y-auto custom-scrollbar p-1">
+              {filteredWorkers.map(w => {
+                const isSelected = attendanceWorkers.includes(w);
+                return (
+                  <button 
+                    key={w}
+                    onClick={() => setAttendanceWorkers(prev => isSelected ? prev.filter(x => x !== w) : [...prev, w])}
+                    className={`px-3 py-2.5 rounded border text-[11px] font-black transition-all text-left flex items-center justify-between ${isSelected ? 'bg-gold/5 border-[#CCA856] text-[#CCA856]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#CCA856]'}`}
+                  >
+                    <span className="truncate">{w}</span>
+                    {isSelected && <Check size={14} />}
+                  </button>
+                );
+              })}
+              {filteredWorkers.length === 0 && <p className="col-span-3 text-center py-4 text-[10px] text-slate-400 italic">No workers found matching your search.</p>}
+            </div>
+          </div>
+
+          {/* Members Selection with Search */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                <Users size={14} className="text-[#CCA856]" /> 3. Select Member(s)
+              </label>
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
+                <input 
+                  type="text" 
+                  placeholder="Search members..."
+                  value={memberSearchTerm}
+                  onChange={(e) => setMemberSearchTerm(e.target.value)}
+                  className="pl-9 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-xs font-bold outline-none focus:border-[#CCA856] w-[180px]"
+                />
+              </div>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-lg p-2 max-h-[220px] overflow-y-auto custom-scrollbar">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+                {filteredMembers.map(m => {
+                  const isSelected = attendanceMembers.includes(m);
+                  return (
+                    <div 
+                      key={m}
+                      onClick={() => setAttendanceMembers(prev => isSelected ? prev.filter(x => x !== m) : [...prev, m])}
+                      className={`p-2.5 rounded cursor-pointer transition-all flex items-center gap-3 border ${isSelected ? 'border-[#1A1C1E] bg-slate-50' : 'border-transparent hover:bg-slate-50'}`}
+                    >
+                      {isSelected ? <CheckSquare size={16} className="text-[#1A1C1E]" /> : <Square size={16} className="text-slate-300" />}
+                      <span className="text-[13px] font-bold text-slate-700">{m}</span>
+                    </div>
+                  );
+                })}
+                {filteredMembers.length === 0 && <p className="col-span-2 text-center py-6 text-[11px] text-slate-400 italic">No members found matching your search.</p>}
+              </div>
+            </div>
+          </div>
+
+          {/* First Timers Input */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                <Sparkles size={14} className="text-gold" /> 4. First Timers
+              </label>
+              <button 
+                onClick={() => setAttendanceFirstTimers([...attendanceFirstTimers, ''])}
+                className="flex items-center gap-1 text-[10px] font-black text-[#CCA856] uppercase hover:underline"
+              >
+                <Plus size={14} /> Add Name
+              </button>
+            </div>
+            <div className="space-y-2">
+              {attendanceFirstTimers.map((ft, idx) => (
+                <div key={idx} className="flex gap-2 animate-in slide-in-from-left-1 duration-200">
+                  <input 
+                    type="text" 
+                    placeholder="Enter full name..."
+                    value={ft}
+                    onChange={(e) => {
+                      const newFt = [...attendanceFirstTimers];
+                      newFt[idx] = e.target.value;
+                      setAttendanceFirstTimers(newFt);
+                    }}
+                    className="flex-1 px-4 py-2 bg-[#F8F9FA] border border-slate-200 rounded outline-none font-bold text-sm focus:border-gold/50"
+                  />
+                  {attendanceFirstTimers.length > 1 && (
+                    <button 
+                      onClick={() => setAttendanceFirstTimers(attendanceFirstTimers.filter((_, i) => i !== idx))}
+                      className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                    >
+                      <UserMinus size={18} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-slate-100 flex gap-4">
+             <button 
+              onClick={() => setIsAttendanceModalOpen(false)}
+              className="flex-1 py-4 bg-slate-50 text-slate-400 rounded-lg font-black text-[11px] uppercase tracking-widest hover:bg-slate-100 transition-all"
+            >
+              Cancel
+            </button>
+            <button 
+              disabled={!attendanceFellowship || attendanceWorkers.length === 0 || (attendanceMembers.length === 0 && attendanceFirstTimers.every(ft => ft.trim() === ''))}
+              onClick={submitManualAttendance}
+              className="flex-[2] py-4 bg-[#1A1C1E] text-white rounded-lg font-black text-[11px] uppercase tracking-[0.2em] shadow-xl hover:bg-[#CCA856] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              Submit Attendance
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* DEFINE / EDIT MEETING MODAL */}
+      <Modal 
+        isOpen={isMeetingModalOpen} 
+        onClose={() => setIsMeetingModalOpen(false)} 
+        title={editingMeeting ? "Edit Meeting Structure" : "Define New Meeting Structure"} 
+        size="md"
+      >
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Meeting Title</label>
+            <input 
+              type="text" 
+              placeholder="Sunday Celebration" 
+              value={mTitle}
+              onChange={(e) => setMTitle(e.target.value)}
+              className="w-full px-4 py-3 bg-[#F8F9FA] border border-slate-200 rounded-lg outline-none font-bold text-sm shadow-sm focus:border-[#CCA856]" 
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Type</label>
+              <select 
+                value={mType}
+                onChange={(e) => setMType(e.target.value as MeetingType)}
+                className="w-full px-4 py-3 bg-[#F8F9FA] border border-slate-200 rounded-lg outline-none font-bold text-sm shadow-sm"
+              >
+                <option>Sunday Service</option>
+                <option>Midweek Service</option>
+                <option>Vigil</option>
+                <option>Cell Meeting</option>
+                <option>Fellowship Meeting</option>
+                <option>Charis Campmeeting</option>
+                <option>Believers Convention</option>
+                <option>World Changers Conference</option>
+                <option>Workers Convention</option>
+                <option>Workers Meetings / Congresses</option>
+                
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Frequency</label>
+              <select 
+                value={mFreq}
+                onChange={(e) => setMFreq(e.target.value as MeetingFrequency)}
+                className="w-full px-4 py-3 bg-[#F8F9FA] border border-slate-200 rounded-lg outline-none font-bold text-sm shadow-sm"
+              >
+                <option>Weekly</option>
+                <option>Monthly</option>
+                <option>Yearly</option>
+                <option>One-off</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Start Date</label>
+              <input 
+                type="date" 
+                value={mDate}
+                onChange={(e) => setMDate(e.target.value)}
+                className="w-full px-4 py-3 bg-[#F8F9FA] border border-slate-200 rounded-lg outline-none font-bold text-sm shadow-sm focus:border-[#CCA856]" 
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Time of Meeting</label>
+              <input 
+                type="time" 
+                value={mTime}
+                onChange={(e) => setMTime(e.target.value)}
+                className="w-full px-4 py-3 bg-[#F8F9FA] border border-slate-200 rounded-lg outline-none font-bold text-sm shadow-sm focus:border-[#CCA856]" 
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Meeting coverage</label>
+            <select 
+              value={mScope}
+              onChange={(e) => setMScope(e.target.value as MeetingScope)}
+              className="w-full px-4 py-3 bg-[#F8F9FA] border border-slate-200 rounded-lg outline-none font-bold text-sm shadow-sm"
+            >
+              <option>Entire Church</option>
+              <optgroup label="Fellowship">{FELLOWSHIPS.map(f => <option key={f}>{f}</option>)}</optgroup>
+              <optgroup label="Cell">{CELLS.map(c => <option key={c}>{c}</option>)}</optgroup>
+            </select>
+          </div>
+          
+          <button 
+            onClick={saveMeeting} 
+            className="w-full py-4 bg-[#1A1C1E] text-white rounded-lg font-black text-xs uppercase tracking-widest shadow-2xl mt-4 hover:bg-[#CCA856] transition-all"
+          >
+            {editingMeeting ? "Update Configuration" : "Save Meeting Configuration"}
+          </button>
+        </div>
+      </Modal>
+    </div>
+  );
+};
+
+const DashboardModule = () => (
+  <div className="space-y-10 animate-in fade-in duration-1000">
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+      <div><h2 className="text-2xl font-black text-[#1A1C1E] tracking-tighter">Executive Dashboard</h2><p className="text-slate-500 text-sm mt-1">Growth overview & spiritual impact.</p></div>
+      <div className="flex gap-4"><button className="flex items-center gap-3 px-5 py-3 bg-white border border-slate-200 rounded text-xs font-black text-[#1A1C1E] shadow-sm uppercase tracking-widest hover:bg-slate-50 transition-all"><Calendar size={18} className="text-[#CCA856]" /> Last 30 Days</button><button className="flex items-center gap-3 px-6 py-3 bg-[#1A1C1E] text-white rounded text-xs font-black shadow transition-all hover:bg-slate-800 uppercase tracking-widest"><Plus size={18} /> New Report</button></div>
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"><StatCard title="Total Salvations" value="1,284" icon={<UserCheck size={20} />} trend="+15%" /><StatCard title="New Believers" value="54" icon={<Sparkles size={20} />} trend="+10%" /><StatCard title="Weekly Attendance" value="486" icon={<Users size={20} />} trend="+28%" /><StatCard title="Testimonies" value="112" icon={<HeartPulse size={20} />} trend="+12%" /></div>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="lg:col-span-2 bg-white p-8 rounded border border-slate-200 shadow-sm">
+        <div className="flex justify-between items-center mb-10"><div><h3 className="text-lg font-black text-[#1A1C1E] tracking-tight uppercase">Impact Trajectory</h3></div></div>
+        <div className="h-[350px]"><ResponsiveContainer width="100%" height="100%"><AreaChart data={evangelismMonthlyTrend}><defs><linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={COLORS.gold} stopOpacity={0.15}/><stop offset="95%" stopColor={COLORS.gold} stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F3F5" /><XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 800}} /><YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 800}} /><Tooltip /><Area type="monotone" dataKey="value" stroke={COLORS.gold} fillOpacity={1} fill="url(#colorValue)" strokeWidth={3} /><Area type="monotone" dataKey="value2" stroke="#CBD5E1" fillOpacity={0} strokeWidth={2} strokeDasharray="4 4" /></AreaChart></ResponsiveContainer></div>
+      </div>
+      <div className="bg-white p-8 rounded border border-slate-200 shadow-sm">
+        <div className="flex justify-between items-center mb-8"><h3 className="text-lg font-black text-[#1A1C1E] tracking-tight uppercase">Top Workers</h3></div>
+        <div className="space-y-5">{[{ name: "John Doe", role: "Pastor", score: "98 pts", avatar: "JD" }, { name: "Sarah Smith", role: "Youth Leader", score: "92 pts", avatar: "SS" }, { name: "Gbenga Adeniji", role: "Worker", score: "85 pts", avatar: "GA" }].map((worker, i) => (<div key={i} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded transition-all"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded bg-slate-100 flex items-center justify-center font-black text-xs border border-slate-200 shadow-sm">{worker.avatar}</div><div><p className="text-sm font-black text-[#1A1C1E]">{worker.name}</p><p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{worker.role}</p></div></div><div className="text-right"><p className="text-xs font-black text-[#CCA856]">{worker.score}</p></div></div>))}</div>
+      </div>
+    </div>
+  </div>
+);
+
+const App: React.FC = () => {
+  const [activeModule, setActiveModule] = useState<string>('Church Meetings');
+  const navItems = [{ id: 'Dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard' }, { id: 'Analytics', icon: <TrendingUp size={18} />, label: 'Analytics' }, { id: 'Church Meetings', icon: <Building2 size={18} />, label: 'Church Meetings' }, { id: 'Evangelism', icon: <List size={18} />, label: 'Evangelism' }, { id: 'Follow Up', icon: <UserPlus size={18} />, label: 'Follow Up' }, { id: 'Prayer', icon: <Activity size={18} />, label: 'Prayer' }, { id: 'Study Group', icon: <Sliders size={18} />, label: 'Study Group' }, { id: 'Settings', icon: <Settings size={18} />, label: 'Settings' }];
+  return (
+    <div className="flex min-h-screen bg-white font-sans selection:bg-[#CCA856]/30">
+      <aside className="w-[280px] fixed inset-y-0 left-0 bg-white flex flex-col pt-10 z-50 border-r border-slate-100">
+        <Logo className="px-10 mb-16" />
+        <nav className="flex-1 flex flex-col space-y-1">{navItems.map((item) => (<button key={item.id} onClick={() => setActiveModule(item.id)} className={`group flex items-center w-full py-3.5 pl-10 pr-6 relative transition-all duration-300 ${activeModule === item.id ? 'text-[#1A1C1E]' : 'text-[#64748b] hover:bg-[#F8F9FA]'}`}>{activeModule === item.id && (<div className="absolute left-0 top-1 bottom-1 w-[4px] bg-[#CCA856] rounded-r"></div>)}<div className={`mr-4 transition-colors ${activeModule === item.id ? 'text-[#1A1C1E]' : 'text-[#64748b] opacity-70 group-hover:opacity-100'}`}>{item.icon}</div><span className={`text-sm tracking-tight ${activeModule === item.id ? 'font-black' : 'font-semibold'}`}>{item.label}</span></button>))}<div className="mt-auto pb-8"><button className="group flex items-center w-full py-4 pl-10 pr-6 text-[#64748b] hover:bg-[#F8F9FA] transition-all"><LogOut size={18} className="mr-4 opacity-70 group-hover:opacity-100" /><span className="text-sm font-semibold tracking-tight">Sign Out</span></button></div></nav>
+      </aside>
+      <main className="flex-1 ml-[280px] bg-[#FAFAFA] min-h-screen p-12">
+        <header className="flex justify-between items-center mb-12"><div className="flex flex-col"><h1 className="text-2xl font-black text-[#1A1C1E] tracking-tight">🌟 Hello!</h1><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1 opacity-70">Admin HQ / {activeModule}</p></div><div className="flex items-center gap-6"><div className="relative group"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors" size={18} /><input type="text" placeholder="Find records..." className="pl-12 pr-6 py-2.5 bg-white border border-slate-200 rounded outline-none font-bold text-sm w-[300px] shadow-sm focus:ring-1 focus:ring-[#CCA856]/20 transition-all" /></div><button className="p-3 bg-white rounded border border-slate-200 shadow-sm text-slate-400 hover:text-[#1A1C1E] relative transition-all"><Bell size={20} /><div className="absolute top-2 right-2 w-2 h-2 bg-[#E74C3C] rounded-full border border-white"></div></button><div className="w-12 h-12 rounded border-2 border-white shadow shadow-slate-200 overflow-hidden flex-shrink-0"><img src="https://picsum.photos/seed/pastor/200" className="w-full h-full object-cover" alt="User" /></div></div></header>
+        <div className="max-w-[1300px] mx-auto pb-20">{activeModule === 'Dashboard' && <DashboardModule />}{activeModule === 'Evangelism' && <EvangelismModule />}{activeModule === 'Follow Up' && <FollowUpModule />}{activeModule === 'Church Meetings' && <ChurchMeetingsModule />}</div>
+      </main>
+    </div>
+  );
+};
+
+export default App;
