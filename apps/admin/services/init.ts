@@ -39,7 +39,7 @@ ApiCaller.interceptors.response.use(
 
 const MEMBER_URL =
   process.env.NEXT_PUBLIC_MEMBER_URL ||
-  'https://member-service.saintscommunityportal.com';
+  'https://saintscommunity-members-analytics-staging.up.railway.app';
 
 export const MemberApiCaller = axios.create({
   baseURL: MEMBER_URL,
