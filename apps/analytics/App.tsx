@@ -3792,8 +3792,8 @@ const FollowUpModule = () => {
     ];
     const rows = session.records.map((r, idx) => [
       session.date,
-      '19:20',
-      'Location',
+      session.time || '19:20',
+      session.location || 'Church Hall',
       session.participants.join('; '),
       idx + 1,
       r.personFollowedUp,
@@ -4758,10 +4758,51 @@ const ChurchMeetingsModule = () => {
     setViewingSubmission(null);
   };
 
-  const generateMeetingCode = (meetingId: string) => {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 12 * 60 * 60 * 1000;
-    setActiveCodes({ ...activeCodes, [meetingId]: { code, expiresAt } });
+  const generateMeetingCode = async (meetingId: string) => {
+    const meeting = meetings.find((m) => m.id === meetingId);
+    if (!meeting) return;
+
+    try {
+      // Use existing find-or-create logic in backend
+      const payload = {
+        title: meeting.title,
+        type: meeting.type,
+        frequency: meeting.frequency,
+        scope: meeting.scope,
+        scope_type: meeting.scope_type || 'Church',
+        scope_id: meeting.scope_id || '',
+        scope_value: meeting.scope_value || '', // fallbacks
+        date: meeting.date,
+        time: meeting.time,
+        location: meeting.location || 'Main Auditorium',
+        assignedEntities: meeting.assignedEntities || [],
+        status: meeting.status || 'Active',
+        attendance_code: Math.floor(100000 + Math.random() * 900000).toString(),
+        code_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      };
+
+      setIsLoading(true);
+      const res = await attendanceAPI.createMeeting(payload as any); // Type cast if needed, or ensure strict mapping
+      setIsLoading(false);
+
+      if (res && res.data && res.data.attendance_code) {
+        // Update local display state with CONFIRMED backend code
+        setActiveCodes({
+          ...activeCodes,
+          [meetingId]: {
+            code: res.data.attendance_code,
+            expiresAt: new Date(res.data.code_expires_at).getTime(),
+          },
+        });
+        // Also refresh list to stay in sync
+        const updated = await attendanceAPI.getMeetings();
+        setMeetings(updated);
+      }
+    } catch (err) {
+      console.error("Failed to generate code:", err);
+      setIsLoading(false);
+      alert("Failed to generate code. Please checks network.");
+    }
   };
 
   const openCreateModal = () => {
@@ -4893,7 +4934,7 @@ const ChurchMeetingsModule = () => {
 
     // Generate code and expiry
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours from now
+    const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(); // 12 hours from now
 
     const meetingData = {
       title: mTitle,

@@ -200,7 +200,10 @@ const transformEvangelismFromBackend = (data: any): EvangelismSession => {
 interface FollowUpSession {
     id: string;
     date: string;
+    time?: string;
     worker: string;
+    location?: string;
+    summary?: string;
     participants: string[];
     records: FollowUpRecord[];
     createdAt: string;
@@ -218,8 +221,9 @@ interface FollowUpRecord {
 const transformFollowUpToBackend = (session: FollowUpSession) => {
     return {
         session_date: session.date,
-        start_time: '19:20', // Default time
-        location_area: 'Church Hall', // Default location
+        start_time: session.time || '19:20',
+        location_area: session.location || 'Church Hall',
+        summary: session.summary || '',
         participants: session.participants.map(name => ({
             id: '0',
             type: 'worker',
@@ -241,8 +245,11 @@ const transformFollowUpToBackend = (session: FollowUpSession) => {
 const transformFollowUpFromBackend = (data: any): FollowUpSession => {
     return {
         id: data._id || data.id,
-        date: data.session_date,
+        date: data.session_date ? data.session_date.toString().substring(0, 10) : new Date().toISOString().substring(0, 10),
+        time: data.start_time,
         worker: data.participants?.[0]?.name || 'Unknown',
+        location: data.location_area,
+        summary: data.summary || '',
         participants: data.participants?.map((p: any) => p.name) || [],
         records: data.records?.map((record: any, idx: number) => ({
             id: `${data._id || data.id}-record-${idx}`,
@@ -363,16 +370,16 @@ export const attendanceAPI = {
         });
     },
 
-    createMeeting: async (meeting: any): Promise<void> => {
-        await api.post('/attendance/admin/meeting', meeting);
+    createMeeting: async (meeting: any): Promise<any> => {
+        return await api.post('/attendance/admin/meeting', meeting);
     },
 
-    markAttendance: async (data: any): Promise<void> => {
-        await api.post('/attendance/mark', data);
+    markAttendance: async (data: any): Promise<any> => {
+        return await api.post('/attendance/mark', data);
     },
 
-    bulkMarkAttendance: async (data: any): Promise<void> => {
-        await api.post('/attendance/admin/bulk-mark', data);
+    bulkMarkAttendance: async (data: any): Promise<any> => {
+        return await api.post('/attendance/admin/bulk-mark', data);
     },
 
     deleteMeeting: async (id: string): Promise<void> => {
