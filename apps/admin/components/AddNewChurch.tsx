@@ -9,7 +9,7 @@ import { Textarea } from '@workspace/ui/components/textarea';
 import { Label } from '@workspace/ui/components/label';
 import { Modal } from '@workspace/ui/components/modal';
 import { Loader2, SquarePlus } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DatePicker } from '@workspace/ui/components/date-picker';
 import { FieldInfo } from '@workspace/ui/components/field-info';
 import { createChurch } from '@/services/churches';
@@ -54,6 +54,31 @@ const formSchema = z.object({
 export function AddNewChurchSheet() {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
+   // Import countries.json dynamically to avoid SSR issues
+    const [countries, setCountries] = useState<{ code: string; name: string }[]>(
+      []
+    );
+    useEffect(() => {
+      import("@/utils/countries.json").then((mod) => {
+        setCountries(mod.default || mod);
+      });
+    }, []);
+
+    const [states, setStates] = useState<string[]>([]);
+      const [selectedCountry, setSelectedCountry] = useState("");
+    
+      useEffect(() => {
+        if (selectedCountry) {
+          import("@/utils/states.json").then((mod) => {
+            type AllStates = { [countryCode: string]: string[] };
+            const allStates = (mod.default || mod) as unknown as AllStates;
+            setStates(allStates[selectedCountry as keyof AllStates] || []);
+          });
+        } else {
+          setStates([]);
+        }
+      }, [selectedCountry]);
+  
 
   const mutation = useMutation({
     mutationFn: createChurch,
@@ -73,7 +98,7 @@ export function AddNewChurchSheet() {
       churchName: '',
       location: '',
       address: '',
-      country: 'Nigeria',
+      country: '',
       // pastorName: '',
       dateStarted: new Date(),
     },
@@ -181,15 +206,18 @@ export function AddNewChurchSheet() {
               <>
                 <Select
                   value={field.state.value}
-                  onValueChange={(e) => field.handleChange(e)}
+                 onValueChange={(e) => {
+                    field.handleChange(e);
+                    setSelectedCountry(e);
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder='Select a country' />
                   </SelectTrigger>
                   <SelectContent>
-                    {COUNTRIES.map((country) => (
-                      <SelectItem key={country} value={country}>
-                        {country}
+                    {countries.map(({ name, code }) => (
+                      <SelectItem key={code} value={name}>
+                        {name}
                       </SelectItem>
                     ))}
                   </SelectContent>

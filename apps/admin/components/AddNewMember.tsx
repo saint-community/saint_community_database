@@ -130,7 +130,7 @@ export function AddNewMemberSheet() {
       mutation.mutate({
         church_id: Number(value.church),
         fellowship_id: Number(value.fellowship),
-        cell_id: Number(value.cell),
+        cell_id: value.cell,
         first_name: value.fullName.split(' ')[0] || '',
         last_name: value.fullName.split(' ')[1] || '',
         dob: value.dateOfBirth.toISOString().split('T')[0],
