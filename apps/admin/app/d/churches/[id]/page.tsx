@@ -7,12 +7,12 @@ import { useParams } from 'next/navigation';
 import { useChurchById } from '@/hooks/churches';
 import { CalendarIcon, Loader2, Pencil, Users, Users2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { updateChurch } from '@/services/churches';
 import { DatePicker } from '@workspace/ui/components/date-picker';
 import { FormSelectField } from '@/components/forms';
-import { COUNTRIES } from '@/utils/constants';
+// import { COUNTRIES } from '@/utils/constants';
 import { Label } from '@workspace/ui/components/label';
 import { toast } from '@workspace/ui/lib/sonner';
 
@@ -20,7 +20,16 @@ export default function ChurchDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const { data: church, isLoading, refetch } = useChurchById(id);
+    const [countries, setCountries] = useState<{ code: string; name: string }[]>(
+        []
+      );
+ 
   const [editedData, setEditedData] = useState<any>(null);
+   useEffect(() => {
+    import("@/utils/countries.json").then((mod) => {
+      setCountries(mod.default || mod);
+    });
+  }, []);
 
   const mutation = useMutation({
     mutationFn: (data: any) => updateChurch(id, data),
@@ -58,10 +67,10 @@ export default function ChurchDetailPage() {
       ? new Date(church.start_date)
       : new Date('2022-10-22'),
     lma: 15,
-    leaders: 15,
+    leaders: church?.leaders?.length || 0,
     workers: church?.workers?.length || 0,
     members: church?.members?.length || 0,
-    country: church?.country,
+    country: church?.country || '',
   };
 
   const currentData = editedData || churchData;
@@ -88,8 +97,12 @@ export default function ChurchDetailPage() {
       state: editedData.location,
       address: editedData.address,
       start_date: editedData.dateStarted?.toISOString()?.split('T')[0],
+      country: editedData.country,
+
     });
   };
+
+
 
   return (
     <div className='flex-1 flex p-4 sm:p-6 w-full flex-col sm:gap-6 gap-4 bg-[#fafafa]'>
@@ -158,9 +171,9 @@ export default function ChurchDetailPage() {
             label='Country'
             value={currentData.country}
             onEdit={(value) => handleEdit('country', value)}
-            options={COUNTRIES.map((country) => ({
-              value: country,
-              label: country,
+            options={countries.map((country) => ({
+              value: country.name,
+              label: country.name,
             }))}
           />
 

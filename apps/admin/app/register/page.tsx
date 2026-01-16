@@ -30,6 +30,7 @@ import {
 } from "@workspace/ui/components/avatar";
 import { cn } from "@workspace/ui/lib/utils";
 import { formSchema } from "@/utils/registerSchema";
+import { isEmpty } from "lodash";
 
 const currentDate = new Date().toISOString();
 
@@ -692,7 +693,14 @@ function RegisterPageMain() {
             name="cell"
             children={(field) => (
               <>
-                <Select
+               {isEmpty(cells) ? (
+                <Input
+                  id='cell'
+                  // value={field.state.value}
+                  placeholder='Enter cell name'
+                  onChange={(e) => field.handleChange(e.target.value)}
+                />
+               ) : <Select
                   value={field.state.value}
                   onValueChange={field.handleChange}
                 >
@@ -706,7 +714,7 @@ function RegisterPageMain() {
                       </SelectItem>
                     ))}
                   </SelectContent>
-                </Select>
+                </Select>}
                 <FieldInfo field={field} />
               </>
             )}

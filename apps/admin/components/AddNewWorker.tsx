@@ -30,6 +30,7 @@ import { useMe } from '@/hooks/useMe';
 import { COUNTRIES, ROLES } from '@/utils/constants';
 import { usePrayerGroupOption } from '@/hooks/prayer_groups';
 import { toast } from '@workspace/ui/lib/sonner';
+import { isEmpty } from 'lodash';
 
 const formSchema = z.object({
   fullName: z.string().min(2, {
@@ -135,7 +136,7 @@ export function AddNewWorkerSheet({
       mutation.mutate({
         church_id: Number(value.church),
         fellowship_id: Number(value.fellowship),
-        cell_id: Number(value.cell),
+        cell_id: value.cell,
         first_name: value.fullName.split(' ')[0] || '',
         last_name: value.fullName.split(' ')[1] || '',
         dob: value.dateOfBirth.toISOString().split('T')[0],
@@ -432,7 +433,15 @@ export function AddNewWorkerSheet({
             name='cell'
             children={(field) => (
               <>
-                <Select
+                {isEmpty(cellOptions) ? (
+                  <Input
+                    id='cell'
+                    // value={field.state.value}
+                    placeholder='Enter cell name'
+                    onChange={(e) => field.handleChange(e.target.value)}
+
+                  />
+                ) : <Select
                   value={field.state.value}
                   onValueChange={field.handleChange}
                   disabled={lockCellSelect}
@@ -455,7 +464,7 @@ export function AddNewWorkerSheet({
                       )
                     )}
                   </SelectContent>
-                </Select>
+                </Select>}
                 <FieldInfo field={field} />
               </>
             )}

@@ -5,7 +5,7 @@ export interface Worker {
   profile_image?: any;
   church_id: number;
   fellowship_id: number;
-  cell_id: number;
+  cell_id: string;
   first_name: string;
   last_name: string;
   dob?: string;
