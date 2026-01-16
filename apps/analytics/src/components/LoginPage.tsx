@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, Lock, Mail, ArrowRight, Loader2 } from 'lucide-react';
-import { authAPI, setAuthToken, setSanctumToken } from './api';
+import { authAPI, setAuthToken, setSanctumToken } from '../api';
 
 interface LoginPageProps {
     onLoginSuccess: () => void;
