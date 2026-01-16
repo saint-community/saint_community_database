@@ -1992,16 +1992,16 @@ const EvangelismModule = () => {
 
         const memberNames = Array.isArray(membersData)
           ? membersData.map((m: any) =>
-              m.first_name || m.last_name
-                ? `${m.first_name || ''} ${m.last_name || ''} `.trim()
-                : m.email
-            )
+            m.first_name || m.last_name
+              ? `${m.first_name || ''} ${m.last_name || ''} `.trim()
+              : m.email
+          )
           : [];
 
         const workerNames = Array.isArray(workersData)
           ? workersData.map((w: any) =>
-              `${w.first_name} ${w.last_name} `.trim()
-            )
+            `${w.first_name} ${w.last_name} `.trim()
+          )
           : [];
 
         const uniqueNames = Array.from(
@@ -3453,10 +3453,10 @@ const FollowUpModule = () => {
 
         const memberNames = Array.isArray(membersData)
           ? membersData.map((m: any) =>
-              m.first_name || m.last_name
-                ? `${m.first_name || ''} ${m.last_name || ''}`.trim()
-                : m.email
-            )
+            m.first_name || m.last_name
+              ? `${m.first_name || ''} ${m.last_name || ''}`.trim()
+              : m.email
+          )
           : [];
 
         const workerNames = Array.isArray(workersData)
@@ -3684,8 +3684,10 @@ const FollowUpModule = () => {
     const newSession: FollowUpSession = {
       id: `fu-session-${Date.now()}`,
       date: fuDate,
+      time: fuTime,
       worker: fuParticipants[0] || 'Unknown',
       location: fuLocation,
+      summary: fuSummary,
       participants: fuParticipants,
       records: fuRecords,
       createdAt: new Date().toISOString(),
@@ -3790,8 +3792,8 @@ const FollowUpModule = () => {
     ];
     const rows = session.records.map((r, idx) => [
       session.date,
-      '19:20',
-      'Location',
+      session.time || '19:20',
+      session.location || 'Church Hall',
       session.participants.join('; '),
       idx + 1,
       r.personFollowedUp,
@@ -4260,9 +4262,15 @@ const FollowUpModule = () => {
                 </label>
                 <input
                   type='time'
-                  value='19:20'
-                  disabled
-                  className='w-full px-4 py-2.5 bg-[#F8F9FA] border border-slate-200 rounded outline-none font-bold text-sm text-[#1A1C1E] opacity-60'
+                  value={viewingSession.time || ''}
+                  disabled={!isEditingSession}
+                  onChange={(e) =>
+                    setViewingSession({
+                      ...viewingSession,
+                      time: e.target.value,
+                    })
+                  }
+                  className='w-full px-4 py-2.5 bg-[#F8F9FA] border border-slate-200 rounded outline-none font-bold text-sm text-[#1A1C1E] disabled:opacity-75 disabled:cursor-not-allowed'
                 />
               </div>
               <div className='space-y-2'>
@@ -4425,10 +4433,15 @@ const FollowUpModule = () => {
               <textarea
                 disabled={!isEditingSession}
                 value={
-                  fuSummary ||
-                  'Initial session summary recorded for this discipleship meeting.'
+                  viewingSession.summary ||
+                  ''
                 }
-                onChange={(e) => setFuSummary(e.target.value)}
+                onChange={(e) =>
+                  setViewingSession({
+                    ...viewingSession,
+                    summary: e.target.value,
+                  })
+                }
                 className='w-full px-4 py-4 bg-white border border-slate-200 rounded outline-none font-medium text-sm min-h-[140px] shadow-sm disabled:opacity-75 disabled:cursor-not-allowed'
                 placeholder='Provide a holistic summary...'
               ></textarea>
@@ -4745,10 +4758,51 @@ const ChurchMeetingsModule = () => {
     setViewingSubmission(null);
   };
 
-  const generateMeetingCode = (meetingId: string) => {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 12 * 60 * 60 * 1000;
-    setActiveCodes({ ...activeCodes, [meetingId]: { code, expiresAt } });
+  const generateMeetingCode = async (meetingId: string) => {
+    const meeting = meetings.find((m) => m.id === meetingId);
+    if (!meeting) return;
+
+    try {
+      // Use existing find-or-create logic in backend
+      const payload = {
+        title: meeting.title,
+        type: meeting.type,
+        frequency: meeting.frequency,
+        scope: meeting.scope,
+        scope_type: meeting.scope_type || 'Church',
+        scope_id: meeting.scope_id || '',
+        scope_value: meeting.scope_value || '', // fallbacks
+        date: meeting.date,
+        time: meeting.time,
+        location: meeting.location || 'Main Auditorium',
+        assignedEntities: meeting.assignedEntities || [],
+        status: meeting.status || 'Active',
+        attendance_code: Math.floor(100000 + Math.random() * 900000).toString(),
+        code_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      };
+
+      setIsLoading(true);
+      const res = await attendanceAPI.createMeeting(payload as any); // Type cast if needed, or ensure strict mapping
+      setIsLoading(false);
+
+      if (res && res.data && res.data.attendance_code) {
+        // Update local display state with CONFIRMED backend code
+        setActiveCodes({
+          ...activeCodes,
+          [meetingId]: {
+            code: res.data.attendance_code,
+            expiresAt: new Date(res.data.code_expires_at).getTime(),
+          },
+        });
+        // Also refresh list to stay in sync
+        const updated = await attendanceAPI.getMeetings();
+        setMeetings(updated);
+      }
+    } catch (err) {
+      console.error("Failed to generate code:", err);
+      setIsLoading(false);
+      alert("Failed to generate code. Please checks network.");
+    }
   };
 
   const openCreateModal = () => {
@@ -4880,7 +4934,7 @@ const ChurchMeetingsModule = () => {
 
     // Generate code and expiry
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24 hours from now
+    const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(); // 12 hours from now
 
     const meetingData = {
       title: mTitle,
@@ -5471,15 +5525,15 @@ const ChurchMeetingsModule = () => {
                   ))}
                 {submissions.filter((s) => s.status === submissionSubTab)
                   .length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className='px-6 py-12 text-center text-slate-400 text-xs italic uppercase tracking-widest'
-                    >
-                      No {submissionSubTab.toLowerCase()} submissions found.
-                    </td>
-                  </tr>
-                )}
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className='px-6 py-12 text-center text-slate-400 text-xs italic uppercase tracking-widest'
+                      >
+                        No {submissionSubTab.toLowerCase()} submissions found.
+                      </td>
+                    </tr>
+                  )}
               </tbody>
             </table>
           </div>
@@ -5546,15 +5600,15 @@ const ChurchMeetingsModule = () => {
                     ))}
                   {submissions.filter((s) => s.status === 'Approved').length ===
                     0 && (
-                    <tr>
-                      <td
-                        colSpan={3}
-                        className='px-6 py-12 text-center text-slate-400 text-xs italic uppercase tracking-widest'
-                      >
-                        No past meeting records found.
-                      </td>
-                    </tr>
-                  )}
+                      <tr>
+                        <td
+                          colSpan={3}
+                          className='px-6 py-12 text-center text-slate-400 text-xs italic uppercase tracking-widest'
+                        >
+                          No past meeting records found.
+                        </td>
+                      </tr>
+                    )}
                 </tbody>
               </table>
             ) : (
@@ -5891,7 +5945,7 @@ const ChurchMeetingsModule = () => {
                 >
                   {selectedParticipants.length ===
                     viewingSubmission.participants.length &&
-                  selectedFirstTimers.length ===
+                    selectedFirstTimers.length ===
                     viewingSubmission.firstTimers.length ? (
                     <CheckSquare size={14} className='text-[#CCA856]' />
                   ) : (
@@ -6281,7 +6335,7 @@ const ChurchMeetingsModule = () => {
                     (f) =>
                       selectedMeetingForAttendance.scope_id &&
                       f.id.toString() ===
-                        selectedMeetingForAttendance.scope_id.toString()
+                      selectedMeetingForAttendance.scope_id.toString()
                   );
                   if (f) displayName = f.name;
                   else if (
@@ -6298,7 +6352,7 @@ const ChurchMeetingsModule = () => {
                     (ce) =>
                       selectedMeetingForAttendance.scope_id &&
                       ce.id.toString() ===
-                        selectedMeetingForAttendance.scope_id.toString()
+                      selectedMeetingForAttendance.scope_id.toString()
                   );
                   if (c) displayName = c.name;
                   else if (
@@ -6793,9 +6847,9 @@ const ChurchMeetingsModule = () => {
                       if (
                         selectedName ===
                         'Entire ' +
-                          (availableChurches.find(
-                            (c) => c.id.toString() === selectedChurchContext
-                          )?.name || 'Church')
+                        (availableChurches.find(
+                          (c) => c.id.toString() === selectedChurchContext
+                        )?.name || 'Church')
                       ) {
                         setMScopeId(selectedChurchContext);
                         return;
@@ -7377,8 +7431,8 @@ const StudyGroupModule = () => {
         status: assignmentForm.status.toLowerCase(),
         due_date: assignmentForm.dueDate
           ? new Date(
-              `${assignmentForm.dueDate}T${assignmentForm.dueTime || '00:00'}`
-            ).toISOString()
+            `${assignmentForm.dueDate}T${assignmentForm.dueTime || '00:00'}`
+          ).toISOString()
           : undefined,
         week_start_date: assignmentForm.weekStartDate
           ? new Date(assignmentForm.weekStartDate).toISOString()
@@ -7805,15 +7859,15 @@ const StudyGroupModule = () => {
                 {/* Categorical Filters */}
                 {(activeTab === 'Assignments' ||
                   activeTab === 'Submissions') && (
-                  <div className='space-y-4'>
-                    <h4 className='text-[10px] font-black uppercase tracking-[0.2em] text-[#1A1C1E]'>
-                      {activeTab === 'Assignments'
-                        ? 'Filter by Status'
-                        : 'Filter by Type'}
-                    </h4>
-                    <div className='flex flex-wrap gap-2'>
-                      {activeTab === 'Assignments'
-                        ? ['Active', 'Upcoming', 'Past'].map((s) => (
+                    <div className='space-y-4'>
+                      <h4 className='text-[10px] font-black uppercase tracking-[0.2em] text-[#1A1C1E]'>
+                        {activeTab === 'Assignments'
+                          ? 'Filter by Status'
+                          : 'Filter by Type'}
+                      </h4>
+                      <div className='flex flex-wrap gap-2'>
+                        {activeTab === 'Assignments'
+                          ? ['Active', 'Upcoming', 'Past'].map((s) => (
                             <button
                               key={s}
                               onClick={() =>
@@ -7824,7 +7878,7 @@ const StudyGroupModule = () => {
                               {s}
                             </button>
                           ))
-                        : [
+                          : [
                             'Total Submissions',
                             'Pending Review',
                             'Late Submissions',
@@ -7844,9 +7898,9 @@ const StudyGroupModule = () => {
                               {t}
                             </button>
                           ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {/* Worker Name Multi-Picker */}
                 <div className='space-y-4'>
@@ -7977,13 +8031,12 @@ const StudyGroupModule = () => {
                       </p>
                     </div>
                     <span
-                      className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                        assignment.status === 'Active'
-                          ? 'bg-green-50 text-green-600 border-green-100'
-                          : assignment.status === 'Upcoming'
-                            ? 'bg-blue-50 text-blue-600 border-blue-100'
-                            : 'bg-slate-50 text-slate-500 border-slate-100'
-                      }`}
+                      className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${assignment.status === 'Active'
+                        ? 'bg-green-50 text-green-600 border-green-100'
+                        : assignment.status === 'Upcoming'
+                          ? 'bg-blue-50 text-blue-600 border-blue-100'
+                          : 'bg-slate-50 text-slate-500 border-slate-100'
+                        }`}
                     >
                       {assignment.status}
                     </span>
@@ -8088,150 +8141,164 @@ const StudyGroupModule = () => {
                 />
               </div>
 
-              {submissions.map((sub) => (
-                <div
-                  key={sub.id}
-                  className='bg-white border border-slate-200 rounded-xl p-8 space-y-8 hover:shadow-xl transition-shadow group'
-                >
-                  <div className='flex justify-between items-start'>
-                    <div>
-                      <h3 className='text-2xl font-black text-[#1A1C1E] tracking-tight'>
-                        {sub.assignmentTitle}
-                      </h3>
-                      <p className='text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest flex items-center gap-2'>
-                        <Calendar size={14} /> {sub.week}
-                      </p>
+              {submissions
+                .filter(
+                  (s) =>
+                    s.status !== 'graded' &&
+                    s.status !== 'approved' &&
+                    s.status !== 'Approved'
+                )
+                .map((sub) => (
+                  <div
+                    key={sub.id}
+                    className='bg-white border border-slate-200 rounded-xl p-8 space-y-8 hover:shadow-xl transition-shadow group'
+                  >
+                    <div className='flex justify-between items-start'>
+                      <div>
+                        <h3 className='text-2xl font-black text-[#1A1C1E] tracking-tight'>
+                          {sub.assignmentTitle}
+                        </h3>
+                        <p className='text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest flex items-center gap-2'>
+                          <Calendar size={14} /> {sub.week}
+                        </p>
+                      </div>
+                      <span
+                        className={`px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border shadow-sm ${sub.status === 'late'
+                          ? 'bg-red-50 text-red-600 border-red-100'
+                          : 'bg-orange-50 text-orange-600 border-orange-100'
+                          }`}
+                      >
+                        {sub.status === 'late'
+                          ? 'Late Submission'
+                          : 'Pending Review'}
+                      </span>
                     </div>
-                    <span className='px-5 py-2 bg-orange-50 text-orange-600 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-orange-100 shadow-sm'>
-                      Pending Review
-                    </span>
-                  </div>
 
-                  <div className='flex items-center gap-8 py-6 bg-slate-50/50 rounded-xl px-8 border border-slate-50'>
-                    <div className='w-20 h-20 rounded-lg bg-white border-4 border-white shadow-lg flex items-center justify-center text-[#1A1C1E] font-black text-2xl'>
-                      {sub.member.substring(0, 2).toUpperCase()}
-                    </div>
-                    <div className='flex-1'>
-                      <div className='flex items-center gap-4'>
-                        <h4 className='text-xl font-black text-[#1A1C1E] tracking-tight'>
-                          {sub.member}{' '}
-                          <span className='text-slate-400 font-bold'>
-                            (worker)
+                    <div className='flex items-center gap-8 py-6 bg-slate-50/50 rounded-xl px-8 border border-slate-50'>
+                      <div className='w-20 h-20 rounded-lg bg-white border-4 border-white shadow-lg flex items-center justify-center text-[#1A1C1E] font-black text-2xl'>
+                        {sub.member.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div className='flex-1'>
+                        <div className='flex items-center gap-4'>
+                          <h4 className='text-xl font-black text-[#1A1C1E] tracking-tight'>
+                            {sub.member}{' '}
+                            <span className='text-slate-400 font-bold'>
+                              (worker)
+                            </span>
+                          </h4>
+                          <span className='px-4 py-1.5 bg-[#2563EB]/10 text-[#2563EB] rounded-full text-[9px] font-black uppercase tracking-[0.1em]'>
+                            Worker in Training
                           </span>
-                        </h4>
-                        <span className='px-4 py-1.5 bg-[#2563EB]/10 text-[#2563EB] rounded-full text-[9px] font-black uppercase tracking-[0.1em]'>
-                          Worker in Training
-                        </span>
-                      </div>
-                      <div className='flex items-center gap-6 mt-3'>
-                        <p className='text-sm font-bold text-slate-500 flex items-center gap-2'>
-                          <Phone size={14} className='text-slate-300' />{' '}
-                          {sub.phone}
-                        </p>
-                        <p className='text-sm font-bold text-slate-500 flex items-center gap-2'>
-                          <Mail size={14} className='text-slate-300' />{' '}
-                          {sub.email}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className='flex justify-between items-center border-t border-slate-50 pt-8'>
-                    <button className='flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.15em] text-[#2563EB] hover:scale-105 transition-transform group-hover:underline'>
-                      <ExternalLinkIcon size={18} /> View Student Submission
-                    </button>
-                    <button
-                      onClick={() =>
-                        setExpandedSubmission(
-                          expandedSubmission === sub.id ? null : sub.id
-                        )
-                      }
-                      className='flex items-center gap-3 px-8 py-3 bg-[#1A1C1E] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-black/10 hover:shadow-black/20 transition-all'
-                    >
-                      {expandedSubmission === sub.id
-                        ? 'Collapse Review Terminal'
-                        : 'Expand Review Terminal'}
-                      {expandedSubmission === sub.id ? (
-                        <ChevronUp size={16} />
-                      ) : (
-                        <ChevronDown size={16} />
-                      )}
-                    </button>
-                  </div>
-
-                  {expandedSubmission === sub.id && (
-                    <div className='mt-10 space-y-10 animate-in slide-in-from-top-6 duration-700'>
-                      <div className='space-y-4'>
-                        <h5 className='text-[11px] font-black uppercase tracking-[0.2em] text-[#1A1C1E] flex items-center gap-2'>
-                          <FileText size={16} className='text-[#CCA856]' />{' '}
-                          Student Notes:
-                        </h5>
-                        <div className='p-8 bg-slate-50 rounded-xl border border-slate-100 text-sm font-bold text-slate-600 leading-relaxed min-h-[100px]'>
-                          "The study session was insightful. I focused on the
-                          application of loyalty in everyday service within the
-                          ushering department."
+                        </div>
+                        <div className='flex items-center gap-6 mt-3'>
+                          <p className='text-sm font-bold text-slate-500 flex items-center gap-2'>
+                            <Phone size={14} className='text-slate-300' />{' '}
+                            {sub.phone}
+                          </p>
+                          <p className='text-sm font-bold text-slate-500 flex items-center gap-2'>
+                            <Mail size={14} className='text-slate-300' />{' '}
+                            {sub.email}
+                          </p>
                         </div>
                       </div>
+                    </div>
 
-                      <div className='grid grid-cols-1 md:grid-cols-2 gap-10'>
+                    <div className='flex justify-between items-center border-t border-slate-50 pt-8'>
+                      <button className='flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.15em] text-[#2563EB] hover:scale-105 transition-transform group-hover:underline'>
+                        <ExternalLinkIcon size={18} /> View Student Submission
+                      </button>
+                      <button
+                        onClick={() =>
+                          setExpandedSubmission(
+                            expandedSubmission === sub.id ? null : sub.id
+                          )
+                        }
+                        className='flex items-center gap-3 px-8 py-3 bg-[#1A1C1E] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-black/10 hover:shadow-black/20 transition-all'
+                      >
+                        {expandedSubmission === sub.id
+                          ? 'Collapse Review Terminal'
+                          : 'Expand Review Terminal'}
+                        {expandedSubmission === sub.id ? (
+                          <ChevronUp size={16} />
+                        ) : (
+                          <ChevronDown size={16} />
+                        )}
+                      </button>
+                    </div>
+
+                    {expandedSubmission === sub.id && (
+                      <div className='mt-10 space-y-10 animate-in slide-in-from-top-6 duration-700'>
                         <div className='space-y-4'>
-                          <label className='text-[11px] font-black uppercase tracking-[0.2em] text-[#1A1C1E]'>
-                            Assignment Grade (%):
-                          </label>
-                          <div className='flex items-center gap-4'>
-                            <input
-                              type='number'
-                              placeholder='0'
-                              value={gradeForm.score}
+                          <h5 className='text-[11px] font-black uppercase tracking-[0.2em] text-[#1A1C1E] flex items-center gap-2'>
+                            <FileText size={16} className='text-[#CCA856]' />{' '}
+                            Student Notes:
+                          </h5>
+                          <div className='p-8 bg-slate-50 rounded-xl border border-slate-100 text-sm font-bold text-slate-600 leading-relaxed min-h-[100px]'>
+                            "The study session was insightful. I focused on the
+                            application of loyalty in everyday service within the
+                            ushering department."
+                          </div>
+                        </div>
+
+                        <div className='grid grid-cols-1 md:grid-cols-2 gap-10'>
+                          <div className='space-y-4'>
+                            <label className='text-[11px] font-black uppercase tracking-[0.2em] text-[#1A1C1E]'>
+                              Assignment Grade (%):
+                            </label>
+                            <div className='flex items-center gap-4'>
+                              <input
+                                type='number'
+                                placeholder='0'
+                                value={gradeForm.score}
+                                onChange={(e) =>
+                                  setGradeForm({
+                                    ...gradeForm,
+                                    score: e.target.value,
+                                  })
+                                }
+                                className='w-32 px-6 py-5 bg-slate-50 border border-slate-100 rounded-[24px] outline-none font-black text-2xl text-center focus:border-[#2563EB] focus:ring-4 focus:ring-blue-50 transition-all shadow-inner'
+                              />
+                              <div className='text-3xl font-black text-slate-300'>
+                                %
+                              </div>
+                            </div>
+                          </div>
+                          <div className='space-y-4'>
+                            <label className='text-[11px] font-black uppercase tracking-[0.2em] text-[#1A1C1E]'>
+                              Grader Feedback Notes:
+                            </label>
+                            <textarea
+                              placeholder='Add constructive feedback...'
+                              value={gradeForm.feedback}
                               onChange={(e) =>
                                 setGradeForm({
                                   ...gradeForm,
-                                  score: e.target.value,
+                                  feedback: e.target.value,
                                 })
                               }
-                              className='w-32 px-6 py-5 bg-slate-50 border border-slate-100 rounded-[24px] outline-none font-black text-2xl text-center focus:border-[#2563EB] focus:ring-4 focus:ring-blue-50 transition-all shadow-inner'
-                            />
-                            <div className='text-3xl font-black text-slate-300'>
-                              %
-                            </div>
+                              className='w-full px-8 py-6 bg-slate-50 border border-slate-100 rounded-2xl outline-none min-h-[150px] text-sm font-bold focus:border-[#2563EB] transition-all shadow-inner'
+                            ></textarea>
                           </div>
                         </div>
-                        <div className='space-y-4'>
-                          <label className='text-[11px] font-black uppercase tracking-[0.2em] text-[#1A1C1E]'>
-                            Grader Feedback Notes:
-                          </label>
-                          <textarea
-                            placeholder='Add constructive feedback...'
-                            value={gradeForm.feedback}
-                            onChange={(e) =>
-                              setGradeForm({
-                                ...gradeForm,
-                                feedback: e.target.value,
-                              })
-                            }
-                            className='w-full px-8 py-6 bg-slate-50 border border-slate-100 rounded-2xl outline-none min-h-[150px] text-sm font-bold focus:border-[#2563EB] transition-all shadow-inner'
-                          ></textarea>
+
+                        <div className='flex gap-6 pt-4'>
+                          <button
+                            onClick={() => handleRequestRedo(sub.id)}
+                            className='flex-1 py-5 border border-red-100 text-red-500 rounded-xl text-xs font-black uppercase tracking-[0.2em] hover:bg-red-50 transition-all'
+                          >
+                            Request Redo
+                          </button>
+                          <button
+                            onClick={() => handleGradeSubmission(sub.id)}
+                            className='flex-1 py-5 bg-green-500 text-white rounded-xl text-xs font-black uppercase tracking-[0.2em] shadow-2xl shadow-green-500/30 hover:bg-green-600 hover:scale-[1.02] transition-all'
+                          >
+                            Publish Grade & Approve
+                          </button>
                         </div>
                       </div>
-
-                      <div className='flex gap-6 pt-4'>
-                        <button
-                          onClick={() => handleRequestRedo(sub.id)}
-                          className='flex-1 py-5 border border-red-100 text-red-500 rounded-xl text-xs font-black uppercase tracking-[0.2em] hover:bg-red-50 transition-all'
-                        >
-                          Request Redo
-                        </button>
-                        <button
-                          onClick={() => handleGradeSubmission(sub.id)}
-                          className='flex-1 py-5 bg-green-500 text-white rounded-xl text-xs font-black uppercase tracking-[0.2em] shadow-2xl shadow-green-500/30 hover:bg-green-600 hover:scale-[1.02] transition-all'
-                        >
-                          Publish Grade & Approve
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    )}
+                  </div>
+                ))}
             </div>
           )}
 
@@ -8338,12 +8405,12 @@ const StudyGroupModule = () => {
               {history.filter(
                 (h) => h.status === 'Graded' || h.status === 'Approved'
               ).length === 0 && (
-                <div className='py-20 text-center'>
-                  <p className='text-slate-400 font-bold italic'>
-                    No graded assignments in historical records.
-                  </p>
-                </div>
-              )}
+                  <div className='py-20 text-center'>
+                    <p className='text-slate-400 font-bold italic'>
+                      No graded assignments in historical records.
+                    </p>
+                  </div>
+                )}
             </div>
           )}
         </div>

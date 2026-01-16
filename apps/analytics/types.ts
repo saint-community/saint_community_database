@@ -55,8 +55,10 @@ export interface FollowUpRecord {
 export interface FollowUpSession {
   id: string;
   date: string;
+  time?: string;
   worker: string;
   location?: string;
+  summary?: string;
   participants: string[];
   records: FollowUpRecord[];
   createdAt: string;
