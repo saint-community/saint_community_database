@@ -1,5 +1,5 @@
 // API Configuration and Helper Functions
-const API_BASE_URL = (import.meta as any).env.VITE_API_BASE_URL || 'http://localhost:4000/api';
+const API_BASE_URL = (import.meta as any).env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 
 // Auth token management
 const getAuthToken = (): string | null => {
@@ -74,6 +74,7 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}, isSanctum
 const api = {
     get: (endpoint: string) => apiRequest(endpoint, { method: 'GET' }),
     post: (endpoint: string, data: any) => apiRequest(endpoint, { method: 'POST', body: JSON.stringify(data) }),
+    put: (endpoint: string, data: any) => apiRequest(endpoint, { method: 'PUT', body: JSON.stringify(data) }),
     patch: (endpoint: string, data: any) => apiRequest(endpoint, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: (endpoint: string) => apiRequest(endpoint, { method: 'DELETE' }),
 };
@@ -406,25 +407,48 @@ export const attendanceAPI = {
 // ============================================================================
 
 export const prayerGroupAPI = {
+    getStats: async (): Promise<any> => {
+        // Assuming stats endpoint is also under admin/prayer-group/stats or similar
+        // Based on pattern: /api/admin/prayer-group/stats
+        const response = await api.get('/admin/prayer-group/stats');
+        return response.data || {};
+    },
+
     // Admin/Leader: Create a new prayer meeting day/slot
     createMeeting: async (meeting: any): Promise<void> => {
-        await api.post('/prayer-group/admin/meeting/create', meeting);
+        await api.post('/admin/prayer-group/meeting/create', meeting);
+    },
+
+    // Admin/Leader: Generate specific meeting instance (code)
+    generateInstance: async (data: any): Promise<void> => {
+        await api.post('/admin/prayer-group/create', data);
     },
 
     // Admin/Leader: Get all prayer meetings for the church
     getAllMeetings: async (): Promise<any[]> => {
-        const response = await api.get('/prayer-group/admin/meeting/all');
-        return response.data || [];
+        try {
+            const response = await api.get('/admin/prayer-group/meeting/all');
+            console.log('getAllMeetings RAW response:', response);
+            console.log('getAllMeetings data.data:', response.data?.data);
+            return response.data || [];
+        } catch (error: any) {
+            console.error('getAllMeetings error:', error);
+            if (error.response && error.response.status === 404) {
+                return [];
+            }
+            throw error;
+        }
     },
 
     // Member: Mark attendance for a prayer meeting
     markAttendance: async (data: { prayer_code: string; attendees: string[] }): Promise<any> => {
-        return await api.post('/prayer-group/mark-attendance', data);
+        // This is a public/member route, likely /api/prayer-group/report-attendance based on controller
+        return await api.post('/prayer-group/report-attendance', data);
     },
 
     // Admin/Leader: Get attendance records (history)
     getRecords: async (prayerGroupId?: string): Promise<any[]> => {
-        let endpoint = '/prayer-group/admin/record';
+        let endpoint = '/admin/prayer-group/record';
         if (prayerGroupId) {
             endpoint += `?prayergroup_id=${prayerGroupId}`;
         }
@@ -434,13 +458,60 @@ export const prayerGroupAPI = {
 
     // Get single record/details
     getMeetingDetails: async (id: string): Promise<any> => {
+        // This seems to correspond to standard prayergroup controller findOne
+        // /api/prayer-group/:id
         const response = await api.get(`/prayer-group/${id}`);
         return response.data;
     },
 
-    getStats: async (): Promise<any> => {
-        const response = await api.get('/prayer-group/admin/stats');
-        return response.data || {};
+    // Admin: Create a new prayer group
+    createGroup: async (data: { start_time: string; end_time: string }): Promise<void> => {
+        await api.post('/admin/prayer-group/create', data);
+    },
+
+    // Admin: Get all prayer groups
+    getGroups: async (): Promise<any[]> => {
+        const response = await api.get('/admin/prayer-group/all');
+        return response.data || [];
+    },
+
+    // Admin: Get reported attendance (with filters)
+    getReportedAttendance: async (prayerGroupId: string, churchId?: number): Promise<any> => {
+        let endpoint = `/admin/prayer-group/attendance-submitted?prayergroup_id=${prayerGroupId}`;
+        if (churchId) endpoint += `&church_id=${churchId}`;
+        const response = await api.get(endpoint);
+        return response.data || [];
+    },
+
+    // Admin: Get specific prayer group record
+    getRecord: async (prayerGroupId: string): Promise<any> => {
+        const response = await api.get(`/admin/prayer-group/record?prayergroup_id=${prayerGroupId}`);
+        return response.data || [];
+    },
+
+    // Admin: Mark all attendees as present
+    markAllPresent: async (prayerGroupId: string): Promise<void> => {
+        await api.put(`/admin/prayer-group/mark-all-present?prayergroup_id=${prayerGroupId}`, null);
+    },
+
+    // Admin: Mark single attendee as present
+    markOnePresent: async (prayerGroupId: string, attendeeId: string): Promise<void> => {
+        await api.put(`/admin/prayer-group/mark-one-present?prayergroup_id=${prayerGroupId}&attendee_id=${attendeeId}`, null);
+    },
+
+    // Admin: Mark single attendee as absent
+    markOneAbsent: async (prayerGroupId: string, attendeeId: string): Promise<void> => {
+        await api.put(`/admin/prayer-group/mark-one-absent?prayergroup_id=${prayerGroupId}&attendee_id=${attendeeId}`, null);
+    },
+
+    // Admin: Add member to prayer group record
+    addMember: async (data: { prayergroup_id: string; name: string; fellowship: string; fellowship_id: number }): Promise<void> => {
+        await api.post('/admin/prayer-group/add-member', data);
+    },
+
+    // Admin: Remove member from prayer group record
+    removeMember: async (prayerGroupId: string, attendeeId: string): Promise<void> => {
+        await api.delete(`/admin/prayer-group/remove-attendee?prayergroup_id=${prayerGroupId}&attendee_id=${attendeeId}`);
     },
 };
 

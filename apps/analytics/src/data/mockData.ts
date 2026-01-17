@@ -1,5 +1,5 @@
 
-import { EvangelismSession, FollowUpSession, AttendanceRecord, ChartData, Meeting, AttendanceSubmission, FunnelData, HeatmapData } from './types';
+import { EvangelismSession, FollowUpSession, AttendanceRecord, ChartData, Meeting, AttendanceSubmission, FunnelData, HeatmapData } from '../types';
 
 export const mockMeetings: Meeting[] = [
   {
