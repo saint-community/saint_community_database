@@ -1,106 +1,106 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
-    LayoutDashboard,
-    Users,
-    UserPlus,
-    BarChart3,
-    Settings,
-    LogOut,
-    Search,
-    Bell,
-    Filter,
-    Plus,
-    Download,
-    Calendar,
-    MapPin,
-    CheckCircle2,
-    Clock,
-    MoreVertical,
-    X,
-    TrendingUp,
-    ShieldCheck,
-    Building2,
-    Edit2,
-    Trash2,
-    Phone,
-    HeartPulse,
-    UserCheck,
-    Flame,
-    ChevronRight,
-    Sparkles,
-    Info,
-    MoreHorizontal,
-    Home,
-    Repeat,
-    List,
-    User,
-    Activity,
-    Sliders,
-    ChevronDown,
-    Check,
-    FileText,
-    Music,
-    QrCode,
-    FileSpreadsheet,
-    BookOpen,
-    Clock3,
-    BarChart as BarChartIcon,
-    UserSearch,
-    CheckSquare,
-    Square,
-    AlertCircle,
-    UserMinus,
-    LayoutGrid,
-    PieChart as PieChartIcon,
-    MousePointer2,
-    Layers,
-    Zap,
-    ChevronLeft,
-    Mail,
-    Eye,
-    ChevronUp,
-    Link2,
-    ExternalLink,
-    Globe,
+  LayoutDashboard,
+  Users,
+  UserPlus,
+  BarChart3,
+  Settings,
+  LogOut,
+  Search,
+  Bell,
+  Filter,
+  Plus,
+  Download,
+  Calendar,
+  MapPin,
+  CheckCircle2,
+  Clock,
+  MoreVertical,
+  X,
+  TrendingUp,
+  ShieldCheck,
+  Building2,
+  Edit2,
+  Trash2,
+  Phone,
+  HeartPulse,
+  UserCheck,
+  Flame,
+  ChevronRight,
+  Sparkles,
+  Info,
+  MoreHorizontal,
+  Home,
+  Repeat,
+  List,
+  User,
+  Activity,
+  Sliders,
+  ChevronDown,
+  Check,
+  FileText,
+  Music,
+  QrCode,
+  FileSpreadsheet,
+  BookOpen,
+  Clock3,
+  BarChart as BarChartIcon,
+  UserSearch,
+  CheckSquare,
+  Square,
+  AlertCircle,
+  UserMinus,
+  LayoutGrid,
+  PieChart as PieChartIcon,
+  MousePointer2,
+  Layers,
+  Zap,
+  ChevronLeft,
+  Mail,
+  Eye,
+  ChevronUp,
+  Link2,
+  ExternalLink,
+  Globe,
 } from 'lucide-react';
 import {
-    ResponsiveContainer,
-    AreaChart,
-    Area,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    BarChart,
-    Bar,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  BarChart,
+  Bar,
 } from 'recharts';
 import {
-    EvangelismSession,
-    EvangelismRecord,
-    FollowUpSession,
-    FollowUpRecord,
-    Meeting,
-    AttendanceSubmission,
-    MeetingType,
-    MeetingFrequency,
+  EvangelismSession,
+  EvangelismRecord,
+  FollowUpSession,
+  FollowUpRecord,
+  Meeting,
+  AttendanceSubmission,
+  MeetingType,
+  MeetingFrequency,
 } from '../../types';
 import { Logo, COLORS } from '../../constants';
 import {
-    mockEvangelismSessions,
-    mockFollowUpSessions,
-    attendanceTrend,
-    attendanceComparisonData,
+  mockEvangelismSessions,
+  mockFollowUpSessions,
+  attendanceTrend,
+  attendanceComparisonData,
 } from '../../data/mockData';
 import {
-    evangelismAPI,
-    followUpAPI,
-    attendanceAPI,
-    prayerGroupAPI,
-    studyGroupAPI,
-    memberAPI,
-    structureAPI,
-    getAuthToken,
-    parseJwt,
+  evangelismAPI,
+  followUpAPI,
+  attendanceAPI,
+  prayerGroupAPI,
+  studyGroupAPI,
+  memberAPI,
+  structureAPI,
+  getAuthToken,
+  parseJwt,
 } from '../../api';
 
 import StatCard from '../../components/StatCard';
@@ -108,12 +108,12 @@ import Modal from '../../components/Modal';
 import CodeCountdown from '../../components/CodeCountdown';
 import DatePickerCalendar from '../../components/DatePickerCalendar';
 import {
-    WORKERS_LIST,
-    MEMBERS_LIST,
-    ROLES,
-    FIRST_TIMERS_EXAMPLES,
-    FELLOWSHIPS,
-    CELLS,
+  WORKERS_LIST,
+  MEMBERS_LIST,
+  ROLES,
+  FIRST_TIMERS_EXAMPLES,
+  FELLOWSHIPS,
+  CELLS,
 } from '../../data/lists';
 import { getMemberGroup } from '../../utils/helpers';
 const PrayerModule = () => {
@@ -123,9 +123,9 @@ const PrayerModule = () => {
   const [meetingPeriod, setMeetingPeriod] = useState(
     'Friday Evening Prayer Meeting'
   );
-  const [isPeriodSelectorOpen, setIsPeriodSelectorOpen] = useState(false);
-  const [meetingsFilter, setMeetingsFilter] = useState<'Past' | 'Ongoing'>(
-    'Ongoing'
+
+  const [meetingsFilter, setMeetingsFilter] = useState<'Past' | 'Ongoing' | 'Scheduled'>(
+    'Scheduled'
   );
   const [submissionsTab, setSubmissionsTab] = useState<
     'Pending' | 'Approved' | 'Rejected'
@@ -150,18 +150,50 @@ const PrayerModule = () => {
   );
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const meetingPeriods = [
-    'Monday Evening',
-    'Tuesday Morning',
-    'Tuesday Evening',
-    'Wednesday Morning',
-    'Thursday Morning',
-    'Thursday Evening',
-    'Friday Morning',
-    'Friday Evening',
-    'Saturday Morning',
-    'Sunday',
-  ];
+  // Fetch Prayer Groups (Configs)
+  const [meetingPeriods, setMeetingPeriods] = useState<string[]>([]);
+  const [meetingConfigs, setMeetingConfigs] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchGroups = async () => {
+      try {
+        const groups = await prayerGroupAPI.getAllMeetings();
+        if (groups && groups.length > 0) {
+          const periods = groups.map((g: any) => `${g.prayergroup_day} ${g.period}`);
+          const uniquePeriods = Array.from(new Set(periods));
+          setMeetingPeriods(uniquePeriods);
+          setMeetingConfigs(groups);
+
+          // Smart Default Selection
+          const now = new Date();
+          const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          const currentDay = days[now.getDay()];
+          const currentHour = now.getHours();
+          const currentMin = now.getMinutes();
+          const nowMinutes = currentHour * 60 + currentMin;
+
+          const activeConfig = groups.find((g: any) => {
+            if (g.prayergroup_day !== currentDay) return false;
+            const [sh, sm] = g.start_time.split(':').map(Number);
+            const [eh, em] = g.end_time.split(':').map(Number);
+            const startM = sh * 60 + sm;
+            const endM = eh * 60 + em;
+            return nowMinutes >= startM && nowMinutes <= endM;
+          });
+
+          if (activeConfig) {
+            setMeetingPeriod(`${activeConfig.prayergroup_day} ${activeConfig.period} Prayer Meeting`);
+          } else if (uniquePeriods.length > 0) {
+            // Fallback to first if no active meeting found
+            setMeetingPeriod(`${uniquePeriods[0]} Prayer Meeting`);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch prayer groups for dropdown:', error);
+      }
+    };
+    fetchGroups();
+  }, []);
 
   const monthsList = [
     'January 2024',
@@ -206,25 +238,101 @@ const PrayerModule = () => {
   const [prayerMeetings, setPrayerMeetings] = useState<any[]>([]);
   const [isLoadingMeetings, setIsLoadingMeetings] = useState(false);
 
+  // Helper to calculate meeting status
+  const calculateMeetingStatus = (day: string, start: string, end: string) => {
+    if (!day || !start || !end) return 'Upcoming';
+
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const now = new Date();
+    const currentDayIndex = now.getDay();
+    const targetDayIndex = days.indexOf(day);
+
+    if (targetDayIndex === -1) return 'Upcoming';
+
+    // Create date objects for start and end times today
+    const [startHour, startMin] = start.split(':').map(Number);
+    const [endHour, endMin] = end.split(':').map(Number);
+
+    // Logic:
+    // If today is NOT the meeting day:
+    // To decide if it's "Past" (last week) or "Upcoming" (next week), strictly speaking the "meeting" instance
+    // usually refers to the *next* or *current* specific recurrence.
+    // However, usually "Ongoing" is the critical one.
+    // If today != meetingDay, it's definitely not Ongoing.
+    // Let's stick to a simple weekly view:
+    // If today > meetingDay => Past (this week) ? No, that's confusing.
+    // Let's define:
+    // Ongoing: Today is the day, and current time is between start and end.
+    // Past: Today is the day and time > end, OR today > day? 
+    // Actually, usually these lists show the *definitions* of meetings.
+    // But the user sees "Ongoing" and "Past" tabs.
+    // "Ongoing" tab usually implies "Active right now" or "Upcoming".
+    // "Past" implies "Finished".
+
+    // Wait, the UI has filter "Ongoing" | "Past". 
+    // If I incorrectly mark everything as Past, they might disappear from the default "Ongoing" tab.
+    // Let's assume:
+    // Ongoing = Scheduled for future or currently happening.
+    // Past = Happened already (e.g. yesterday). 
+    // But these appear to be *recurring* configurations.
+    // Recurring meetings are effectively *always* "Upcoming" or "Ongoing" in a sense.
+    // UNLESS this list represents *specific instances* (which it might not, given the "create meeting" flow).
+    // The previous code `m.status || 'Ongoing'` suggests the backend might have intended to send status.
+    // But the seeded data has no status.
+
+    // Let's try this logic:
+    // If currently within the time window on the correct day -> "Ongoing" (green).
+    // If not -> "Upcoming" (maybe grey or blue).
+    // Why did the user say "Why always ongoing?" They probably want to see "Upcoming" or distinguish active ones.
+    // The screenshot shows status "ONGOING" in green. 
+    // If I change it to "Upcoming" or "Scheduled", does the UI support that?
+    // Line 657: `meeting.status === 'Ongoing' ? 'bg-green-50...' : 'bg-slate-100...'`
+    // So it supports non-Ongoing styles.
+
+    // Revised logic:
+    // Active Now = "Ongoing"
+    // Else = "Scheduled" (or maintain 'Ongoing' if it just means 'Active Configuration')
+    // But the user plainly thinks "Always Ongoing" is a bug. They likely expect to see:
+    // - "Ongoing" ONLY when it is actually happening right now.
+    // - "Scheduled" or "Upcoming" otherwise.
+
+    // Let's check:
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+
+    if (currentDayIndex === targetDayIndex) {
+      if (nowMinutes >= startMinutes && nowMinutes <= endMinutes) {
+        return 'Ongoing';
+      }
+      if (nowMinutes > endMinutes) {
+        return 'Past'; // Or 'Past'
+      }
+    }
+    return 'Scheduled';
+  };
+
   // Fetch Prayer Meetings
   const fetchMeetings = async () => {
     try {
       setIsLoadingMeetings(true);
       const data = await prayerGroupAPI.getAllMeetings();
-      // Map backend data to frontend format
+      console.log('fetchMeetings API data:', data);
       const mapped = data.map((m: any) => ({
         id: m.id || m.prayergroup_id || Math.random(),
         day: m.prayergroup_day || m.day || 'Unknown Day',
+        period: m.period || 'Evening',
         time:
           m.start_time && m.end_time
             ? `${m.start_time} - ${m.end_time}`
             : m.time || '00:00 - 00:00',
         church: m.church_name || 'Isolo Church',
         participants: m.attendees?.length || m.participants || 0,
-        status: m.status || 'Ongoing',
+        status: calculateMeetingStatus(m.prayergroup_day, m.start_time, m.end_time),
         code: m.prayer_code || m.code || '------',
-        expiresAt: m.expiresAt || Date.now() + 2 * 3600000, // Fallback expiry
+        expiresAt: m.expiresAt || Date.now() + 2 * 3600000,
       }));
+      console.log('fetchMeetings mapped:', mapped);
       setPrayerMeetings(mapped);
     } catch (error) {
       console.error('Failed to fetch prayer meetings:', error);
@@ -239,8 +347,8 @@ const PrayerModule = () => {
     }
   }, [activeTab]);
 
-  // Mock Submissions
-  const submissions = [
+  // Mock Submissions Data - Moved to State
+  const [submissions, setSubmissions] = useState([
     {
       id: 101,
       title: 'Friday Evening',
@@ -251,6 +359,7 @@ const PrayerModule = () => {
       participants: [
         { name: 'Joy E.', cell: 'Oke-afa Cell 1' },
         { name: 'Kelechi U.', cell: 'Aswan Cell' },
+        { name: 'Chioma A.', cell: 'Oke-afa Cell 1' },
       ],
     },
     {
@@ -262,10 +371,14 @@ const PrayerModule = () => {
       date: '2024-05-19',
       status: 'Approved',
       participants: [
-        { name: 'Robert', cell: 'Unit 1' },
-        { name: 'Mary J.', cell: 'Unit 2' },
-        { name: 'Chinwe Onwe', cell: 'Unit 1' },
-        { name: 'Gbemi Goriola', cell: 'Unit 3' },
+        { name: 'Robert', cell: 'Oke-afa Cell 1' },
+        { name: 'Mary J.', cell: 'Oke-afa Cell 1' },
+        { name: 'Chinwe Onwe', cell: 'Oke-afa Cell 1' },
+        { name: 'Gbemi Goriola', cell: 'Oke-afa Cell 1' },
+        { name: 'Tola A.', cell: 'Unit 2' },
+        { name: 'Bisi B.', cell: 'Unit 2' },
+        { name: 'Kunle C.', cell: 'Unit 3' },
+        { name: 'Wale D.', cell: 'Unit 3' },
       ],
     },
     {
@@ -280,28 +393,55 @@ const PrayerModule = () => {
         { name: 'Kelechi U.', cell: 'Aswan Cell' },
       ],
     },
-  ];
+  ]);
 
-  const handleGenerateCode = async () => {
+  const handleApprove = (id: number) => {
+    setSubmissions((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, status: 'Approved' } : s))
+    );
+    setReviewingSubmission(null);
+  };
+
+  const handleReject = (id: number) => {
+    setSubmissions((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, status: 'Rejected' } : s))
+    );
+    setReviewingSubmission(null);
+  };
+
+  const handleGenerateCode = async (specificPeriod?: string) => {
     try {
-      // Backend expects: { start_time, end_time, prayergroup_day, period, prayergroup_leader, ... }
-      // We will assume defaults or derive from current state
+      // Use specific period if passed (e.g. from row button), otherwise use state (though global button is removed)
+      const labelToUse = typeof specificPeriod === 'string' ? specificPeriod : meetingPeriod;
+      const selectedLabel = labelToUse.replace(' Prayer Meeting', '');
+
+      const config = meetingConfigs.find((c: any) => {
+        const configLabel = `${c.prayergroup_day} ${c.period}`;
+        return configLabel.toLowerCase() === selectedLabel.toLowerCase();
+      });
+
       const meetingData = {
-        prayergroup_day: meetingPeriod.replace(' Prayer Meeting', ''),
-        start_time: '21:00', // Default
-        end_time: '23:00', // Default
-        period: 'Evening', // derived from meetingPeriod if possible
-        prayergroup_leader: 'Current User', // Backend might override this
+        prayergroup_day: config?.prayergroup_day || selectedLabel.split(' ')[0] || 'Friday',
+        start_time: config?.start_time || '18:00',
+        end_time: config?.end_time || '20:00',
+        period: config?.period || selectedLabel.split(' ')[1] || 'Evening',
+        prayergroup_leader: config?.prayergroup_leader
+          ? (Array.isArray(config.prayergroup_leader) ? config.prayergroup_leader : [config.prayergroup_leader])
+          : ['Current User'],
       };
 
-      await prayerGroupAPI.createMeeting(meetingData);
-      // Refresh list
+      // Call the INSTANCE creation endpoint (which generates code)
+      await prayerGroupAPI.generateInstance(meetingData);
+
+      // Refresh list to see the new code
       fetchMeetings();
+
     } catch (error) {
       console.error('Failed to generate code', error);
       alert('Failed to generate prayer code. Please try again.');
     }
   };
+
 
   const getTimerDisplay = (expiresAt: number) => {
     const diff = expiresAt - Date.now();
@@ -334,57 +474,7 @@ const PrayerModule = () => {
   return (
     <div className='space-y-8 animate-in fade-in duration-700'>
       {/* Top Header & Selector */}
-      <div className='flex justify-between items-center'>
-        <div className='relative'>
-          <button
-            onClick={() => setIsPeriodSelectorOpen(!isPeriodSelectorOpen)}
-            className='flex items-center gap-3 px-6 py-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md transition-all group'
-          >
-            <div className='w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-[#E74C3C]'>
-              <Clock3 size={20} />
-            </div>
-            <span className='text-base font-black text-[#1A1C1E] uppercase tracking-wider'>
-              {meetingPeriod}
-            </span>
-            <ChevronDown
-              size={20}
-              className={`text-slate-400 group-hover:text-[#1A1C1E] transition-transform ${isPeriodSelectorOpen ? 'rotate-180' : ''}`}
-            />
-          </button>
 
-          {isPeriodSelectorOpen && (
-            <>
-              <div
-                className='fixed inset-0 z-40'
-                onClick={() => setIsPeriodSelectorOpen(false)}
-              ></div>
-              <div className='absolute top-full left-0 mt-3 w-80 bg-white border border-slate-100 rounded-2xl shadow-2xl z-50 p-2 animate-in slide-in-from-top-2'>
-                {meetingPeriods.map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => {
-                      setMeetingPeriod(p + ' Prayer Meeting');
-                      setIsPeriodSelectorOpen(false);
-                    }}
-                    className='w-full text-left px-5 py-3.5 text-xs font-black uppercase tracking-widest rounded-xl text-slate-500 hover:bg-slate-50 hover:text-[#1A1C1E] transition-all'
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
-        {activeTab === 'Prayer Meetings' && (
-          <button
-            onClick={handleGenerateCode}
-            className='flex items-center gap-2 px-6 py-3 bg-[#E74C3C] text-white rounded-lg font-black text-[11px] uppercase tracking-widest shadow-xl shadow-red-500/20 hover:bg-red-600 transition-all'
-          >
-            <Zap size={18} /> Generate Prayer Code
-          </button>
-        )}
-      </div>
 
       <div className='flex border-b border-slate-100'>
         {(['Overview', 'Prayer Meetings', 'Prayer Submissions'] as const).map(
@@ -558,7 +648,7 @@ const PrayerModule = () => {
         <div className='space-y-6'>
           <div className='flex justify-between items-center bg-slate-50 p-4 rounded-xl'>
             <div className='flex gap-2'>
-              {(['Ongoing', 'Past'] as const).map((f) => (
+              {(['Scheduled', 'Ongoing', 'Past'] as const).map((f) => (
                 <button
                   key={f}
                   onClick={() => setMeetingsFilter(f)}
@@ -589,7 +679,7 @@ const PrayerModule = () => {
                     Day & Period
                   </th>
                   <th className='px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em]'>
-                    Time
+                    Time / Date
                   </th>
                   <th className='px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em]'>
                     Church
@@ -609,48 +699,47 @@ const PrayerModule = () => {
                 </tr>
               </thead>
               <tbody className='divide-y divide-slate-50'>
-                {prayerMeetings
-                  .filter((m) => m.status === meetingsFilter)
-                  .map((meeting) => (
+                {meetingsFilter === 'Past'
+                  ? submissions.map((submission) => (
                     <tr
-                      key={meeting.id}
+                      key={submission.id}
                       className='hover:bg-slate-50 transition-colors group'
                     >
                       <td className='px-8 py-6 text-sm font-black text-[#1A1C1E]'>
-                        {meeting.day}
+                        {submission.title}
                       </td>
                       <td className='px-8 py-6 text-sm font-bold text-slate-500'>
-                        {meeting.time}
+                        {submission.date}
                       </td>
                       <td className='px-8 py-6 text-sm font-medium text-slate-400 italic'>
-                        {meeting.church}
+                        Isolo Church
                       </td>
                       <td className='px-8 py-6 text-sm font-black text-[#CCA856]'>
-                        {meeting.participants}
+                        {submission.count}
                       </td>
                       <td className='px-8 py-6'>
                         <span
-                          className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${meeting.status === 'Ongoing' ? 'bg-green-50 text-green-500' : 'bg-slate-100 text-slate-400'}`}
+                          className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${submission.status === 'Approved'
+                            ? 'bg-green-50 text-green-500'
+                            : submission.status === 'Rejected'
+                              ? 'bg-red-50 text-red-500'
+                              : 'bg-yellow-50 text-yellow-500'
+                            }`}
                         >
-                          {meeting.status}
+                          {submission.status.toUpperCase()}
                         </span>
                       </td>
                       <td className='px-8 py-6'>
                         <div className='flex flex-col gap-1'>
                           <span className='text-xs font-black text-[#1A1C1E] font-mono tracking-widest'>
-                            {meeting.code}
-                          </span>
-                          <span
-                            className={`text-[10px] font-bold ${getTimerDisplay(meeting.expiresAt) === 'EXPIRED' ? 'text-red-500' : 'text-slate-400'}`}
-                          >
-                            {getTimerDisplay(meeting.expiresAt)}
+                            {submission.code || '------'}
                           </span>
                         </div>
                       </td>
                       <td className='px-8 py-6 text-right'>
                         <div className='flex items-center justify-end gap-4'>
                           <button
-                            onClick={() => setViewingMeeting(meeting)}
+                            onClick={() => setDetailsSubmission(submission)}
                             className='text-[10px] font-black uppercase tracking-widest text-[#E74C3C] hover:underline'
                           >
                             View Details
@@ -661,7 +750,71 @@ const PrayerModule = () => {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  ))
+                  : prayerMeetings
+                    .filter((m) => m.status === meetingsFilter)
+                    .map((meeting) => (
+                      <tr
+                        key={meeting.id}
+                        className='hover:bg-slate-50 transition-colors group'
+                      >
+                        <td className='px-8 py-6 text-sm font-black text-[#1A1C1E]'>
+                          {meeting.day}
+                        </td>
+                        <td className='px-8 py-6 text-sm font-bold text-slate-500'>
+                          {meeting.time}
+                        </td>
+                        <td className='px-8 py-6 text-sm font-medium text-slate-400 italic'>
+                          {meeting.church}
+                        </td>
+                        <td className='px-8 py-6 text-sm font-black text-[#CCA856]'>
+                          {meeting.participants}
+                        </td>
+                        <td className='px-8 py-6'>
+                          <span
+                            className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${meeting.status === 'Ongoing' ? 'bg-green-50 text-green-500' : 'bg-slate-100 text-slate-400'}`}
+                          >
+                            {meeting.status}
+                          </span>
+                        </td>
+                        <td className='px-8 py-6'>
+                          <div className='flex flex-col gap-1'>
+                            {meeting.status === 'Ongoing' && (!meeting.code || meeting.code === '-------' || meeting.code === '------') ? (
+                              <button
+                                onClick={() => handleGenerateCode(`${meeting.day} ${meeting.period} Prayer Meeting`)}
+                                className='px-3 py-1.5 bg-[#E74C3C] text-white text-[9px] font-black uppercase tracking-widest rounded shadow-sm hover:bg-red-600 transition-all'
+                              >
+                                Generate
+                              </button>
+                            ) : (
+                              <>
+                                <span className='text-xs font-black text-[#1A1C1E] font-mono tracking-widest'>
+                                  {meeting.code || '------'}
+                                </span>
+                                <span
+                                  className={`text-[10px] font-bold ${getTimerDisplay(meeting.expiresAt) === 'EXPIRED' ? 'text-red-500' : 'text-slate-400'}`}
+                                >
+                                  {getTimerDisplay(meeting.expiresAt)}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                        <td className='px-8 py-6 text-right'>
+                          <div className='flex items-center justify-end gap-4'>
+                            <button
+                              onClick={() => setViewingMeeting(meeting)}
+                              className='text-[10px] font-black uppercase tracking-widest text-[#E74C3C] hover:underline'
+                            >
+                              View Details
+                            </button>
+                            <button className='p-2 text-slate-300 hover:text-red-500 transition-colors'>
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
               </tbody>
             </table>
           </div>
@@ -767,19 +920,19 @@ const PrayerModule = () => {
             <div className='grid grid-cols-1 md:grid-cols-4 gap-6'>
               <StatCard
                 title='Time Started'
-                value='07:00'
+                value={viewingMeeting.time.split(' - ')[0]}
                 icon={<Clock size={20} />}
                 variant='default'
               />
               <StatCard
                 title='Time Ended'
-                value='10:00'
+                value={viewingMeeting.time.split(' - ')[1]}
                 icon={<Clock3 size={20} />}
                 variant='default'
               />
               <StatCard
-                title='Date'
-                value='3 Jan 2026'
+                title='Day'
+                value={viewingMeeting.day}
                 icon={<Calendar size={20} />}
                 variant='gold'
               />
@@ -795,17 +948,27 @@ const PrayerModule = () => {
               <h5 className='text-xl font-black text-[#1A1C1E] tracking-tight'>
                 Prayer Group Participants
               </h5>
-              <button
-                onClick={() => {
-                  setSelectedFellowships([]);
-                  setSelectedCells([]);
-                  setSelectedParticipants([]);
-                  setIsAddParticipantOpen(true);
-                }}
-                className='flex items-center gap-2 px-8 py-4 bg-[#1A1C1E] text-white rounded-xl font-black text-xs uppercase tracking-widest'
-              >
-                <Plus size={18} /> Add Participant
-              </button>
+              <div className='flex items-center gap-4'>
+                {viewingMeeting.status === 'Ongoing' && (!viewingMeeting.code || viewingMeeting.code === '-------' || viewingMeeting.code === '------') && (
+                  <button
+                    onClick={() => handleGenerateCode(`${viewingMeeting.day} Evening Prayer Meeting`)}
+                    className='flex items-center gap-2 px-6 py-4 bg-[#E74C3C] text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-red-500/20 hover:bg-red-600 transition-all'
+                  >
+                    <Zap size={18} /> Generate Code
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setSelectedFellowships([]);
+                    setSelectedCells([]);
+                    setSelectedParticipants([]);
+                    setIsAddParticipantOpen(true);
+                  }}
+                  className='flex items-center gap-2 px-8 py-4 bg-[#1A1C1E] text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all'
+                >
+                  <Plus size={18} /> Add Participant
+                </button>
+              </div>
             </div>
 
             <div className='overflow-hidden rounded-2xl border border-slate-50'>
@@ -1117,24 +1280,26 @@ const PrayerModule = () => {
                       <Check size={14} />
                     </div>
                   </div>
+
                 ))}
               </div>
             </div>
 
             <div className='flex gap-6 pt-4'>
               <button
-                onClick={() => setReviewingSubmission(null)}
+                onClick={() => handleReject(reviewingSubmission.id)}
                 className='flex-1 py-5 border border-slate-100 rounded-xl text-xs font-black uppercase tracking-[0.2em] text-red-400 hover:bg-red-50 hover:border-red-100 transition-all'
               >
                 Reject Entire Batch
               </button>
               <button
-                onClick={() => setReviewingSubmission(null)}
+                onClick={() => handleApprove(reviewingSubmission.id)}
                 className='flex-1 py-5 bg-[#1A1C1E] text-white rounded-xl text-xs font-black uppercase tracking-[0.2em] shadow-2xl shadow-black/20 hover:bg-[#CCA856] transition-all'
               >
                 Approve {reviewingSubmission.participants.length} Selected
                 Entries
               </button>
+
             </div>
           </div>
         </Modal>
@@ -1186,29 +1351,38 @@ const PrayerModule = () => {
                 Attendance Breakdown By Unit
               </h5>
               <div className='space-y-4'>
-                {/* Simulated unit breakdown */}
-                <div className='p-8 bg-white border border-slate-100 rounded-2xl shadow-sm'>
-                  <div className='flex justify-between items-center mb-6'>
-                    <span className='text-base font-black text-[#1A1C1E]'>
-                      Oke-afa Cell 1
-                    </span>
-                    <span className='text-xs font-black text-[#CCA856] uppercase tracking-widest'>
-                      Participants: 3
-                    </span>
-                  </div>
-                  <div className='grid grid-cols-2 gap-4'>
-                    {detailsSubmission.participants.map(
-                      (p: any, idx: number) => (
+                {Object.entries(
+                  detailsSubmission.participants.reduce((acc: any, p: any) => {
+                    const cell = p.cell || 'Unknown Cell';
+                    if (!acc[cell]) acc[cell] = [];
+                    acc[cell].push(p);
+                    return acc;
+                  }, {})
+                ).map(([cellName, parts]: [string, any]) => (
+                  <div
+                    key={cellName}
+                    className='p-8 bg-white border border-slate-100 rounded-2xl shadow-sm'
+                  >
+                    <div className='flex justify-between items-center mb-6'>
+                      <span className='text-base font-black text-[#1A1C1E]'>
+                        {cellName}
+                      </span>
+                      <span className='text-xs font-black text-[#CCA856] uppercase tracking-widest'>
+                        Participants: {parts.length}
+                      </span>
+                    </div>
+                    <div className='grid grid-cols-2 gap-4'>
+                      {parts.map((p: any, idx: number) => (
                         <div key={idx} className='flex items-center gap-3'>
                           <div className='w-2 h-2 rounded-full bg-green-500'></div>
                           <span className='text-sm font-bold text-slate-600'>
                             {p.name}
                           </span>
                         </div>
-                      )
-                    )}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
             </div>
           </div>

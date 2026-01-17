@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Eye, EyeOff, Lock, Mail, ArrowRight, Loader2 } from 'lucide-react';
 import { authAPI, setAuthToken, setSanctumToken } from '../api';
 
+import { Logo } from '../constants';
+
 interface LoginPageProps {
     onLoginSuccess: () => void;
 }
@@ -56,11 +58,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
             <div className="w-full max-w-[400px] bg-white rounded-2xl shadow-xl border border-slate-100 p-8 z-10 relative animate-in fade-in zoom-in-95 duration-500">
                 <div className="text-center mb-10">
-                    <div className="w-16 h-16 bg-[#1A1C1E] rounded-xl flex items-center justify-center mx-auto mb-6 shadow-lg rotate-3 hover:rotate-0 transition-all duration-500">
-                        <span className="text-[#CCA856] font-black text-2xl tracking-tighter">SC</span>
+                    <div className="flex justify-center mb-6">
+                        <Logo />
                     </div>
                     <h1 className="text-2xl font-black text-[#1A1C1E] tracking-tight mb-2">Welcome Back</h1>
-                    <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Admin Portal Access</p>
+                    <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Analytics Portal Access</p>
                 </div>
 
                 {error && (
@@ -134,11 +136,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                     </div>
                 </form>
 
-                <div className="mt-8 text-center">
-                    <p className="text-[10px] text-slate-400 font-medium">
-                        Protected by SC Admin System v2.0
-                    </p>
-                </div>
+
             </div>
         </div>
     );

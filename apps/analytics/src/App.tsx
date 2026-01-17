@@ -37,12 +37,7 @@ const App: React.FC = () => {
   };
 
   const navItems = [
-    {
-      id: 'Dashboard',
-      icon: <LayoutDashboard size={18} />,
-      label: 'Dashboard',
-    },
-    { id: 'Analytics', icon: <TrendingUp size={18} />, label: 'Analytics' },
+
     {
       id: 'Church Meetings',
       icon: <Building2 size={18} />,
@@ -52,7 +47,6 @@ const App: React.FC = () => {
     { id: 'Follow Up', icon: <UserPlus size={18} />, label: 'Follow Up' },
     { id: 'Prayer Group', icon: <Zap size={18} />, label: 'Prayer Group' },
     { id: 'Study Group', icon: <Sliders size={18} />, label: 'Study Group' },
-    { id: 'Settings', icon: <Settings size={18} />, label: 'Settings' },
   ];
 
   if (!isAuthenticated) {
@@ -129,7 +123,7 @@ const App: React.FC = () => {
             </button>
             <div className='w-12 h-12 rounded border-2 border-white shadow shadow-slate-200 overflow-hidden flex-shrink-0'>
               <img
-                src='https://picsum.photos/seed/pastor/200'
+                src='https://ui-avatars.com/api/?name=SC&background=1A1C1E&color=CCA856&font-size=0.5'
                 className='w-full h-full object-cover'
                 alt='User'
               />

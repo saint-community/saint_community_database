@@ -68,6 +68,17 @@ export const QUERY_PATHS = {
   ADMIN_PRAYER_GROUP_UPDATE: '/api/admin/prayer-group/meeting/:id',
   ADMIN_PRAYER_GROUP_DELETE: '/api/admin/prayer-group/meeting/:id',
 
+  // admin prayer group management
+  ADMIN_PRAYER_GROUP_CREATE_GROUP: '/api/admin/prayer-group/create',
+  ADMIN_PRAYER_GROUP_GET_ALL_GROUPS: '/api/admin/prayer-group/all',
+  ADMIN_PRAYER_GROUP_ATTENDANCE_SUBMITTED: '/api/admin/prayer-group/attendance-submitted',
+  ADMIN_PRAYER_GROUP_RECORD: '/api/admin/prayer-group/record',
+  ADMIN_PRAYER_GROUP_MARK_ALL_PRESENT: '/api/admin/prayer-group/mark-all-present',
+  ADMIN_PRAYER_GROUP_MARK_ONE_PRESENT: '/api/admin/prayer-group/mark-one-present',
+  ADMIN_PRAYER_GROUP_MARK_ONE_ABSENT: '/api/admin/prayer-group/mark-one-absent',
+  ADMIN_PRAYER_GROUP_ADD_MEMBER: '/api/admin/prayer-group/add-member',
+  ADMIN_PRAYER_GROUP_REMOVE_ATTENDEE: '/api/admin/prayer-group/remove-attendee',
+
   // statistics
   STATISTICS: '/api/statistics',
   WORKER_STATISTICS: '/api/statistics/workers',
