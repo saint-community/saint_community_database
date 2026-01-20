@@ -687,7 +687,8 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className="space-y-2">
+         {!isEmpty(cells) && 
+         (<div className="space-y-2">
           <Label htmlFor="cell">Cell <RequiredAsterisk /></Label>
           <form.Field
             name="cell"
@@ -709,12 +710,12 @@ function RegisterPageMain() {
                       </SelectItem>
                     ))}
                   </SelectContent>
-                </Select>}
+                </Select>
                 <FieldInfo field={field} />
               </>
             )}
           />
-        </div>
+        </div>)}
 
         <div className="space-y-2">
           <Label htmlFor="department">Department</Label>
