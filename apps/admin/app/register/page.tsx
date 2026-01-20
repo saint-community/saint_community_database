@@ -694,7 +694,9 @@ function RegisterPageMain() {
             name="cell"
             children={(field) => (
               <>
-              <Select
+               {isEmpty(cells) ? (
+               null
+               ) : <Select
                   value={field.state.value}
                   onValueChange={field.handleChange}
                 >

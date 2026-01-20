@@ -4,13 +4,14 @@ import { STORAGE_KEYS } from '@/utils/constants';
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   'https://admin-service.saintscommunityportal.com';
+  const X_API_KEY = process.env.NEXT_PUBLIC_X_API_KEY || '113c53c9e26574039e24ce0cc63a6f7b3be020e5';
 
 export const ApiCaller = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
     // Authorization: `Bearer ${storage.getString(StorageKeys.TOKEN)}`,
-    'x-api-key': '113c53c9e26574039e24ce0cc63a6f7b3be020e5',
+    'x-api-key': X_API_KEY,
   },
 });
 
@@ -45,7 +46,7 @@ export const MemberApiCaller = axios.create({
   baseURL: MEMBER_URL,
   headers: {
     'Content-Type': 'application/json',
-    'x-api-key': '113c53c9e26574039e24ce0cc63a6f7b3be020e5',
+    'x-api-key': X_API_KEY,
   },
 });
 
