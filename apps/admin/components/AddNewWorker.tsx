@@ -427,21 +427,13 @@ export function AddNewWorkerSheet({
           />
         </div>
 
-        <div className='space-y-2'>
+           {!isEmpty(cellOptions)  && (<div className='space-y-2'>
           <Label htmlFor='cell'>Cell</Label>
           <form.Field
             name='cell'
             children={(field) => (
               <>
-                {isEmpty(cellOptions) ? (
-                  <Input
-                    id='cell'
-                    // value={field.state.value}
-                    placeholder='Enter cell name'
-                    onChange={(e) => field.handleChange(e.target.value)}
-
-                  />
-                ) : <Select
+                <Select
                   value={field.state.value}
                   onValueChange={field.handleChange}
                   disabled={lockCellSelect}
@@ -464,12 +456,12 @@ export function AddNewWorkerSheet({
                       )
                     )}
                   </SelectContent>
-                </Select>}
+                </Select>
                 <FieldInfo field={field} />
               </>
             )}
           />
-        </div>
+        </div>)}
 
         <div className='space-y-2'>
           <Label htmlFor='homeAddress'>Home Address</Label>

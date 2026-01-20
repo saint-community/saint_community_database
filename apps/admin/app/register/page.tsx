@@ -687,20 +687,14 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className="space-y-2">
+         {!isEmpty(cells) && 
+         (<div className="space-y-2">
           <Label htmlFor="cell">Cell <RequiredAsterisk /></Label>
           <form.Field
             name="cell"
             children={(field) => (
               <>
-               {isEmpty(cells) ? (
-                <Input
-                  id='cell'
-                  // value={field.state.value}
-                  placeholder='Enter cell name'
-                  onChange={(e) => field.handleChange(e.target.value)}
-                />
-               ) : <Select
+              <Select
                   value={field.state.value}
                   onValueChange={field.handleChange}
                 >
@@ -714,12 +708,12 @@ function RegisterPageMain() {
                       </SelectItem>
                     ))}
                   </SelectContent>
-                </Select>}
+                </Select>
                 <FieldInfo field={field} />
               </>
             )}
           />
-        </div>
+        </div>)}
 
         <div className="space-y-2">
           <Label htmlFor="department">Department</Label>
