@@ -434,13 +434,14 @@ export function AddNewWorkerSheet({
             children={(field) => (
               <>
                 {isEmpty(cellOptions) ? (
-                  <Input
-                    id='cell'
-                    // value={field.state.value}
-                    placeholder='Enter cell name'
-                    onChange={(e) => field.handleChange(e.target.value)}
+                  // <Input
+                  //   id='cell'
+                  //   // value={field.state.value}
+                  //   placeholder='Enter cell name'
+                  //   onChange={(e) => field.handleChange(e.target.value)}
 
-                  />
+                  // />
+                  null
                 ) : <Select
                   value={field.state.value}
                   onValueChange={field.handleChange}
