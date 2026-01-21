@@ -2,6 +2,13 @@ import { ROLES, STORAGE_KEYS } from '@/utils/constants';
 import { useEffect, useState } from 'react';
 import { useStatistics } from './statistics';
 
+interface Church {
+  id: number;
+  pastor_id: number;
+  church_id: number;
+  church_name: string;
+}
+
 interface User {
   cell_id: number;
   church_id: number;
@@ -17,6 +24,8 @@ interface User {
   church_name?: string;
   fellowship_name?: string;
   cell_name?: string;
+  worker_id?: number | null;
+  churches?: Church[];
 }
 
 export const useMe = () => {
@@ -24,9 +33,13 @@ export const useMe = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { error, isLoading: isStatisticsLoading } = useStatistics();
 
-  useEffect(() => {
+  const refetch = () => {
     const user = localStorage.getItem(STORAGE_KEYS.USER);
     setData(user ? (JSON.parse(user) as User) : null);
+  };
+
+  useEffect(() => {
+    refetch();
     setIsLoading(false);
   }, []);
 
@@ -43,5 +56,5 @@ export const useMe = () => {
 
   const isAdmin = data?.role === ROLES.ADMIN || data?.role === ROLES.PASTOR;
 
-  return { data, isLoading: isLoading || isStatisticsLoading, isAdmin };
+  return { data, isLoading: isLoading || isStatisticsLoading, isAdmin, refetch };
 };
