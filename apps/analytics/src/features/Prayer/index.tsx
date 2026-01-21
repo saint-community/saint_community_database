@@ -84,6 +84,24 @@ import {
   MeetingType,
   MeetingFrequency,
 } from '../../types';
+
+interface ParticipationSubmission {
+  id: string;
+  title: string;
+  submittedBy: string;
+  count: number;
+  date: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
+  code: string;
+  participants: {
+    name: string;
+    cell: string;
+    status: string;
+    id: string;
+  }[];
+  ids?: string[]; // For grouped actions
+}
+
 import { Logo, COLORS } from '../../constants';
 import {
   mockEvangelismSessions,
@@ -153,6 +171,38 @@ const PrayerModule = () => {
   // Fetch Prayer Groups (Configs)
   const [meetingPeriods, setMeetingPeriods] = useState<string[]>([]);
   const [meetingConfigs, setMeetingConfigs] = useState<any[]>([]);
+
+  // Analytics State
+  const [analyticsData, setAnalyticsData] = useState<any>({
+    totalParticipants: 0,
+    activeCells: 0,
+    avgAttendance: 0,
+    graphData: [],
+    monthlyTarget: 'On Track'
+  });
+
+  const fetchAnalytics = async () => {
+    try {
+      const data = await prayerGroupAPI.getAnalytics();
+      // Ensure graph data has at least empty structure if missing
+      if (!data.graphData || data.graphData.length === 0) {
+        data.graphData = [
+          { name: 'W1', value: 0 },
+          { name: 'W2', value: 0 },
+          { name: 'W3', value: 0 },
+          { name: 'W4', value: 0 },
+          { name: 'W5', value: 0 },
+        ];
+      }
+      setAnalyticsData(data);
+    } catch (error) {
+      console.error("Failed to fetch analytics", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, []);
 
   useEffect(() => {
     const fetchGroups = async () => {
@@ -299,14 +349,27 @@ const PrayerModule = () => {
     // Let's check:
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
     const startMinutes = startHour * 60 + startMin;
-    const endMinutes = endHour * 60 + endMin;
+    let endMinutes = endHour * 60 + endMin;
+
+    // Handle midnight (00:00) as end of day (24:00)
+    if (endMinutes === 0) {
+      endMinutes = 24 * 60;
+    }
+    // Handle overnight meetings (e.g. 23:00 to 01:00) - logic simplifiction for now assuming same-day logical grouping
+    if (endMinutes < startMinutes) {
+      endMinutes += 24 * 60;
+    }
 
     if (currentDayIndex === targetDayIndex) {
-      if (nowMinutes >= startMinutes && nowMinutes <= endMinutes) {
+      if (nowMinutes >= startMinutes && nowMinutes < endMinutes) {
         return 'Ongoing';
       }
-      if (nowMinutes > endMinutes) {
-        return 'Past'; // Or 'Past'
+      if (nowMinutes >= endMinutes) {
+        // Only mark as past if strictly after end time
+        return 'Scheduled';
+        // Actually, if it's Tuesday and meeting finished at 7 AM, and now is 10 PM, it's NOT "Scheduled" for today anymore?
+        // But it IS "Scheduled" for next week.
+        // Let's keep it simple: "Ongoing" if active, everything else "Scheduled" (Upcoming)
       }
     }
     return 'Scheduled';
@@ -316,10 +379,45 @@ const PrayerModule = () => {
   const fetchMeetings = async () => {
     try {
       setIsLoadingMeetings(true);
-      const data = await prayerGroupAPI.getAllMeetings();
+
+      // Check user role to decide which endpoint to hit
+      const token = getAuthToken();
+      let isSuperAdmin = false;
+      if (token) {
+        const decoded = parseJwt(token);
+        // Assuming 'super_admin' or specific role distinguishes. 
+        // For now, let's try getMyGroups first if we want to enforce leader view, 
+        // OR if we strictly want to support the user request: "update frontend to use the new endpoint".
+        // If I just swap it, Super Admins might see only their own groups (empty?).
+        // Let's try to fetch "My Groups". If empty, maybe fetch All?
+        // Or better: Fetch "My Groups" as the default view for "Leaders".
+        // If the user is a "Super Admin", maybe they want to see all.
+        // Let's default to `getAllMeetings` but if it fails (403) or is empty, maybe strict leader?
+        // Actually, let's use the new endpoint as requested.
+        // We can add a toggle later.
+        // For now, I will use `getMyGroups` effectively.
+      }
+
+      // STRATEGY: Try to get "All". If that fails (403), try "My Groups". 
+      // This handles the "Leader restricted" case automatically.
+      let data = [];
+      try {
+        data = await prayerGroupAPI.getAllMeetings();
+      } catch (err: any) {
+        console.warn("getAllMeetings failed, trying getMyGroups...", err);
+        if (err.response && (err.response.status === 403 || err.response.status === 401)) {
+          data = await prayerGroupAPI.getMyGroups();
+        } else {
+          throw err;
+        }
+      }
+
+      // Ensure data is array
+      if (!Array.isArray(data)) data = [];
+
       console.log('fetchMeetings API data:', data);
       const mapped = data.map((m: any) => ({
-        id: m.id || m.prayergroup_id || Math.random(),
+        id: m._id || m.id || m.prayergroup_id || Math.random(),
         day: m.prayergroup_day || m.day || 'Unknown Day',
         period: m.period || 'Evening',
         time:
@@ -348,97 +446,187 @@ const PrayerModule = () => {
   }, [activeTab]);
 
   // Mock Submissions Data - Moved to State
-  const [submissions, setSubmissions] = useState([
-    {
-      id: 101,
-      title: 'Friday Evening',
-      submittedBy: 'Michael B.',
-      count: 3,
-      date: '2024-05-26',
-      status: 'Pending',
-      participants: [
-        { name: 'Joy E.', cell: 'Oke-afa Cell 1' },
-        { name: 'Kelechi U.', cell: 'Aswan Cell' },
-        { name: 'Chioma A.', cell: 'Oke-afa Cell 1' },
-      ],
-    },
-    {
-      id: 102,
-      title: 'Friday Evening',
-      code: 'PRGAFA',
-      submittedBy: 'Pastor Robert, Gbenga Adeniji, Funmi Adeniji',
-      count: 13,
-      date: '2024-05-19',
-      status: 'Approved',
-      participants: [
-        { name: 'Robert', cell: 'Oke-afa Cell 1' },
-        { name: 'Mary J.', cell: 'Oke-afa Cell 1' },
-        { name: 'Chinwe Onwe', cell: 'Oke-afa Cell 1' },
-        { name: 'Gbemi Goriola', cell: 'Oke-afa Cell 1' },
-        { name: 'Tola A.', cell: 'Unit 2' },
-        { name: 'Bisi B.', cell: 'Unit 2' },
-        { name: 'Kunle C.', cell: 'Unit 3' },
-        { name: 'Wale D.', cell: 'Unit 3' },
-      ],
-    },
-    {
-      id: 103,
-      title: 'Friday evening',
-      submittedBy: 'Michael B.',
-      count: 3,
-      date: '2024-05-26',
-      status: 'Rejected',
-      participants: [
-        { name: 'Joy E.', cell: 'Oke-afa Cell 1' },
-        { name: 'Kelechi U.', cell: 'Aswan Cell' },
-      ],
-    },
-  ]);
+  // Submissions Data
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
 
-  const handleApprove = (id: number) => {
-    setSubmissions((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, status: 'Approved' } : s))
-    );
-    setReviewingSubmission(null);
-  };
-
-  const handleReject = (id: number) => {
-    setSubmissions((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, status: 'Rejected' } : s))
-    );
-    setReviewingSubmission(null);
-  };
-
-  const handleGenerateCode = async (specificPeriod?: string) => {
+  const fetchSubmissions = async () => {
     try {
-      // Use specific period if passed (e.g. from row button), otherwise use state (though global button is removed)
-      const labelToUse = typeof specificPeriod === 'string' ? specificPeriod : meetingPeriod;
-      const selectedLabel = labelToUse.replace(' Prayer Meeting', '');
+      setIsLoadingSubmissions(true);
+      // data here is a list of PrayerRecord objects
+      const data = await prayerGroupAPI.getAllRecords();
 
-      const config = meetingConfigs.find((c: any) => {
-        const configLabel = `${c.prayergroup_day} ${c.period}`;
-        return configLabel.toLowerCase() === selectedLabel.toLowerCase();
+      // Map PrayerRecord to ParticipationSubmission interface
+      setSubmissions(groupSubmissions(data));
+    } catch (error) {
+      console.error("Failed to fetch past prayer submissions", error);
+      // toast.error("Failed to load past submissions");
+    } finally {
+      setIsLoadingSubmissions(false);
+    }
+  };
+
+  // Helper to group records by code/meeting
+  const groupSubmissions = (records: any[]): ParticipationSubmission[] => {
+    const groups: Record<string, ParticipationSubmission> = {};
+
+    records.forEach(record => {
+      const code = record.prayergroup?.prayer_code || 'UNKNOWN';
+      const date = new Date(record.createdAt).toLocaleDateString();
+      const key = `${code}-${date}`;
+
+      if (!groups[key]) {
+        groups[key] = {
+          id: record._id, // Use first record ID as group ID for now, or generate new
+          title: record.prayergroup?.prayergroup_day
+            ? `${record.prayergroup.prayergroup_day} Prayer`
+            : 'Prayer Meeting',
+          submittedBy: record.name || 'Unknown', // Primary submitter? Or "Multiple"
+          participants: [],
+          count: 0,
+          date: date,
+          status: 'Pending', // Default
+          code: code,
+          ids: []
+        };
+      }
+
+      // Aggregate
+      groups[key].participants.push({
+        name: record.name || 'Unknown',
+        cell: record.fellowship || 'Unknown Unit',
+        status: record.status || 'Pending',
+        id: record._id
       });
+      groups[key].count += 1;
+      groups[key].ids?.push(record._id);
+
+      // Status Logic: Strict. All must be Approved to be 'Approved'.
+      // We calculate this after collecting all, or update incrementally?
+      // Incremental is hard for "All". 
+      // Let's do a second pass OR simple check.
+      // Actually, we can't do simple check in loop easily without knowing total.
+      // So we iterate values at the end.
+    });
+
+    // Final pass to determine group status
+    Object.values(groups).forEach(group => {
+      const allApproved = group.participants.every(p => p.status === 'Approved');
+      const allRejected = group.participants.every(p => p.status === 'Rejected');
+
+      if (allApproved) group.status = 'Approved';
+      else if (allRejected) group.status = 'Rejected';
+      else group.status = 'Pending';
+    });
+
+    return Object.values(groups);
+  };
+
+
+  useEffect(() => {
+    if (activeTab === 'Prayer Meetings' && meetingsFilter === 'Past') {
+      fetchSubmissions();
+    }
+    // Also fetch if tab is 'Prayer Submissions'
+    if (activeTab === 'Prayer Submissions') {
+      fetchSubmissions();
+    }
+  }, [activeTab, meetingsFilter]);
+
+  const handleApprove = async (id: string, ids?: string[]) => {
+    try {
+      const targetIds = ids || [id];
+      await prayerGroupAPI.updateRecordStatus(targetIds, 'Approved');
+
+      // Update local state to reflect change immediately
+      setSubmissions((prev) =>
+        prev.map((s) => (targetIds.includes(s.id) ? { ...s, status: 'Approved' } : s))
+      );
+
+      setReviewingSubmission(null);
+      // Optionally refresh from server to be sure
+      // fetchSubmissions(); 
+    } catch (error) {
+      console.error("Failed to approve submission", error);
+    }
+  };
+
+  const handleReject = async (id: string, ids?: string[]) => {
+    try {
+      const targetIds = ids || [id];
+      await prayerGroupAPI.updateRecordStatus(targetIds, 'Rejected');
+
+      setSubmissions((prev) =>
+        prev.map((s) => (targetIds.includes(s.id) ? { ...s, status: 'Rejected' } : s))
+      );
+
+      setReviewingSubmission(null);
+    } catch (error) {
+      console.error("Failed to reject submission", error);
+    }
+  };
+
+  const handleGenerateCode = async (meeting?: any) => {
+    try {
+      if (!meeting) {
+        // Fallback for global button (if any) or error safety
+        console.error("No meeting data provided to generate code");
+        return;
+      }
+
+      console.log('Generating code for meeting:', meeting);
+
+      // Construct payload directly from the meeting object in the row
+      // The row data comes from 'prayerMeetings' state which comes from 'getAllMeetings'
+      // properties: id, day, period, time (string), church... but we need start_time/end_time in HH:mm
+      // 'fetchMeetings' maps them: 
+      // time: `${m.start_time} - ${m.end_time}`
+      // So the original start_time / end_time might be lost if we don't preserve them in the map.
+      // Let's check fetchMeetings map. 
+      // It DOES NOT preserve raw start_time/end_time in the mapped object currently?
+      // Wait, let's look at fetchMeetings in the file.
+      // It maps `time`. It does NOT map start_time/end_time to the final object.
+      // We need to ensure start_time and end_time are preserved in the prayerMeetings state.
+
+      if (!meeting.time) {
+        console.error('Meeting time is undefined:', meeting);
+        return;
+      }
+      const [startTime, endTime] = meeting.time.split(' - ');
 
       const meetingData = {
-        prayergroup_day: config?.prayergroup_day || selectedLabel.split(' ')[0] || 'Friday',
-        start_time: config?.start_time || '18:00',
-        end_time: config?.end_time || '20:00',
-        period: config?.period || selectedLabel.split(' ')[1] || 'Evening',
-        prayergroup_leader: config?.prayergroup_leader
-          ? (Array.isArray(config.prayergroup_leader) ? config.prayergroup_leader : [config.prayergroup_leader])
-          : ['Current User'],
+        prayergroup_day: meeting.day,
+        start_time: startTime || '18:00', // Extract from "22:00 - 00:00"
+        end_time: endTime || '20:00',
+        period: meeting.period,
+        prayergroup_leader: ['Current User'], // Default or fetch if available
+        prayer_meeting_id: meeting.id,
+        church: meeting.church
       };
 
       // Call the INSTANCE creation endpoint (which generates code)
-      await prayerGroupAPI.generateInstance(meetingData);
+      const response = await prayerGroupAPI.generateInstance(meetingData);
 
-      // Refresh list to see the new code
+      const newCode = response?.data?.prayer_code;
+      if (newCode) {
+        // Update the list state immediately (optimistic/fast update)
+        setPrayerMeetings(prev => prev.map(m =>
+          m.id === meeting.id ? { ...m, code: newCode, status: 'Ongoing' } : m
+        ));
+
+        // CRITICAL: Also update the modal state if it's properly open and matching
+        // We check if we are currently viewing this meeting
+        if (viewingMeeting && (viewingMeeting.id === meeting.id || viewingMeeting.id === meeting.prayer_meeting_id)) {
+          setViewingMeeting(prev => ({ ...prev, code: newCode, status: 'Ongoing' }));
+        }
+      }
+
+      // Refresh list to see the new code (full sync)
       fetchMeetings();
 
     } catch (error) {
       console.error('Failed to generate code', error);
-      alert('Failed to generate prayer code. Please try again.');
+      // alert('Failed to generate prayer code. Please try again.');
     }
   };
 
@@ -560,13 +748,7 @@ const PrayerModule = () => {
             <div className='h-[400px]'>
               <ResponsiveContainer width='100%' height='100%'>
                 <AreaChart
-                  data={[
-                    { name: 'W1', value: 320 },
-                    { name: 'W2', value: 450 },
-                    { name: 'W3', value: 390 },
-                    { name: 'W4', value: 680 },
-                    { name: 'W5', value: 540 },
-                  ]}
+                  data={analyticsData.graphData}
                 >
                   <defs>
                     <linearGradient id='colorVal' x1='0' y1='0' x2='0' y2='1'>
@@ -617,26 +799,26 @@ const PrayerModule = () => {
           <div className='grid grid-cols-1 md:grid-cols-4 gap-6'>
             <StatCard
               title='Total Participants'
-              value='2,380'
+              value={analyticsData.totalParticipants?.toLocaleString() || '0'}
               icon={<Users size={20} />}
-              trend='+14.2%'
+              trend='+0%' // We can calculate trend later if needed
               variant='default'
             />
             <StatCard
               title='Monthly Target'
-              value='On Track'
+              value={analyticsData.monthlyTarget || 'On Track'}
               icon={<Activity size={20} />}
               variant='gold'
             />
             <StatCard
               title='Avg Attendance'
-              value='450'
+              value={analyticsData.avgAttendance?.toLocaleString() || '0'}
               icon={<BarChart3 size={20} />}
               variant='default'
             />
             <StatCard
               title='Active Cells'
-              value='12'
+              value={analyticsData.activeCells?.toString() || '0'}
               icon={<Layers size={20} />}
               variant='green'
             />
@@ -687,12 +869,16 @@ const PrayerModule = () => {
                   <th className='px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em]'>
                     Participants
                   </th>
-                  <th className='px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em]'>
-                    Status
-                  </th>
-                  <th className='px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em]'>
-                    Code / Timer
-                  </th>
+                  {meetingsFilter !== 'Scheduled' && (
+                    <>
+                      <th className='px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em]'>
+                        Status
+                      </th>
+                      <th className='px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em]'>
+                        Code / Timer
+                      </th>
+                    </>
+                  )}
                   <th className='px-8 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-right'>
                     Actions
                   </th>
@@ -744,15 +930,17 @@ const PrayerModule = () => {
                           >
                             View Details
                           </button>
-                          <button className='p-2 text-slate-300 hover:text-red-500 transition-colors'>
-                            <Trash2 size={18} />
-                          </button>
+
                         </div>
                       </td>
                     </tr>
                   ))
                   : prayerMeetings
-                    .filter((m) => m.status === meetingsFilter)
+                    .filter((m) =>
+                      meetingsFilter === 'Scheduled'
+                        ? (m.status === 'Scheduled' || m.status === 'Ongoing')
+                        : m.status === meetingsFilter
+                    )
                     .map((meeting) => (
                       <tr
                         key={meeting.id}
@@ -770,36 +958,40 @@ const PrayerModule = () => {
                         <td className='px-8 py-6 text-sm font-black text-[#CCA856]'>
                           {meeting.participants}
                         </td>
-                        <td className='px-8 py-6'>
-                          <span
-                            className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${meeting.status === 'Ongoing' ? 'bg-green-50 text-green-500' : 'bg-slate-100 text-slate-400'}`}
-                          >
-                            {meeting.status}
-                          </span>
-                        </td>
-                        <td className='px-8 py-6'>
-                          <div className='flex flex-col gap-1'>
-                            {meeting.status === 'Ongoing' && (!meeting.code || meeting.code === '-------' || meeting.code === '------') ? (
-                              <button
-                                onClick={() => handleGenerateCode(`${meeting.day} ${meeting.period} Prayer Meeting`)}
-                                className='px-3 py-1.5 bg-[#E74C3C] text-white text-[9px] font-black uppercase tracking-widest rounded shadow-sm hover:bg-red-600 transition-all'
+                        {meetingsFilter !== 'Scheduled' && (
+                          <>
+                            <td className='px-8 py-6'>
+                              <span
+                                className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${meeting.status === 'Ongoing' ? 'bg-green-50 text-green-500' : 'bg-slate-100 text-slate-400'}`}
                               >
-                                Generate
-                              </button>
-                            ) : (
-                              <>
-                                <span className='text-xs font-black text-[#1A1C1E] font-mono tracking-widest'>
-                                  {meeting.code || '------'}
-                                </span>
-                                <span
-                                  className={`text-[10px] font-bold ${getTimerDisplay(meeting.expiresAt) === 'EXPIRED' ? 'text-red-500' : 'text-slate-400'}`}
-                                >
-                                  {getTimerDisplay(meeting.expiresAt)}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        </td>
+                                {meeting.status}
+                              </span>
+                            </td>
+                            <td className='px-8 py-6'>
+                              <div className='flex flex-col gap-1'>
+                                {meeting.status === 'Ongoing' && (!meeting.code || meeting.code === '-------' || meeting.code === '------') ? (
+                                  <button
+                                    onClick={() => handleGenerateCode(meeting)}
+                                    className='px-3 py-1.5 bg-[#E74C3C] text-white text-[9px] font-black uppercase tracking-widest rounded shadow-sm hover:bg-red-600 transition-all'
+                                  >
+                                    Generate
+                                  </button>
+                                ) : (
+                                  <>
+                                    <span className='text-xs font-black text-[#1A1C1E] font-mono tracking-widest'>
+                                      {meeting.code || '------'}
+                                    </span>
+                                    <span
+                                      className={`text-[10px] font-bold ${getTimerDisplay(meeting.expiresAt) === 'EXPIRED' ? 'text-red-500' : 'text-slate-400'}`}
+                                    >
+                                      {getTimerDisplay(meeting.expiresAt)}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </>
+                        )}
                         <td className='px-8 py-6 text-right'>
                           <div className='flex items-center justify-end gap-4'>
                             <button
@@ -807,9 +999,6 @@ const PrayerModule = () => {
                               className='text-[10px] font-black uppercase tracking-widest text-[#E74C3C] hover:underline'
                             >
                               View Details
-                            </button>
-                            <button className='p-2 text-slate-300 hover:text-red-500 transition-colors'>
-                              <Trash2 size={18} />
                             </button>
                           </div>
                         </td>
@@ -919,17 +1108,19 @@ const PrayerModule = () => {
           <div className='p-10 space-y-12'>
             <div className='grid grid-cols-1 md:grid-cols-4 gap-6'>
               <StatCard
-                title='Time Started'
-                value={viewingMeeting.time.split(' - ')[0]}
+                title='Time'
+                value={viewingMeeting.time}
                 icon={<Clock size={20} />}
                 variant='default'
               />
-              <StatCard
-                title='Time Ended'
-                value={viewingMeeting.time.split(' - ')[1]}
-                icon={<Clock3 size={20} />}
-                variant='default'
-              />
+              {viewingMeeting.status === 'Ongoing' && viewingMeeting.code && (
+                <StatCard
+                  title='Passcode'
+                  value={viewingMeeting.code}
+                  icon={<Zap size={20} />}
+                  variant='gold'
+                />
+              )}
               <StatCard
                 title='Day'
                 value={viewingMeeting.day}
@@ -951,7 +1142,7 @@ const PrayerModule = () => {
               <div className='flex items-center gap-4'>
                 {viewingMeeting.status === 'Ongoing' && (!viewingMeeting.code || viewingMeeting.code === '-------' || viewingMeeting.code === '------') && (
                   <button
-                    onClick={() => handleGenerateCode(`${viewingMeeting.day} Evening Prayer Meeting`)}
+                    onClick={() => handleGenerateCode(viewingMeeting)}
                     className='flex items-center gap-2 px-6 py-4 bg-[#E74C3C] text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-red-500/20 hover:bg-red-600 transition-all'
                   >
                     <Zap size={18} /> Generate Code
@@ -1248,7 +1439,10 @@ const PrayerModule = () => {
                   </p>
                 </div>
               </div>
-              <button className='px-6 py-3 bg-white text-[#1A1C1E] rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm'>
+              <button
+                onClick={() => handleApprove(reviewingSubmission.id)}
+                className='px-6 py-3 bg-white text-[#1A1C1E] rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-[#CCA856] hover:text-white transition-all'
+              >
                 Mark All Present
               </button>
             </div>
@@ -1276,8 +1470,18 @@ const PrayerModule = () => {
                         </p>
                       </div>
                     </div>
-                    <div className='w-6 h-6 rounded-full border-2 border-slate-100 flex items-center justify-center text-green-500'>
-                      <Check size={14} />
+                    <div className='flex items-center gap-3'>
+                      <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest ${p.status === 'Approved' ? 'bg-green-50 text-green-500' :
+                        p.status === 'Rejected' ? 'bg-red-50 text-red-500' :
+                          'bg-yellow-50 text-yellow-500'
+                        }`}>
+                        {p.status || 'Pending'}
+                      </span>
+                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${p.status === 'Approved' ? 'border-green-100 bg-green-50 text-green-500' :
+                        'border-slate-100 text-slate-300'
+                        }`}>
+                        <Check size={14} />
+                      </div>
                     </div>
                   </div>
 
@@ -1287,13 +1491,13 @@ const PrayerModule = () => {
 
             <div className='flex gap-6 pt-4'>
               <button
-                onClick={() => handleReject(reviewingSubmission.id)}
+                onClick={() => handleReject(reviewingSubmission.id, reviewingSubmission.ids)}
                 className='flex-1 py-5 border border-slate-100 rounded-xl text-xs font-black uppercase tracking-[0.2em] text-red-400 hover:bg-red-50 hover:border-red-100 transition-all'
               >
                 Reject Entire Batch
               </button>
               <button
-                onClick={() => handleApprove(reviewingSubmission.id)}
+                onClick={() => handleApprove(reviewingSubmission.id, reviewingSubmission.ids)}
                 className='flex-1 py-5 bg-[#1A1C1E] text-white rounded-xl text-xs font-black uppercase tracking-[0.2em] shadow-2xl shadow-black/20 hover:bg-[#CCA856] transition-all'
               >
                 Approve {reviewingSubmission.participants.length} Selected

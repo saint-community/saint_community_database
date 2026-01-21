@@ -420,8 +420,9 @@ export const prayerGroupAPI = {
     },
 
     // Admin/Leader: Generate specific meeting instance (code)
-    generateInstance: async (data: any): Promise<void> => {
-        await api.post('/admin/prayer-group/create', data);
+    generateInstance: async (data: any): Promise<any> => {
+        const response = await api.post('/admin/prayer-group/create', data);
+        return response.data;
     },
 
     // Admin/Leader: Get all prayer meetings for the church
@@ -440,6 +441,17 @@ export const prayerGroupAPI = {
         }
     },
 
+    // Leader: Get only my groups
+    getMyGroups: async (): Promise<any[]> => {
+        try {
+            const response = await api.get('/admin/prayer-group/leader/my-groups');
+            return response.data || [];
+        } catch (error: any) {
+            console.error('getMyGroups error:', error);
+            return [];
+        }
+    },
+
     // Member: Mark attendance for a prayer meeting
     markAttendance: async (data: { prayer_code: string; attendees: string[] }): Promise<any> => {
         // This is a public/member route, likely /api/prayer-group/report-attendance based on controller
@@ -455,6 +467,27 @@ export const prayerGroupAPI = {
         const response = await api.get(endpoint);
         return response.data || [];
     },
+
+    // Admin: Get ALL records for church (History/Past Tab)
+    getAllRecords: async (): Promise<any[]> => {
+        const response = await api.get('/admin/prayer-group/records/all');
+        return response.data || [];
+    },
+
+    updateRecordStatus: async (ids: string[], status: string): Promise<any> => {
+        const response = await api.put('/admin/prayer-group/records/status', {
+            ids,
+            status,
+        });
+        return response.data;
+    },
+
+    // Analytics
+    getAnalytics: async (): Promise<any> => {
+        const response = await api.get('/admin/prayer-group/analytics/overview');
+        return response.data || {};
+    },
+
 
     // Get single record/details
     getMeetingDetails: async (id: string): Promise<any> => {
