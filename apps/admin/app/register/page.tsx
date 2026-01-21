@@ -687,35 +687,34 @@ function RegisterPageMain() {
           />
         </div>
 
-         {!isEmpty(cells) && 
-         (<div className="space-y-2">
-          <Label htmlFor="cell">Cell <RequiredAsterisk /></Label>
-          <form.Field
-            name="cell"
-            children={(field) => (
-              <>
-               {isEmpty(cells) ? (
-               null
-               ) : <Select
-                  value={field.state.value}
-                  onValueChange={field.handleChange}
-                >
-                  <SelectTrigger className="h-[48px]">
-                    <SelectValue placeholder="Select a cell" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cells?.map((cell: { id: number; name: string }) => (
-                      <SelectItem key={cell.id} value={`${cell.id}`}>
-                        {cell.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FieldInfo field={field} />
-              </>
-            )}
-          />
-        </div>)}
+        {!isEmpty(cells) && (
+          <div className="space-y-2">
+            <Label htmlFor="cell">Cell <RequiredAsterisk /></Label>
+            <form.Field
+              name="cell"
+              children={(field) => (
+                <>
+                  <Select
+                    value={field.state.value}
+                    onValueChange={field.handleChange}
+                  >
+                    <SelectTrigger className="h-[48px]">
+                      <SelectValue placeholder="Select a cell" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cells?.map((cell: { id: number; name: string }) => (
+                        <SelectItem key={cell.id} value={`${cell.id}`}>
+                          {cell.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldInfo field={field} />
+                </>
+              )}
+            />
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="department">Department</Label>

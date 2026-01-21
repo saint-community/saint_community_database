@@ -17,6 +17,7 @@ export const QUERY_PATHS = {
   UPDATE_PASSWORD: '/api/account/updatepassword',
   DELETE_ACCOUNT: '/api/account/delete/:id',
   UPDATE_ACCOUNT: '/api/account/update',
+  SWITCH_CHURCH: '/api/account/church/switch/:church_id',
   // church
   CHURCHES: '/api/churches',
   CHURCH_DETAIL: '/api/church/:id',
