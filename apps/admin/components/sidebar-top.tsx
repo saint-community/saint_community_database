@@ -29,6 +29,7 @@ export const SideBarTop = () => {
   const [isSwitching, setIsSwitching] = useState(false);
 
   const isChurchPastor = data?.role === ROLES.CHURCH_PASTOR;
+  const canSwitchChurches = isChurchPastor && data?.churches && data.churches.length > 0;
 
   const handleSwitchChurch = async (churchId: number) => {
     if (churchId === data?.church_id) return;
@@ -51,40 +52,49 @@ export const SideBarTop = () => {
       </p>
       <div className='flex sm:hidden' />
       <div className='flex items-center'>
-        {isChurchPastor && data?.churches && data.churches.length > 0 && (
+        {data?.church_name && (
           <>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                className='flex items-center gap-2 px-3 py-2 rounded-md hover:bg-gray-100 transition-colors focus:outline-none'
-                disabled={isSwitching}
-              >
-                {isSwitching ? (
-                  <Loader2 className='w-5 h-5 animate-spin text-primary' />
-                ) : (
-                  <Building2 className='w-5 h-5 text-primary' />
-                )}
+            {canSwitchChurches ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  className='flex items-center gap-2 px-3 py-2 rounded-md hover:bg-gray-100 transition-colors focus:outline-none'
+                  disabled={isSwitching}
+                >
+                  {isSwitching ? (
+                    <Loader2 className='w-5 h-5 animate-spin text-primary' />
+                  ) : (
+                    <Building2 className='w-5 h-5 text-primary' />
+                  )}
+                  <span className='hidden sm:inline text-sm font-medium max-w-[150px] truncate'>
+                    {data.church_name}
+                  </span>
+                  <ChevronDown className='w-4 h-4 text-gray-500' />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align='end' className='w-56'>
+                  <DropdownMenuLabel>Switch Church</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {data.churches?.map((church) => (
+                    <DropdownMenuItem
+                      key={church.id}
+                      onClick={() => handleSwitchChurch(church.church_id)}
+                      className='cursor-pointer flex items-center justify-between'
+                    >
+                      <span>{church.church_name}</span>
+                      {church.church_id === data?.church_id && (
+                        <Check className='w-4 h-4 text-primary' />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className='flex items-center gap-2 px-3 py-2'>
+                <Building2 className='w-5 h-5 text-primary' />
                 <span className='hidden sm:inline text-sm font-medium max-w-[150px] truncate'>
-                  {data?.church_name}
+                  {data.church_name}
                 </span>
-                <ChevronDown className='w-4 h-4 text-gray-500' />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align='end' className='w-56'>
-                <DropdownMenuLabel>Switch Church</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {data?.churches?.map((church) => (
-                  <DropdownMenuItem
-                    key={church.id}
-                    onClick={() => handleSwitchChurch(church.church_id)}
-                    className='cursor-pointer flex items-center justify-between'
-                  >
-                    <span>{church.church_name}</span>
-                    {church.church_id === data?.church_id && (
-                      <Check className='w-4 h-4 text-primary' />
-                    )}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </div>
+            )}
             <div className='h-[33px] mx-4 w-[0.5px] bg-[#D6B978]' />
           </>
         )}
