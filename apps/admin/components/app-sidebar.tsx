@@ -7,6 +7,7 @@ import {
   ListCheck,
   LogOut,
   Settings2,
+  BarChart3,
 } from 'lucide-react';
 import Logo from '@/assets/svgs/logo.svg';
 import {
@@ -72,6 +73,12 @@ export function AppSidebar() {
   // Menu items.
   const mainItems = useMemo(() => {
     const items = [
+      {
+        title: 'Analytics Dashboard',
+        url: 'https://analytics.saintscommunityportal.com/',
+        icon: BarChart3,
+        external: true,
+      },
       // {
       //   title: 'Dashboard',
       //   url: '/d',
@@ -145,22 +152,43 @@ export function AppSidebar() {
                     asChild
                     className='rounded-none px-4 h-[56px]'
                   >
-                    <Link
-                      href={item.url}
-                      className=''
-                      onClick={() => {
-                        if (isMobile) {
-                          toggleSidebar();
-                        }
-                      }}
-                    >
-                      <item.icon
-                        size={24}
-                        fontSize={24}
-                        className='stroke-[#B91507]'
-                      />
-                      <span className='text-sm'>{item.title}</span>
-                    </Link>
+                    {item.external ? (
+                      <a
+                        href={item.url}
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        className=''
+                        onClick={() => {
+                          if (isMobile) {
+                            toggleSidebar();
+                          }
+                        }}
+                      >
+                        <item.icon
+                          size={24}
+                          fontSize={24}
+                          className='stroke-[#B91507]'
+                        />
+                        <span className='text-sm'>{item.title}</span>
+                      </a>
+                    ) : (
+                      <Link
+                        href={item.url}
+                        className=''
+                        onClick={() => {
+                          if (isMobile) {
+                            toggleSidebar();
+                          }
+                        }}
+                      >
+                        <item.icon
+                          size={24}
+                          fontSize={24}
+                          className='stroke-[#B91507]'
+                        />
+                        <span className='text-sm'>{item.title}</span>
+                      </Link>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
