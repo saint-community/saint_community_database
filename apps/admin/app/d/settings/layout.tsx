@@ -23,7 +23,7 @@ export default function SettingsLayout({
     !!user &&
     ![ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_PASTOR].includes(user?.role);
 
-  const hidePrayerGroup = !!user && user?.role !== ROLES.ADMIN;
+  // const hidePrayerGroup = !!user && user?.role !== ROLES.ADMIN;
 
   const sidebarNavItems = [
     {
@@ -40,7 +40,7 @@ export default function SettingsLayout({
           },
         ]
       : []),
-    ...(!hidePrayerGroup
+    ...(!hideUsers
       ? [
           {
             title: 'Prayer Group',

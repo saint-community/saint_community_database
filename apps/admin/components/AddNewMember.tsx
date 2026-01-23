@@ -46,15 +46,11 @@ const formSchema = z.object({
   fellowship: z.string().min(1, {
     message: 'Please select a fellowship.',
   }),
-  cell: z.string().min(1, {
-    message: 'Please select a cell.',
-  }),
+  cell: z.string(),
   homeAddress: z.string().min(5, {
     message: 'Please enter a valid home address.',
   }),
-  workAddress: z.string().min(5, {
-    message: 'Please enter a valid work address.',
-  }),
+  workAddress: z.string(),
   dateOfBirth: z.date().refine(
     (date) => {
       const parsedDate = new Date(date);
