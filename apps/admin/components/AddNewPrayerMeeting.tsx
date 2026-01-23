@@ -39,7 +39,7 @@ const formSchema = z.object({
   period: z.string().min(1, { message: 'Please select a period.' }),
   startTime: z.string().min(1, { message: 'Start time is required.' }),
   endTime: z.string().min(1, { message: 'End time is required.' }),
-  prayergroupLeader: z.array(z.string()).min(1, { message: 'Please select at least one leader.' }),
+  prayergroupLeader: z.array(z.string()).optional(),
 });
 
 type AddNewPrayerMeetingProps = {
@@ -116,7 +116,9 @@ export function AddNewPrayerMeeting({
   const form = useForm({
     defaultValues,
     validators: {
+      // @ts-ignore
       onChange: formSchema,
+        // @ts-ignore
       onSubmit: formSchema,
     },
     onSubmit: async ({ value }) => {
