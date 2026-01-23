@@ -54,11 +54,6 @@ export default function Page() {
                 value: stats?.workers,
                 icon: <User size={24} className='stroke-red-500' />,
               },
-              {
-                title: 'Members:',
-                value: 5000,
-                icon: <User2 size={24} className='stroke-red-500' />,
-              },
             ]}
           />
         </div>
