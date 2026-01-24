@@ -86,7 +86,7 @@ export default function PrayerGroupSettingsPage() {
       : 'Time not set';
 
   const getLeaderName = (name?: string) =>
-    name?.replace(/\s*\(.*/, '').trim() || 'Prayer Leader';
+    name?.replace(/\s*\(.*/, '').trim() || 'No leader assigned';
 
   if (user && !isSuperAdmin) {
     redirect('/d/cells');

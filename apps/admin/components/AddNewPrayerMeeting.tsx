@@ -39,7 +39,7 @@ const formSchema = z.object({
   period: z.string().min(1, { message: 'Please select a period.' }),
   startTime: z.string().min(1, { message: 'Start time is required.' }),
   endTime: z.string().min(1, { message: 'End time is required.' }),
-  prayergroupLeader: z.array(z.string()).optional(),
+  prayergroupLeader: z.array(z.string()).optional().default([]),
 });
 
 type AddNewPrayerMeetingProps = {
@@ -127,7 +127,7 @@ export function AddNewPrayerMeeting({
         period: value.period,
         start_time: value.startTime,
         end_time: value.endTime,
-        prayergroup_leader: value.prayergroupLeader.join(', '),
+        prayergroup_leader: value.prayergroupLeader?.length ? value.prayergroupLeader.join(', ') : '',
       };
 
       if (isEdit && prayerGroup?._id) {
