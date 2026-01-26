@@ -169,6 +169,7 @@ function RegisterPageMain() {
       cell: cells?.[0]?.id?.toString() || "",
       homeAddress: "",
       workAddress: "",
+      schoolAddress: "",
       dateOfBirth: dayjs(currentDate).subtract(7, "years").toDate(),
       department: "",
       dateJoinedChurch: dayjs(currentDate).subtract(7, "days").toDate(),
@@ -216,6 +217,7 @@ function RegisterPageMain() {
       formData.append("instagram_username", "");
       formData.append("house_address", value.homeAddress);
       formData.append("work_address", value.workAddress);
+      formData.append("school_address", value.schoolAddress);
       formData.append(
         "member_since",
         value.dateJoinedChurch.toISOString().split("T")[0] ?? ""
@@ -562,6 +564,25 @@ function RegisterPageMain() {
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
                   placeholder="Enter work address"
+                />
+                <FieldInfo field={field} />
+              </>
+            )}
+          />
+        </div>
+
+         <div className="space-y-2">
+          <Label htmlFor="schoolAddress">School Address</Label>
+          <form.Field
+            name="schoolAddress"
+            children={(field) => (
+              <>
+                <Textarea
+                  rows={6}
+                  id="schoolAddress"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder="Enter school address"
                 />
                 <FieldInfo field={field} />
               </>

@@ -13,6 +13,11 @@ export const getPrayerGroups = async () => {
   return data || [];
 };
 
+export const getPrayerGroupsByChurchId = async (church_id: number) => {
+  const { data } = await ApiCaller.get(`${QUERY_PATHS.PRAYER_GROUPS}/${church_id}`);
+  return data || [];
+};
+
 export const getPrayerGroupById = async (id: string) => {
   const { data } = await ApiCaller.get(
     QUERY_PATHS.PRAYER_GROUP_DETAIL.replace(':id', id)

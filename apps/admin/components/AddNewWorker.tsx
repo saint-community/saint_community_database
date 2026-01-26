@@ -51,15 +51,12 @@ const formSchema = z.object({
   fellowship: z.string().min(1, {
     message: 'Please select a fellowship.',
   }),
-  cell: z.string().min(1, {
-    message: 'Please select a cell.',
-  }),
+  cell: z.string(),
   homeAddress: z.string().min(5, {
     message: 'Please enter a valid home address.',
   }),
-  workAddress: z.string().min(5, {
-    message: 'Please enter a valid work address.',
-  }),
+  workAddress: z.string(),
+  schoolAddress: z.string(),
   dateOfBirth: z.date().refine(
     (date) => {
       const parsedDate = new Date(date);
@@ -118,6 +115,7 @@ export function AddNewWorkerSheet({
       cell: user?.cell_id?.toString() || '',
       homeAddress: '',
       workAddress: '',
+      schoolAddress: '',
       dateOfBirth: new Date(),
       department: '',
       dateJoinedChurch: new Date(),
@@ -130,7 +128,7 @@ export function AddNewWorkerSheet({
       onChange: formSchema,
     },
     onSubmit: async ({ value }) => {
-      console.log(value);
+      // console.log(value);
       // Handle form submission here
 
       mutation.mutate({
@@ -149,6 +147,7 @@ export function AddNewWorkerSheet({
         instagram_username: '',
         house_address: value.homeAddress,
         work_address: value.workAddress,
+        school_address: value.schoolAddress,
         member_since: value.dateJoinedChurch.toISOString().split('T')[0],
         worker_since: value.dateJoinedChurch.toISOString().split('T')[0],
         active: true,
@@ -492,6 +491,24 @@ export function AddNewWorkerSheet({
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
                   placeholder='Enter work address'
+                />
+                <FieldInfo field={field} />
+              </>
+            )}
+          />
+        </div>
+
+         <div className='space-y-2'>
+          <Label htmlFor='schoolAddress'>School Address</Label>
+          <form.Field
+            name='schoolAddress'
+            children={(field) => (
+              <>
+                <Textarea
+                  id='schoolAddress'
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder='Enter school address'
                 />
                 <FieldInfo field={field} />
               </>

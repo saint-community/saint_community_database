@@ -30,6 +30,7 @@ export const formSchema = z.object({
     message: "Please enter a valid home address.",
   }),
   workAddress: z.string(),
+  schoolAddress: z.string(),
   dateOfBirth: z
     .date({
       required_error: "Please select your date of birth",
