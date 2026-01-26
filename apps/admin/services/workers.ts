@@ -18,6 +18,7 @@ export interface Worker {
   instagram_username?: string;
   house_address?: string;
   work_address?: string;
+  school_address?: string;
   member_since?: string;
   worker_since?: string;
   active: boolean;
