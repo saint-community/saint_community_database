@@ -24,7 +24,7 @@ export function DatePicker({
   captionLayout?: "dropdown" | "buttons" | "dropdown-buttons" | undefined;
 }) {
   return (
-    <Popover>
+    <Popover modal={true}>
       <PopoverTrigger asChild>
         <Button
           variant={"outline"}
