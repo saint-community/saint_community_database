@@ -106,6 +106,7 @@ export default function Page() {
           title='Fellowships List'
           action={<AddNewFellowshipSheet />}
           data={fellowships}
+          placeholder='Search by fellowship name'
           columnKeys={[
             {
               name: 'name',

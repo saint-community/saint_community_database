@@ -9,7 +9,7 @@ import { useMe } from '@/hooks/useMe';
 import { useWorkers } from '@/hooks/workers';
 import { useWorkerUrlParams } from '@/hooks/useWorkerUrlParams';
 import { useDebounced } from '@/hooks/useDebounced';
-import { Church, ListCheck, User, Users2 } from 'lucide-react';
+import { Church, ListCheck, Search, User, Users2 } from 'lucide-react';
 import { useMemo, useState, useEffect } from 'react';
 import { ROLES } from '@/utils/constants';
 import _ from 'lodash';
@@ -20,7 +20,7 @@ export default function Page() {
   const { filters, updateParams, clearFilters } = useWorkerUrlParams();
   
   // Internal state for search inputs (for immediate UI feedback)
-  const [nameSearchValue, setNameSearchValue] = useState(filters.name || '');
+  const [nameSearchValue, setNameSearchValue] = useState('');
   const [phoneSearchValue, setPhoneSearchValue] = useState(filters.phone || '');
   
   // Debounce search inputs to reduce API calls
@@ -34,11 +34,11 @@ export default function Page() {
     }
   }, [debouncedNameSearch, filters.name, updateParams]);
   
-  useEffect(() => {
-    if (debouncedPhoneSearch !== filters.phone) {
-      updateParams({ phone: debouncedPhoneSearch || undefined });
-    }
-  }, [debouncedPhoneSearch, filters.phone, updateParams]);
+  // useEffect(() => {
+  //   if (debouncedPhoneSearch !== filters.phone) {
+  //     updateParams({ phone: debouncedPhoneSearch || undefined });
+  //   }
+  // }, [debouncedPhoneSearch, filters.phone, updateParams]);
   
   // Sync search inputs with URL params (for browser back/forward)
   useEffect(() => {
@@ -47,11 +47,11 @@ export default function Page() {
     }
   }, [filters.name]);
   
-  useEffect(() => {
-    if (filters.phone !== phoneSearchValue) {
-      setPhoneSearchValue(filters.phone || '');
-    }
-  }, [filters.phone]);
+  // useEffect(() => {
+  //   if (filters.phone !== phoneSearchValue) {
+  //     setPhoneSearchValue(filters.phone || '');
+  //   }
+  // }, [filters.phone]);
 
 
   // Apply role-based filter defaults
@@ -64,11 +64,12 @@ export default function Page() {
       fellowship_id: baseFilters.fellowship,
       cell_id: baseFilters.cell,
       department_id: baseFilters.department,
-      name: baseFilters.name,
+      // name: baseFilters.name,
       phone: baseFilters.phone,
       gender: baseFilters.gender,
       status: baseFilters.status,
       page: baseFilters.page,
+      name: nameSearchValue || undefined,
     };
    
    
@@ -125,6 +126,7 @@ export default function Page() {
           title='Workers List'
           action={<AddNewWorkerSheet page={currentPage} church_id={user?.church_id} />}
           data={workersData}
+          placeholder='Search by name'
           columnKeys={[
             {
               name: 'name',
@@ -150,13 +152,13 @@ export default function Page() {
           page={currentPage}
           totalPages={workers?.last_page}
           // Remove default search since we have comprehensive filters
-          searchValue=""
-          onSearchChange={() => {}}
+          searchValue={nameSearchValue}
+          onSearchChange={setNameSearchValue}
           filterComponent={
             // Show filters for ADMIN and PASTOR roles (same pattern as other pages)
             (user?.role === ROLES.ADMIN || user?.role === ROLES.PASTOR) ? (
               <WorkerFilters
-             
+             setNameSearchValue={setNameSearchValue}
            
               />
             ) : undefined

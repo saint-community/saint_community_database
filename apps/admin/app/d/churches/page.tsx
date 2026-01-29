@@ -112,6 +112,7 @@ export default function Page() {
           title='Churches List'
           action={<AddNewChurchSheet />}
           data={churches || []}
+             placeholder='Search by church name'
           columnKeys={[
             {
               name: 'name',
