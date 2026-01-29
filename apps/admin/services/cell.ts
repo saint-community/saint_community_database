@@ -1,13 +1,45 @@
 import { QUERY_PATHS } from '@/utils/constants';
 import { ApiCaller } from './init';
 
-export const getCells = async (page: number) => {
-  const { data } = await ApiCaller.get(QUERY_PATHS.CELLS, {
-    params: {
-      page,
-    },
+interface CellFilters {
+  page?: number;
+  name?: string;
+  church?: string;
+  fellowship?: string;
+}
+
+export const getCells = async (filters: CellFilters = {}) => {
+  // console.log('getCells called with filters:', filters);
+  const { page = 1, church, fellowship, ...searchFilters } = filters;
+  
+  // Build params object with only non-empty values
+  const params: Record<string, any> = { page };
+  
+  if (church && church.trim() !== '') {
+    params.church_id = church;
+    // console.log('Added church_id to params:', church);
+  }
+  
+  if (fellowship && fellowship.trim() !== '') {
+    params.fellowship_id = fellowship;
+    // console.log('Added fellowship_id to params:', fellowship);
+  }
+  
+  Object.entries(searchFilters).forEach(([key, value]) => {
+    if (value && value.trim() !== '') {
+      params[key] = value;
+    }
   });
-  return data?.data || [];
+
+  // console.log('Final API params for cells:', params);
+
+  const { data } = await ApiCaller.get(QUERY_PATHS.CELLS, {
+    params,
+  });
+  // console.log('getCells API response:', data);
+  const result = data?.data || [];
+  // console.log('getCells final return:', result);
+  return result;
 };
 
 export const createCell = async (body: {
