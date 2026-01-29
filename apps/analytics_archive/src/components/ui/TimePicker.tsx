@@ -36,7 +36,8 @@ export function TimePicker({ value, onChange, className, placeholder = "Select t
   const selectedTime = timeOptions.find(option => option.value === value);
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen} onOpenChange={setIsOpen}
+    modal={true}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"

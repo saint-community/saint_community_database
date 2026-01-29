@@ -242,7 +242,15 @@ export function AddNewWorkerSheet({
   return (
     <Modal
       trigger={
-        <Button className='text-sm h-[44px]'>
+        <Button 
+        onClick={(e) => {
+          if (!prayerGroups || prayerGroups.length === 0) {
+            e.preventDefault();
+            e.stopPropagation();
+            toast.error("Please create a prayer group first");
+          }
+        }}
+        className='text-sm h-[44px]'>
           <SquarePlus size={30} />
           Add new worker
         </Button>
