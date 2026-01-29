@@ -1,106 +1,106 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
-    LayoutDashboard,
-    Users,
-    UserPlus,
-    BarChart3,
-    Settings,
-    LogOut,
-    Search,
-    Bell,
-    Filter,
-    Plus,
-    Download,
-    Calendar,
-    MapPin,
-    CheckCircle2,
-    Clock,
-    MoreVertical,
-    X,
-    TrendingUp,
-    ShieldCheck,
-    Building2,
-    Edit2,
-    Trash2,
-    Phone,
-    HeartPulse,
-    UserCheck,
-    Flame,
-    ChevronRight,
-    Sparkles,
-    Info,
-    MoreHorizontal,
-    Home,
-    Repeat,
-    List,
-    User,
-    Activity,
-    Sliders,
-    ChevronDown,
-    Check,
-    FileText,
-    Music,
-    QrCode,
-    FileSpreadsheet,
-    BookOpen,
-    Clock3,
-    BarChart as BarChartIcon,
-    UserSearch,
-    CheckSquare,
-    Square,
-    AlertCircle,
-    UserMinus,
-    LayoutGrid,
-    PieChart as PieChartIcon,
-    MousePointer2,
-    Layers,
-    Zap,
-    ChevronLeft,
-    Mail,
-    Eye,
-    ChevronUp,
-    Link2,
-    ExternalLink,
-    Globe,
+  LayoutDashboard,
+  Users,
+  UserPlus,
+  BarChart3,
+  Settings,
+  LogOut,
+  Search,
+  Bell,
+  Filter,
+  Plus,
+  Download,
+  Calendar,
+  MapPin,
+  CheckCircle2,
+  Clock,
+  MoreVertical,
+  X,
+  TrendingUp,
+  ShieldCheck,
+  Building2,
+  Edit2,
+  Trash2,
+  Phone,
+  HeartPulse,
+  UserCheck,
+  Flame,
+  ChevronRight,
+  Sparkles,
+  Info,
+  MoreHorizontal,
+  Home,
+  Repeat,
+  List,
+  User,
+  Activity,
+  Sliders,
+  ChevronDown,
+  Check,
+  FileText,
+  Music,
+  QrCode,
+  FileSpreadsheet,
+  BookOpen,
+  Clock3,
+  BarChart as BarChartIcon,
+  UserSearch,
+  CheckSquare,
+  Square,
+  AlertCircle,
+  UserMinus,
+  LayoutGrid,
+  PieChart as PieChartIcon,
+  MousePointer2,
+  Layers,
+  Zap,
+  ChevronLeft,
+  Mail,
+  Eye,
+  ChevronUp,
+  Link2,
+  ExternalLink,
+  Globe,
 } from 'lucide-react';
 import {
-    ResponsiveContainer,
-    AreaChart,
-    Area,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    BarChart,
-    Bar,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  BarChart,
+  Bar,
 } from 'recharts';
 import {
-    EvangelismSession,
-    EvangelismRecord,
-    FollowUpSession,
-    FollowUpRecord,
-    Meeting,
-    AttendanceSubmission,
-    MeetingType,
-    MeetingFrequency,
+  EvangelismSession,
+  EvangelismRecord,
+  FollowUpSession,
+  FollowUpRecord,
+  Meeting,
+  AttendanceSubmission,
+  MeetingType,
+  MeetingFrequency,
 } from '../../types';
 import { Logo, COLORS } from '../../constants';
 import {
-    mockEvangelismSessions,
-    mockFollowUpSessions,
-    attendanceTrend,
-    attendanceComparisonData,
+  mockEvangelismSessions,
+  mockFollowUpSessions,
+  attendanceTrend,
+  attendanceComparisonData,
 } from '../../data/mockData';
 import {
-    evangelismAPI,
-    followUpAPI,
-    attendanceAPI,
-    prayerGroupAPI,
-    studyGroupAPI,
-    memberAPI,
-    structureAPI,
-    getAuthToken,
-    parseJwt,
+  evangelismAPI,
+  followUpAPI,
+  attendanceAPI,
+  prayerGroupAPI,
+  studyGroupAPI,
+  memberAPI,
+  structureAPI,
+  getAuthToken,
+  parseJwt,
 } from '../../api';
 
 import StatCard from '../../components/StatCard';
@@ -108,14 +108,17 @@ import Modal from '../../components/Modal';
 import CodeCountdown from '../../components/CodeCountdown';
 import DatePickerCalendar from '../../components/DatePickerCalendar';
 import {
-    WORKERS_LIST,
-    MEMBERS_LIST,
-    ROLES,
-    FIRST_TIMERS_EXAMPLES,
-    FELLOWSHIPS,
-    CELLS,
+  WORKERS_LIST,
+  MEMBERS_LIST,
+  ROLES,
+  FIRST_TIMERS_EXAMPLES,
+  FELLOWSHIPS,
+  CELLS,
 } from '../../data/lists';
 import { getMemberGroup } from '../../utils/helpers';
+import { mapUiToFilterGroup } from './utils/query-mapper';
+import QueryBuilder from './components/QueryBuilder';
+import { FilterGroup, QueryOperator } from '../../types';
 const AnalyticsModule = () => {
   const [activeTab, setActiveTab] = useState<'Analytics' | 'Reports'>(
     'Analytics'
@@ -174,6 +177,14 @@ const AnalyticsModule = () => {
     prayerMin: '',
     studyMin: '',
   });
+
+  // Advanced Query Builder State
+  const [isQueryBuilderOpen, setIsQueryBuilderOpen] = useState(false);
+  const [complexFilter, setComplexFilter] = useState<FilterGroup>({
+    operator: QueryOperator.AND,
+    conditions: []
+  });
+  const [useComplexFilter, setUseComplexFilter] = useState(false);
 
   // Drilldown State
   const [drilldownEntity, setDrilldownEntity] = useState<{
@@ -566,6 +577,37 @@ const AnalyticsModule = () => {
     setReportConfig((prev: any) => ({ ...prev, [key]: val }));
   };
 
+  // Records Data State
+  const [recordsData, setRecordsData] = useState<any[]>([]);
+  const [recordsLoading, setRecordsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchRecords = async () => {
+      // Only fetch if on Reports tab to save bandwidth
+      if (activeTab === 'Reports') {
+        setRecordsLoading(true);
+        try {
+          const filterGroup = useComplexFilter
+            ? complexFilter
+            : mapUiToFilterGroup(filterValues);
+
+          const data = await memberAPI.getRecords(filterGroup);
+          setRecordsData(data);
+        } catch (e) {
+          console.error("Failed to fetch records", e);
+        } finally {
+          setRecordsLoading(false);
+        }
+      }
+    };
+    // Debounce slightly or just run on dependency change. 
+    // For production, a proper debounce hook is better.
+    const timer = setTimeout(() => {
+      fetchRecords();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [activeTab, filterValues, useComplexFilter, complexFilter]); // Added complex filter deps
+
   const toggleMeasure = (measure: string) => {
     setReportConfig((prev: any) => {
       const exists = prev.measures.includes(measure);
@@ -888,6 +930,12 @@ const AnalyticsModule = () => {
             </div>
             <div className='flex gap-3'>
               <button
+                onClick={() => setIsQueryBuilderOpen(true)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-xs font-bold transition-all ${useComplexFilter ? 'bg-[#CCA856] text-white border-[#CCA856]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+              >
+                <Sparkles size={14} /> Advanced Query
+              </button>
+              <button
                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-xs font-bold transition-all ${showAdvancedFilters ? 'bg-[#1A1C1E] text-white border-[#1A1C1E]' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'} `}
               >
@@ -1058,11 +1106,11 @@ const AnalyticsModule = () => {
                   </tr>
                 </thead>
                 <tbody className='divide-y divide-slate-100'>
-                  {filteredDirectory.map((person, idx) => (
+                  {recordsData.map((person, idx) => (
                     <tr
                       key={idx}
                       className='hover:bg-slate-50/80 transition-colors group cursor-pointer'
-                      onClick={() => setProfileIndividual(person)}
+                      onClick={() => setProfileIndividual(person.name)} // Assuming person object has name, or adjust
                     >
                       <td className='px-6 py-4 text-xs font-medium text-slate-400'>
                         {idx + 1}
@@ -1075,28 +1123,32 @@ const AnalyticsModule = () => {
                           {col === 'Name' ? (
                             <div className='flex items-center gap-3'>
                               <div className='w-8 h-8 rounded-full bg-[#1A1C1E] flex items-center justify-center text-white text-[10px] font-black'>
-                                {getCellValue(person, 'Name')
+                                {(person.name || 'Unknown')
                                   .split(' ')
                                   .map((n: string) => n[0])
                                   .join('')}
                               </div>
                               <div>
                                 <span className='font-bold text-[#1A1C1E] block'>
-                                  {getCellValue(person, 'Name')}
+                                  {person.name || 'Unknown'}
                                 </span>
                                 <span className='text-[10px] text-slate-400'>
-                                  {getCellValue(person, 'Email')}
+                                  {person.email || '-'}
                                 </span>
                               </div>
                             </div>
                           ) : col === 'Role' ? (
                             <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getCellValue(person, 'Role').includes('Pastor') ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-slate-100 text-slate-500 border-slate-200'} `}
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold border ${person.role === 'Worker' ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-slate-100 text-slate-500 border-slate-200'} `}
                             >
-                              {getCellValue(person, 'Role')}
+                              {person.role || 'Member'}
                             </span>
                           ) : (
-                            getCellValue(person, col)
+                            // For dynamic cols, we might need a helper to extract from the person object
+                            // person[col.toLowerCase()] might work for simple fields
+                            // but for structural names (Church Name), the backend populate/aggregation result field names matter.
+                            // For now, fallback to safe access
+                            (person as any)[col.toLowerCase().replace(/ /g, '_')] || '-'
                           )}
                         </td>
                       ))}
@@ -1109,7 +1161,7 @@ const AnalyticsModule = () => {
                   ))}
                 </tbody>
               </table>
-              {filteredDirectory.length === 0 && (
+              {recordsData.length === 0 && !recordsLoading && (
                 <div className='p-12 text-center text-slate-400'>
                   <Search size={32} className='mx-auto mb-3 opacity-20' />
                   <p className='text-sm font-medium'>
@@ -1163,6 +1215,50 @@ const AnalyticsModule = () => {
               className='w-full mt-8 bg-[#CCA856] text-white font-bold py-3 rounded-xl hover:bg-[#B89648] transition-colors shadow-lg shadow-[#CCA856]/20'
             >
               Apply Range
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isQueryBuilderOpen}
+        onClose={() => setIsQueryBuilderOpen(false)}
+        title="Advanced Query Builder"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500">
+            Construct complex queries using AND/OR logic and nested groups.
+          </p>
+          <QueryBuilder
+            rootGroup={complexFilter}
+            onChange={setComplexFilter}
+            metadata={{
+              churches: ['Main Parish'],
+              fellowships: FELLOWSHIPS,
+              cells: CELLS
+            }}
+          />
+          <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
+            <button
+              onClick={() => {
+                setUseComplexFilter(false);
+                setIsQueryBuilderOpen(false);
+              }}
+              className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 rounded-lg"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                setUseComplexFilter(true);
+                setIsQueryBuilderOpen(false);
+                // Trigger fetch? It heavily depends on effect dependencies.
+                // We depend on filterValues usually. We might need to add complexFilter to dependency array
+              }}
+              className="px-4 py-2 text-xs font-bold text-white bg-[#1A1C1E] rounded-lg shadow hover:bg-[#2D3E50]"
+            >
+              Apply Advanced Filter
             </button>
           </div>
         </div>

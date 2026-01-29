@@ -146,3 +146,29 @@ export interface Member {
   phone?: string;
   address?: string;
 }
+
+export enum QueryOperator {
+  AND = 'AND',
+  OR = 'OR',
+}
+
+export enum FilterOperator {
+  EQUALS = 'eq',
+  NOT_EQUALS = 'neq',
+  CONTAINS = 'contains',
+  IN = 'in',
+  GREATER_THAN = 'gt',
+  LESS_THAN = 'lt',
+  BETWEEN = 'between',
+}
+
+export interface FilterCondition {
+  field: string;
+  operator: string;
+  value: any;
+}
+
+export interface FilterGroup {
+  operator: QueryOperator;
+  conditions: (FilterCondition | FilterGroup)[];
+}
