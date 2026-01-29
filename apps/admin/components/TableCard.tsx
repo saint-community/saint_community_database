@@ -57,6 +57,7 @@ interface TableCardProps {
   searchValue?: string;
   onSearchChange?: (value: string) => void;
   filterComponent?: React.ReactNode;
+  placeholder?: string;
 }
 
 export type Payment = {
@@ -217,6 +218,7 @@ export function TableCard({
   searchValue: externalSearchValue,
   onSearchChange: externalOnSearchChange,
   filterComponent,
+  placeholder = 'Church, Fellowship, Cell, members'
 }: TableCardProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -274,7 +276,7 @@ export function TableCard({
         <div className='flex sm:items-center mb-6 justify-between flex-col sm:flex-row gap-4'>
           <h2 className='font-medium text-xl'>{title}</h2>
           <Input
-            placeholder='Church, Fellowship, Cell, members'
+            placeholder={placeholder}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             // value={(table.getColumn('email')?.getFilterValue() as string) ?? ''}
@@ -283,12 +285,12 @@ export function TableCard({
             // }
             className='sm:max-w-[300px] placeholder:text-xs h-[40px]'
           />
-          <div className="flex gap-2 items-center">
-             <ListFilter className='text-primary mr-2' size={20} />
-                  Filter by 
+          {filterComponent &&  <div className="flex gap-2 items-center">
+              <ListFilter className='text-primary mr-2' size={20} />
+                    Filter by 
 
-                  {filterComponent}
-          </div>
+                    {filterComponent}
+            </div>}
          
           {action}
         </div>

@@ -43,9 +43,13 @@ const GENDER_OPTIONS = [
   { value: 'female', label: 'Female' },
 ];
 
-interface WorkerFiltersProps {}
+interface WorkerFiltersProps {
+  setNameSearchValue?: (value: string) => void;
+}
 
-export function WorkerFilters({}: WorkerFiltersProps) {
+export function WorkerFilters({
+  setNameSearchValue
+}: WorkerFiltersProps) {
   const { filters, updateParams, clearFilters } = useWorkerUrlParams();
   const { name, phone, church, fellowship, cell, gender, status, department } = filters;
   const { data: churches, isLoading: churchesLoading } = useChurchesOption();
@@ -75,7 +79,9 @@ export function WorkerFilters({}: WorkerFiltersProps) {
   // Reset form values when modal opens
   const handleOpenChange = (open: boolean) => {
     if (open) {
-      setFieldValue('name', name || '');
+      // setFieldValue('name', name || '');
+      setNameSearchValue?.(''); 
+      setFieldValue('name', '');
       setFieldValue('phone', phone || '');
       setFieldValue('church', church || 'all');
       setFieldValue('fellowship', fellowship || 'all');
@@ -107,6 +113,7 @@ export function WorkerFilters({}: WorkerFiltersProps) {
 
   // Clear all filters
   const handleClearFilters = () => {
+    setNameSearchValue?.(''); 
     setFieldValue('name', '');
     setFieldValue('phone', '');
     setFieldValue('church', 'all');
@@ -157,7 +164,7 @@ export function WorkerFilters({}: WorkerFiltersProps) {
               size="sm"
               onClick={(e) => {
                 e.stopPropagation(); // Prevent modal from opening
-                clearFilters();
+                handleClearFilters();
               }}
               className="flex items-center gap-1 text-gray-500 hover:text-red-600 hover:bg-red-50"
             >

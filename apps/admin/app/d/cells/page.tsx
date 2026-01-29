@@ -79,6 +79,7 @@ export default function Page() {
           title='Cells List'
           action={<AddNewCellSheet />}
           data={cells || []}
+             placeholder='Search by cell name'
           columnKeys={[
             {
               name: 'name',
