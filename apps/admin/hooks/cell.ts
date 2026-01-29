@@ -3,11 +3,19 @@ import { getFellowshipById } from '@/services/fellowships';
 import { QUERY_PATHS } from '@/utils/constants';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
-export const useCells = (page: number = 1) => {
+interface CellFilters {
+  page?: number;
+  name?: string;
+  church?: string;
+  fellowship?: string;
+}
+
+export const useCells = (filters: CellFilters = {}) => {
+  const { page = 1, ...searchFilters } = filters;
+  
   return useQuery({
-    queryKey: [QUERY_PATHS.CELLS, page],
-    queryFn: () => getCells(page),
-    // select: (data) => data.data,
+    queryKey: [QUERY_PATHS.CELLS, page, searchFilters],
+    queryFn: () => getCells(filters),
     placeholderData: keepPreviousData,
   });
 };
@@ -35,5 +43,13 @@ export const useCellsOption = (fellowshipId?: string) => {
         value: cell.id,
         label: cell.name,
       })),
+  });
+};
+
+
+export const useCellsByFellowship = (fellowshipId?: string) => {
+  return useQuery({
+    queryKey: [QUERY_PATHS.CELLS, 'option', fellowshipId],
+    queryFn: () => getFellowshipById(fellowshipId || ''),
   });
 };
