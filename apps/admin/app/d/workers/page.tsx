@@ -156,7 +156,7 @@ export default function Page() {
           onSearchChange={setNameSearchValue}
           filterComponent={
             // Show filters for ADMIN and PASTOR roles (same pattern as other pages)
-            (user?.role === ROLES.ADMIN || user?.role === ROLES.PASTOR) ? (
+            (user?.role === ROLES.ADMIN || user?.role === ROLES.PASTOR || user?.role === ROLES.CHURCH_PASTOR) ? (
               <WorkerFilters
              setNameSearchValue={setNameSearchValue}
            
