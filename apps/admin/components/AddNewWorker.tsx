@@ -9,7 +9,7 @@ import { Textarea } from '@workspace/ui/components/textarea';
 import { Label } from '@workspace/ui/components/label';
 import { Modal } from '@workspace/ui/components/modal';
 import { Loader2, SquarePlus } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DatePicker } from '@workspace/ui/components/date-picker';
 import {
   Select,
@@ -30,6 +30,7 @@ import { useMe } from '@/hooks/useMe';
 import { COUNTRIES, ROLES } from '@/utils/constants';
 import { usePrayerGroupOption } from '@/hooks/prayer_groups';
 import { toast } from '@workspace/ui/lib/sonner';
+import { isEmpty } from 'lodash';
 
 const formSchema = z.object({
   fullName: z.string().min(2, {
@@ -50,15 +51,12 @@ const formSchema = z.object({
   fellowship: z.string().min(1, {
     message: 'Please select a fellowship.',
   }),
-  cell: z.string().min(1, {
-    message: 'Please select a cell.',
-  }),
+  cell: z.string(),
   homeAddress: z.string().min(5, {
     message: 'Please enter a valid home address.',
   }),
-  workAddress: z.string().min(5, {
-    message: 'Please enter a valid work address.',
-  }),
+  workAddress: z.string(),
+  schoolAddress: z.string(),
   dateOfBirth: z.date().refine(
     (date) => {
       const parsedDate = new Date(date);
@@ -106,6 +104,32 @@ export function AddNewWorkerSheet({
   const [open, setOpen] = useState(false);
   const { data: user } = useMe();
 
+
+    // Import countries.json dynamically to avoid SSR issues
+    const [countries, setCountries] = useState<{ code: string; name: string }[]>(
+      []
+    );
+    useEffect(() => {
+      import("@/utils/countries.json").then((mod) => {
+        setCountries(mod.default || mod);
+      });
+    }, []);
+  
+    const [states, setStates] = useState<string[]>([]);
+    const [selectedCountry, setSelectedCountry] = useState("");
+  
+    useEffect(() => {
+      if (selectedCountry) {
+        import("@/utils/states.json").then((mod) => {
+          type AllStates = { [countryCode: string]: string[] };
+          const allStates = (mod.default || mod) as unknown as AllStates;
+          setStates(allStates[selectedCountry as keyof AllStates] || []);
+        });
+      } else {
+        setStates([]);
+      }
+    }, [selectedCountry]);
+
   const form = useForm({
     defaultValues: {
       fullName: '',
@@ -117,6 +141,7 @@ export function AddNewWorkerSheet({
       cell: user?.cell_id?.toString() || '',
       homeAddress: '',
       workAddress: '',
+      schoolAddress: '',
       dateOfBirth: new Date(),
       department: '',
       dateJoinedChurch: new Date(),
@@ -129,13 +154,13 @@ export function AddNewWorkerSheet({
       onChange: formSchema,
     },
     onSubmit: async ({ value }) => {
-      console.log(value);
+      // console.log(value);
       // Handle form submission here
 
       mutation.mutate({
         church_id: Number(value.church),
         fellowship_id: Number(value.fellowship),
-        cell_id: Number(value.cell),
+        cell_id: value.cell,
         first_name: value.fullName.split(' ')[0] || '',
         last_name: value.fullName.split(' ')[1] || '',
         dob: value.dateOfBirth.toISOString().split('T')[0],
@@ -148,6 +173,7 @@ export function AddNewWorkerSheet({
         instagram_username: '',
         house_address: value.homeAddress,
         work_address: value.workAddress,
+        school_address: value.schoolAddress,
         member_since: value.dateJoinedChurch.toISOString().split('T')[0],
         worker_since: value.dateJoinedChurch.toISOString().split('T')[0],
         active: true,
@@ -242,7 +268,15 @@ export function AddNewWorkerSheet({
   return (
     <Modal
       trigger={
-        <Button className='text-sm h-[44px]'>
+        <Button 
+        onClick={(e) => {
+          if (!prayerGroups || prayerGroups.length === 0) {
+            e.preventDefault();
+            e.stopPropagation();
+            toast.error("Please create a prayer group first");
+          }
+        }}
+        className='text-sm h-[44px]'>
           <SquarePlus size={30} />
           Add new worker
         </Button>
@@ -426,7 +460,7 @@ export function AddNewWorkerSheet({
           />
         </div>
 
-        <div className='space-y-2'>
+           {!isEmpty(cellOptions)  && (<div className='space-y-2'>
           <Label htmlFor='cell'>Cell</Label>
           <form.Field
             name='cell'
@@ -460,7 +494,7 @@ export function AddNewWorkerSheet({
               </>
             )}
           />
-        </div>
+        </div>)}
 
         <div className='space-y-2'>
           <Label htmlFor='homeAddress'>Home Address</Label>
@@ -498,17 +532,17 @@ export function AddNewWorkerSheet({
           />
         </div>
 
-        <div className='space-y-2'>
-          <Label htmlFor='state'>State</Label>
+         <div className='space-y-2'>
+          <Label htmlFor='schoolAddress'>School Address</Label>
           <form.Field
-            name='state'
+            name='schoolAddress'
             children={(field) => (
               <>
-                <Input
-                  id='state'
+                <Textarea
+                  id='schoolAddress'
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder='Enter state'
+                  placeholder='Enter school address'
                 />
                 <FieldInfo field={field} />
               </>
@@ -516,32 +550,69 @@ export function AddNewWorkerSheet({
           />
         </div>
 
+      
         <div className='space-y-2'>
           <Label htmlFor='country'>Country</Label>
-          <form.Field
-            name='country'
-            children={(field) => (
-              <>
-                <Select
-                  value={field.state.value}
-                  onValueChange={(e) => field.handleChange(e)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder='Select a country' />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COUNTRIES.map((country) => (
-                      <SelectItem key={country} value={country}>
-                        {country}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FieldInfo field={field} />
-              </>
-            )}
+           <form.Field
+            name="country"
+            children={(field) => {
+              return (
+                <>
+                  <Select
+                    value={field.state.value}
+                    onValueChange={(e) => {
+                      field.handleChange(e);
+                      setSelectedCountry(e);
+                    }}
+                  >
+                    <SelectTrigger className="h-[48px]">
+                      <SelectValue placeholder="Select a country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {countries.map((country) => (
+                        <SelectItem key={country.code} value={country.code}>
+                          {country.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldInfo field={field} />
+                </>
+              );
+            }}
           />
         </div>
+
+        <div className='space-y-2'>
+          <Label htmlFor='state'>State</Label>
+         <form.Field
+            name="state"
+            children={(field) => {
+              return (
+                <>
+                  <Select
+                    value={field.state.value}
+                    onValueChange={field.handleChange}
+                    disabled={!selectedCountry}
+                  >
+                    <SelectTrigger className="h-[48px]">
+                      <SelectValue placeholder="Select a state" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {states.map((state, i) => (
+                        <SelectItem key={i} value={state}>
+                          {state}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldInfo field={field} />
+                </>
+              );
+            }}
+          />
+        </div>
+
 
         <div className='space-y-2'>
           <Label htmlFor='dateOfBirth'>Date of Birth</Label>

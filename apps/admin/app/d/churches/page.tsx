@@ -11,15 +11,38 @@ import { useMemo, useState } from 'react';
 import { useMe } from '@/hooks/useMe';
 import { ROLES } from '@/utils/constants';
 import { useRouter } from 'next/navigation';
+import { useUrlParams } from '@/hooks/useUrlParams';
+import { useDebounced } from '@/hooks/useDebounced';
+import { ChurchFilters } from '@/components/ChurchFilters';
 
 export default function Page() {
-  const [page, setPage] = useState(1);
   const router = useRouter();
   const { data: user, isLoading } = useMe();
   const redirected = React.useRef(false);
+  const { filters, updateParams, clearFilters } = useUrlParams();
+  
+  // Internal state for search input (for immediate UI feedback)
+  const [searchValue, setSearchValue] = useState(filters.name || '');
+  
+  // Debounce search input to reduce API calls
+  const debouncedSearch = useDebounced(searchValue, 300);
+  
+  // Update URL when debounced search changes
+  React.useEffect(() => {
+    if (debouncedSearch !== filters.name) {
+      updateParams({ name: debouncedSearch || undefined });
+    }
+  }, [debouncedSearch, filters.name, updateParams]);
+  
+  // Sync search input with URL params (for browser back/forward)
+  React.useEffect(() => {
+    if (filters.name !== searchValue) {
+      setSearchValue(filters.name || '');
+    }
+  }, [filters.name]);
   
   // Always call hooks first, before any conditional logic
-  const { data } = useChurches(page);
+  const { data } = useChurches(filters);
   const { data: stats } = useStatistics();
   
   const isAdmin = React.useMemo(() => {
@@ -31,6 +54,8 @@ export default function Page() {
   const perPage = useMemo(() => {
     return data?.per_page || 10;
   }, [data]);
+  
+  const currentPage = filters.page || 1;
 
   React.useEffect(() => {
     if (!isLoading && user && !isAdmin && !redirected.current) {
@@ -87,6 +112,7 @@ export default function Page() {
           title='Churches List'
           action={<AddNewChurchSheet />}
           data={churches || []}
+             placeholder='Search by church name'
           columnKeys={[
             {
               name: 'name',
@@ -108,12 +134,21 @@ export default function Page() {
           searchKeys={['name']}
           pathName='d/churches'
           perPage={perPage}
-          onNextPage={() => setPage((prev) => prev + 1)}
+          onNextPage={() => updateParams({ page: currentPage + 1 })}
           hasNextPage={data?.next_page_url !== null}
-          onPreviousPage={() => setPage((prev) => prev - 1)}
+          onPreviousPage={() => updateParams({ page: Math.max(1, currentPage - 1) })}
           hasPreviousPage={data?.prev_page_url !== null}
-          page={page}
+          page={currentPage}
           totalPages={data?.last_page}
+          searchValue={searchValue}
+          onSearchChange={setSearchValue}
+          filterComponent={
+            <ChurchFilters
+              country={filters.country}
+              onCountryChange={(country) => updateParams({ country })}
+              onClear={clearFilters}
+            />
+          }
         />
       </div>
     </div>

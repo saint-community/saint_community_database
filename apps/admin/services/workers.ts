@@ -5,7 +5,7 @@ export interface Worker {
   profile_image?: any;
   church_id: number;
   fellowship_id: number;
-  cell_id: number;
+  cell_id: string;
   first_name: string;
   last_name: string;
   dob?: string;
@@ -18,6 +18,7 @@ export interface Worker {
   instagram_username?: string;
   house_address?: string;
   work_address?: string;
+  school_address?: string;
   member_since?: string;
   worker_since?: string;
   active: boolean;
@@ -36,21 +37,25 @@ export interface FormGenerateRequest {
   cell_id?: number;
 }
 
-export const getWorkers = async ({
-  church_id,
-  page = 1,
-}: {
+interface WorkerFilters {
   church_id?: string;
+  fellowship_id?: string;
+  cell_id?: string;
+  department_id?: string;
+  name?: string;
+  phone?: string;
+  gender?: string;
+  status?: string;
   page?: number;
-}) => {
-  const { data } = await ApiCaller.get(QUERY_PATHS.WORKERS, {
-    params: {
-      ...(church_id && { church_id }),
-      ...(page && { page }),
-    },
-  });
+}
 
-  return data?.data;
+export const getWorkers = async (filters: WorkerFilters = {}) => {
+  const { data } = await ApiCaller.get(QUERY_PATHS.WORKERS, {params: filters});
+
+  const result = data?.data || [];
+
+  
+  return result;
 };
 
 export const getWorkerById = async (id: string) => {

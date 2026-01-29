@@ -4,9 +4,8 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 export const useChurches = (page: number = 1) => {
   return useQuery({
-    queryKey: [QUERY_PATHS.CHURCHES, page],
-    queryFn: () => getChurches(page),
-    // select: (data) => data.data,
+    queryKey: [QUERY_PATHS.CHURCHES, page, searchFilters],
+    queryFn: () => getChurches(filters),
     placeholderData: keepPreviousData,
   });
 };
@@ -48,8 +47,10 @@ export const useChurchesOption = (enabled: boolean = true) => {
 
       return list.map((church: { id: string; name: string }) => ({
         label: church.name,
-        value: church.id,
+        value: String(church.id),
       }));
+      // console.log('useChurchesOption - mapped data:', mapped);
+      return mapped;
     },
   });
 };

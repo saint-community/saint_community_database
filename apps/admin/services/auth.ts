@@ -101,3 +101,22 @@ export const removeAccount = async (id: number) => {
   );
   return data;
 };
+
+export const switchChurch = async (churchId: number) => {
+  const { data } = await ApiCaller.get(
+    QUERY_PATHS.SWITCH_CHURCH.replace(':church_id', churchId.toString())
+  );
+
+  if (data?.success) {
+    const currentUser = localStorage.getItem(STORAGE_KEYS.USER);
+    if (currentUser) {
+      const user = JSON.parse(currentUser);
+      const updatedUser = await getAccountById(user.id.toString());
+      if (updatedUser?.data) {
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser.data));
+      }
+    }
+  }
+
+  return data;
+};

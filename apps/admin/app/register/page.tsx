@@ -30,6 +30,7 @@ import {
 } from "@workspace/ui/components/avatar";
 import { cn } from "@workspace/ui/lib/utils";
 import { formSchema } from "@/utils/registerSchema";
+import { isEmpty } from "lodash";
 
 const currentDate = new Date().toISOString();
 
@@ -168,6 +169,7 @@ function RegisterPageMain() {
       cell: cells?.[0]?.id?.toString() || "",
       homeAddress: "",
       workAddress: "",
+      schoolAddress: "",
       dateOfBirth: dayjs(currentDate).subtract(7, "years").toDate(),
       department: "",
       dateJoinedChurch: dayjs(currentDate).subtract(7, "days").toDate(),
@@ -215,6 +217,7 @@ function RegisterPageMain() {
       formData.append("instagram_username", "");
       formData.append("house_address", value.homeAddress);
       formData.append("work_address", value.workAddress);
+      formData.append("school_address", value.schoolAddress);
       formData.append(
         "member_since",
         value.dateJoinedChurch.toISOString().split("T")[0] ?? ""
@@ -568,6 +571,25 @@ function RegisterPageMain() {
           />
         </div>
 
+         <div className="space-y-2">
+          <Label htmlFor="schoolAddress">School Address</Label>
+          <form.Field
+            name="schoolAddress"
+            children={(field) => (
+              <>
+                <Textarea
+                  rows={6}
+                  id="schoolAddress"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder="Enter school address"
+                />
+                <FieldInfo field={field} />
+              </>
+            )}
+          />
+        </div>
+
         <div className="flex flex-initial gap-2 w-full justify-between ">
           <div className="space-y-2 w-1/2">
             <Label htmlFor="gender">
@@ -686,32 +708,34 @@ function RegisterPageMain() {
           />
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="cell">Cell <RequiredAsterisk /></Label>
-          <form.Field
-            name="cell"
-            children={(field) => (
-              <>
-                <Select
-                  value={field.state.value}
-                  onValueChange={field.handleChange}
-                >
-                  <SelectTrigger className="h-[48px]">
-                    <SelectValue placeholder="Select a cell" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cells?.map((cell: { id: number; name: string }) => (
-                      <SelectItem key={cell.id} value={`${cell.id}`}>
-                        {cell.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FieldInfo field={field} />
-              </>
-            )}
-          />
-        </div>
+        {!isEmpty(cells) && (
+          <div className="space-y-2">
+            <Label htmlFor="cell">Cell <RequiredAsterisk /></Label>
+            <form.Field
+              name="cell"
+              children={(field) => (
+                <>
+                  <Select
+                    value={field.state.value}
+                    onValueChange={field.handleChange}
+                  >
+                    <SelectTrigger className="h-[48px]">
+                      <SelectValue placeholder="Select a cell" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cells?.map((cell: { id: number; name: string }) => (
+                        <SelectItem key={cell.id} value={`${cell.id}`}>
+                          {cell.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldInfo field={field} />
+                </>
+              )}
+            />
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="department">Department</Label>

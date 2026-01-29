@@ -4,6 +4,7 @@ import { Input } from '@workspace/ui/components/input';
 import React, { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { generateWorkerForm } from '@/services/workers';
+import { getPrayerGroupsByChurchId } from '@/services/prayer_groups';
 import { toast } from '@workspace/ui/lib/sonner';
 import { useMe } from '@/hooks/useMe';
 import { CheckIcon, Copy, Loader2, PartyPopper } from 'lucide-react';
@@ -65,7 +66,7 @@ export const ListLinkSection = ({ list }: { list: IList[] }) => {
           />
           <Button
             className='h-[42px]'
-            onClick={() => {
+            onClick={async () => {
               if (generatedLink) {
                 navigator.clipboard.writeText(generatedLink);
                 toast.success('Link copied to clipboard');
@@ -77,11 +78,22 @@ export const ListLinkSection = ({ list }: { list: IList[] }) => {
               }
 
               if (data?.church_id) {
-                mutation.mutate({
-                  church_id: data?.church_id || 1,
-                  fellowship_id: data?.fellowship_id,
-                  cell_id: data?.cell_id,
-                });
+                try {
+                  const prayerGroups = await getPrayerGroupsByChurchId(data.church_id);
+                  if (!prayerGroups || prayerGroups.length === 0) {
+                    toast.error('Please create a prayer group first');
+                    return;
+                  }
+                  
+                  mutation.mutate({
+                    church_id: data?.church_id || 1,
+                    fellowship_id: data?.fellowship_id,
+                    cell_id: data?.cell_id,
+                  });
+                } catch (error) {
+                  console.error('Failed to check prayer groups:', error);
+                  toast.error('Failed to check prayer groups');
+                }
               } else {
                 toast.error('Cannot generate link');
               }

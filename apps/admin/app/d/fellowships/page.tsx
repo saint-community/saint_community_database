@@ -9,12 +9,51 @@ import { useMe } from '@/hooks/useMe';
 import { ROLES } from '@/utils/constants';
 import { ListCheck, User, Users2 } from 'lucide-react';
 import { redirect } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { useFellowshipUrlParams } from '@/hooks/useFellowshipUrlParams';
+import { useDebounced } from '@/hooks/useDebounced';
+import { FellowshipFilters } from '@/components/FellowshipFilters';
 
 export default function Page() {
   const { data: user } = useMe();
-  const [page, setPage] = useState(1);
-  const { data } = useFellowships(user?.church_id?.toString(), page);
+  const { filters, updateParams, clearFilters } = useFellowshipUrlParams();
+  
+  // Internal state for search input (for immediate UI feedback)
+  const [searchValue, setSearchValue] = useState(filters.name || '');
+  
+  // Debounce search input to reduce API calls
+  const debouncedSearch = useDebounced(searchValue, 300);
+  
+  // Update URL when debounced search changes
+  useEffect(() => {
+    if (debouncedSearch !== filters.name) {
+      updateParams({ name: debouncedSearch || undefined });
+    }
+  }, [debouncedSearch, filters.name, updateParams]);
+  
+  // Sync search input with URL params (for browser back/forward)
+  useEffect(() => {
+    if (filters.name !== searchValue) {
+      setSearchValue(filters.name || '');
+    }
+  }, [filters.name]);
+
+  // For non-admin users, always filter by their church
+  const effectiveFilters = useMemo(() => {
+    const baseFilters = { ...filters };
+    
+    // If user is not admin and has no church filter, use their church
+    if (user && 
+        ![ROLES.ADMIN, ROLES.PASTOR].includes(user.role) && 
+        !baseFilters.church && 
+        user.church_id) {
+      baseFilters.church = user.church_id.toString();
+    }
+    
+    return baseFilters;
+  }, [filters, user]);
+
+  const { data } = useFellowships(effectiveFilters);
 
   const isAdmin =
     user?.role === ROLES.ADMIN ||
@@ -26,6 +65,7 @@ export default function Page() {
   }
 
   const fellowships = data?.data || [];
+  const currentPage = filters.page || 1;
 
   const { data: stats } = useStatistics();
 
@@ -66,6 +106,7 @@ export default function Page() {
           title='Fellowships List'
           action={<AddNewFellowshipSheet />}
           data={fellowships}
+          placeholder='Search by fellowship name'
           columnKeys={[
             {
               name: 'name',
@@ -79,12 +120,25 @@ export default function Page() {
           searchKeys={['name']}
           pathName='d/fellowships'
           perPage={perPage}
-          onNextPage={() => setPage((prev) => prev + 1)}
+          
+          onNextPage={() => updateParams({ page: currentPage + 1 })}
           hasNextPage={data?.next_page_url !== null}
-          onPreviousPage={() => setPage((prev) => prev - 1)}
+          onPreviousPage={() => updateParams({ page: Math.max(1, currentPage - 1) })}
           hasPreviousPage={data?.prev_page_url !== null}
-          page={page}
+          page={currentPage}
           totalPages={data?.last_page}
+          searchValue={searchValue}
+          onSearchChange={setSearchValue}
+          filterComponent={
+            // Only show church filter for ADMIN and PASTOR roles
+            (user?.role === ROLES.ADMIN || user?.role === ROLES.PASTOR) || user?.role === ROLES.CHURCH_PASTOR ? (
+              <FellowshipFilters
+                church={filters.church}
+                onChurchChange={(church) => updateParams({ church })}
+                onClear={clearFilters}
+              />
+            ) : undefined
+          }
         />
       </div>
     </div>

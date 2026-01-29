@@ -1,13 +1,20 @@
 import { getChurchById } from '@/services/churches';
-import { getFellowshipById, getFellowships } from '@/services/fellowships';
+import { getFellowshipById, getFellowships, getFellowshipsOptions } from '@/services/fellowships';
 import { QUERY_PATHS } from '@/utils/constants';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
-export const useFellowships = (churchId?: string, page: number = 1) => {
+interface FellowshipFilters {
+  page?: number;
+  name?: string;
+  church?: string;
+}
+
+export const useFellowships = (filters: FellowshipFilters = {}) => {
+  const { page = 1, ...searchFilters } = filters;
+  
   return useQuery({
-    queryKey: [QUERY_PATHS.FELLOWSHIPS, churchId, page],
-    queryFn: () => getFellowships(churchId, page),
-    // select: (data) => data.data,
+    queryKey: [QUERY_PATHS.FELLOWSHIPS, page, searchFilters],
+    queryFn: () => getFellowships(filters),
     placeholderData: keepPreviousData,
   });
 };
@@ -28,12 +35,24 @@ export const useFellowshipById = (id: string) => {
 
 export const useFellowshipsOption = (churchId?: string) => {
   return useQuery({
-    queryKey: [QUERY_PATHS.FELLOWSHIPS, churchId],
-    queryFn: () => getChurchById(churchId || ''),
-    select: (data) =>
-      data?.fellowships?.map((fellowship: { id: string; name: string }) => ({
-        value: fellowship.id,
+    queryKey: [QUERY_PATHS.FELLOWSHIPS, 'options', churchId],
+    queryFn: () => getFellowshipsOptions(churchId),
+    select: (data) => {
+      // console.log('Fellowship data received:', data);
+      
+      // Handle paginated response structure
+      const fellowships = data?.data || data;
+      
+      if (!Array.isArray(fellowships)) {
+        // console.log('Fellowship data is not an array:', fellowships);
+        return [];
+      }
+      
+      return fellowships.map((fellowship: { id: string | number; name: string }) => ({
+        value: String(fellowship.id),
         label: fellowship.name,
-      })),
+      }));
+    },
+    enabled: true, // Always enabled to support both filtered and unfiltered scenarios
   });
 };
