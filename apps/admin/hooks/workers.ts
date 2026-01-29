@@ -5,20 +5,26 @@ import {
   useInfiniteQuery,
   useQuery,
 } from '@tanstack/react-query';
+import _ from 'lodash';
 
-export const useWorkers = (
-  {
-    church_id,
-    page,
-  }: {
-    page?: number;
-    church_id?: string;
-  } = {} as any
-) => {
+interface WorkerFilters {
+  church_id?: string;
+  fellowship_id?: string;
+  cell_id?: string;
+  department_id?: string;
+  name?: string;
+  phone?: string;
+  gender?: string;
+  status?: string;
+  page?: number;
+}
+
+export const useWorkers = (filters: WorkerFilters = {}) => {
+ const cleanedFilters = _.omitBy(filters, (value) => value === '' || value === undefined);
+  
   return useQuery({
-    queryKey: [QUERY_PATHS.WORKERS, church_id, page],
-    queryFn: () => getWorkers({ church_id, page }),
-    // select: (data) => data.data,
+    queryKey: [QUERY_PATHS.WORKERS, cleanedFilters],
+    queryFn: () => getWorkers(cleanedFilters),
     placeholderData: keepPreviousData,
   });
 };

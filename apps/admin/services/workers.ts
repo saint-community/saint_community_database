@@ -37,21 +37,25 @@ export interface FormGenerateRequest {
   cell_id?: number;
 }
 
-export const getWorkers = async ({
-  church_id,
-  page = 1,
-}: {
+interface WorkerFilters {
   church_id?: string;
+  fellowship_id?: string;
+  cell_id?: string;
+  department_id?: string;
+  name?: string;
+  phone?: string;
+  gender?: string;
+  status?: string;
   page?: number;
-}) => {
-  const { data } = await ApiCaller.get(QUERY_PATHS.WORKERS, {
-    params: {
-      ...(church_id && { church_id }),
-      ...(page && { page }),
-    },
-  });
+}
 
-  return data?.data;
+export const getWorkers = async (filters: WorkerFilters = {}) => {
+  const { data } = await ApiCaller.get(QUERY_PATHS.WORKERS, {params: filters});
+
+  const result = data?.data || [];
+
+  
+  return result;
 };
 
 export const getWorkerById = async (id: string) => {
