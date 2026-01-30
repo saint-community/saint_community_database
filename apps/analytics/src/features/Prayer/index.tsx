@@ -134,7 +134,7 @@ import {
   CELLS,
 } from '../../data/lists';
 import { getMemberGroup } from '../../utils/helpers';
-const PrayerModule = () => {
+const PrayerModule = ({ user }: { user: any }) => {
   const [activeTab, setActiveTab] = useState<
     'Overview' | 'Prayer Meetings' | 'Prayer Submissions'
   >('Overview');
@@ -183,7 +183,7 @@ const PrayerModule = () => {
 
   const fetchAnalytics = async () => {
     try {
-      const data = await prayerGroupAPI.getAnalytics();
+      const data = await prayerGroupAPI.getAnalytics(user?.church_id);
       // Ensure graph data has at least empty structure if missing
       if (!data.graphData || data.graphData.length === 0) {
         data.graphData = [
@@ -202,12 +202,23 @@ const PrayerModule = () => {
 
   useEffect(() => {
     fetchAnalytics();
-  }, []);
+  }, [user?.church_id]);
 
   useEffect(() => {
     const fetchGroups = async () => {
+      let groups = [];
       try {
-        const groups = await prayerGroupAPI.getAllMeetings();
+        try {
+          groups = await prayerGroupAPI.getAllMeetings(user?.church_id);
+        } catch (err: any) {
+          if (err.response && (err.response.status === 403 || err.response.status === 401)) {
+            console.warn("fetchGroups: getAllMeetings failed (401/403), falling back to getMyGroups");
+            groups = await prayerGroupAPI.getMyGroups();
+          } else {
+            throw err;
+          }
+        }
+
         if (groups && groups.length > 0) {
           const periods = groups.map((g: any) => `${g.prayergroup_day} ${g.period}`);
           const uniquePeriods = Array.from(new Set(periods));
@@ -243,7 +254,7 @@ const PrayerModule = () => {
       }
     };
     fetchGroups();
-  }, []);
+  }, [user?.church_id]);
 
   const monthsList = [
     'January 2024',
@@ -260,28 +271,93 @@ const PrayerModule = () => {
     'December 2024',
   ];
 
-  // Filtered members based on fellowship and cell
-  const suggestedMembers = useMemo(() => {
-    let filtered = MEMBERS_LIST.map((m) => ({
-      name: m,
-      fellowship: getMemberGroup(m),
-      cell: getMemberGroup(m),
-    })); // Mock mapping
-    if (selectedFellowships.length > 0) {
-      filtered = filtered.filter((m) =>
-        selectedFellowships.includes(m.fellowship)
-      );
-    }
-    if (selectedCells.length > 0) {
-      filtered = filtered.filter((m) => selectedCells.includes(m.cell));
-    }
-    if (participantSearch.trim()) {
-      filtered = filtered.filter((m) =>
-        m.name.toLowerCase().includes(participantSearch.toLowerCase())
-      );
-    }
-    return filtered;
-  }, [selectedFellowships, selectedCells, participantSearch]);
+  // Data Lists State
+  const [fellowshipsList, setFellowshipsList] = useState<string[]>([]);
+  const [cellsList, setCellsList] = useState<string[]>([]);
+  const [suggestedMembers, setSuggestedMembers] = useState<any[]>([]);
+  const [isSearchingMembers, setIsSearchingMembers] = useState(false);
+
+  // Fetch Structure Data (Fellowships & Cells)
+  useEffect(() => {
+    const fetchStructure = async () => {
+      try {
+        const [fs, cs, churches] = await Promise.all([
+          structureAPI.getFellowships().catch(e => { console.warn("Fellowships fetch failed", e); return []; }),
+          structureAPI.getCells().catch(e => { console.warn("Cells fetch failed", e); return []; }),
+          structureAPI.getChurches().catch(e => { console.warn("Churches fetch failed", e); return []; })
+        ]);
+
+        // Find Isolo Church ID
+        const isoloChurch = churches?.find((c: any) => c.name?.includes('Isolo') || c.name?.includes('ISOLO'));
+        const isoloId = isoloChurch?.id || isoloChurch?._id;
+
+        if (isoloId) {
+          // Filter by Church ID
+          const filteredFellowships = fs?.filter((f: any) => f.church_id === isoloId || f.church_id == isoloId) || [];
+          const filteredCells = cs?.filter((c: any) => c.church_id === isoloId || c.church_id == isoloId) || [];
+
+          setFellowshipsList(filteredFellowships);
+          setCellsList(filteredCells);
+        } else {
+          console.warn("Isolo Church not found in fetchStructure, defaulting to empty or full lists");
+          // Safer to show nothing if we can't filter, to avoid leaking other church data? 
+          // Or show all? User complained about Epe showing up. 
+          // If API fails, lists are empty anyway.
+          // If churches fetch fails but fs/cs succeeds, we can't filter.
+          // Best effort:
+          setFellowshipsList(fs || []);
+          setCellsList(cs || []);
+        }
+
+      } catch (error) {
+        console.error("Critical error in fetchStructure, swallowing to prevent crash", error);
+        setFellowshipsList([]);
+        setCellsList([]);
+      }
+    };
+    fetchStructure();
+  }, []);
+
+  // Backend Member Search
+  useEffect(() => {
+    const searchMembers = async () => {
+      if (!participantSearch.trim()) {
+        setSuggestedMembers([]);
+        return;
+      }
+
+      setIsSearchingMembers(true);
+      try {
+        // Construct query filters
+        const filters: any = {};
+        if (selectedFellowships.length > 0) filters.fellowship = selectedFellowships;
+        if (selectedCells.length > 0) filters.cell = selectedCells;
+
+        const results = await memberAPI.search(participantSearch, filters);
+
+        // Map backend results to UI format if needed
+        const mapped = results.map((m: any) => ({
+          name: `${m.firstname} ${m.lastname}`,
+          fellowship: m.fellowship || 'Unknown Fellowship',
+          cell: m.cell || 'Unknown Cell',
+          id: m._id
+        }));
+
+        setSuggestedMembers(mapped);
+      } catch (error) {
+        console.error("Failed to search members", error);
+      } finally {
+        setIsSearchingMembers(false);
+      }
+    };
+
+    // Debounce search
+    const timeoutId = setTimeout(() => {
+      searchMembers();
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [participantSearch, selectedFellowships, selectedCells]);
 
   // Mock Prayer Meetings Data
   // Prayer Meetings Data
@@ -400,9 +476,10 @@ const PrayerModule = () => {
 
       // STRATEGY: Try to get "All". If that fails (403), try "My Groups". 
       // This handles the "Leader restricted" case automatically.
+      // Optimize fetch based on role
       let data = [];
       try {
-        data = await prayerGroupAPI.getAllMeetings();
+        data = await prayerGroupAPI.getAllMeetings(user?.church_id);
       } catch (err: any) {
         console.warn("getAllMeetings failed, trying getMyGroups...", err);
         if (err.response && (err.response.status === 403 || err.response.status === 401)) {
@@ -454,7 +531,8 @@ const PrayerModule = () => {
     try {
       setIsLoadingSubmissions(true);
       // data here is a list of PrayerRecord objects
-      const data = await prayerGroupAPI.getAllRecords();
+      const data = await prayerGroupAPI.getAllRecords(user?.church_id);
+
 
       // Map PrayerRecord to ParticipationSubmission interface
       setSubmissions(groupSubmissions(data));
@@ -511,12 +589,12 @@ const PrayerModule = () => {
 
     // Final pass to determine group status
     Object.values(groups).forEach(group => {
-      const allApproved = group.participants.every(p => p.status === 'Approved');
+      const hasPending = group.participants.some(p => !p.status || p.status === 'Pending' || p.status === 'pending');
       const allRejected = group.participants.every(p => p.status === 'Rejected');
 
-      if (allApproved) group.status = 'Approved';
+      if (hasPending) group.status = 'Pending';
       else if (allRejected) group.status = 'Rejected';
-      else group.status = 'Pending';
+      else group.status = 'Approved';
     });
 
     return Object.values(groups);
@@ -531,33 +609,80 @@ const PrayerModule = () => {
     if (activeTab === 'Prayer Submissions') {
       fetchSubmissions();
     }
-  }, [activeTab, meetingsFilter]);
+  }, [activeTab, meetingsFilter, user?.church_id]);
 
-  const handleApprove = async (id: string, ids?: string[]) => {
+  const handleApprove = async (submissionId: string, recordIds?: string[]) => {
     try {
-      const targetIds = ids || [id];
+      // recordIds are the IDs of the specific attendees being approved (or all if undefined)
+      // If recordIds is missing, we might be approving the whole batch? Current usage passes specific IDs.
+      const targetIds = recordIds || [submissionId];
+
       await prayerGroupAPI.updateRecordStatus(targetIds, 'Approved');
 
-      // Update local state to reflect change immediately
+      // Update local state: Find the submission, update its participants, and recalculate its aggregate status.
       setSubmissions((prev) =>
-        prev.map((s) => (targetIds.includes(s.id) ? { ...s, status: 'Approved' } : s))
+        prev.map((s) => {
+          // Only update the submission group we are working on (optimization, though IDs are unique globally usually)
+          // Actually, targetIds might belong to submission 's'. 
+          // Check if ANY of the targetIds are in this submission's participants?
+          // Or simpler: Update ALL participants across ALL submissions whose ID is in targetIds.
+
+          const updatedParticipants = s.participants.map((p: any) =>
+            targetIds.includes(p.id) ? { ...p, status: 'Approved' } : p
+          );
+
+          // Check if this submission was affected
+          if (updatedParticipants === s.participants) return s; // No change
+
+          // Recalculate Group Status
+          const hasPending = updatedParticipants.some((p: any) => !p.status || p.status === 'Pending' || p.status === 'pending');
+          const allRejected = updatedParticipants.every((p: any) => p.status === 'Rejected');
+
+          let newStatus = 'Approved';
+          if (hasPending) newStatus = 'Pending';
+          else if (allRejected) newStatus = 'Rejected';
+
+          return {
+            ...s,
+            participants: updatedParticipants,
+            status: newStatus
+          };
+        })
       );
 
       setReviewingSubmission(null);
-      // Optionally refresh from server to be sure
-      // fetchSubmissions(); 
+      // fetchSubmissions(); // Re-fetch to be 100% sure if needed, but optimistic is fast.
     } catch (error) {
       console.error("Failed to approve submission", error);
     }
   };
 
-  const handleReject = async (id: string, ids?: string[]) => {
+  const handleReject = async (submissionId: string, recordIds?: string[]) => {
     try {
-      const targetIds = ids || [id];
+      const targetIds = recordIds || [submissionId];
       await prayerGroupAPI.updateRecordStatus(targetIds, 'Rejected');
 
       setSubmissions((prev) =>
-        prev.map((s) => (targetIds.includes(s.id) ? { ...s, status: 'Rejected' } : s))
+        prev.map((s) => {
+          const updatedParticipants = s.participants.map((p: any) =>
+            targetIds.includes(p.id) ? { ...p, status: 'Rejected' } : p
+          );
+
+          if (updatedParticipants === s.participants) return s;
+
+          const hasPending = updatedParticipants.some((p: any) => !p.status || p.status === 'Pending' || p.status === 'pending');
+          const allRejected = updatedParticipants.every((p: any) => p.status === 'Rejected');
+          let newStatus = 'Approved';
+
+          if (hasPending) newStatus = 'Pending';
+          else if (allRejected) newStatus = 'Rejected';
+
+          return {
+            ...s,
+            participants: updatedParticipants,
+            status: newStatus
+          };
+        })
       );
 
       setReviewingSubmission(null);
@@ -1242,19 +1367,19 @@ const PrayerModule = () => {
                 Select Fellowships
               </label>
               <div className='flex flex-wrap gap-2'>
-                {FELLOWSHIPS.map((f) => (
+                {fellowshipsList.map((f: any) => (
                   <button
-                    key={f}
+                    key={f.id || f.name}
                     onClick={() =>
                       toggleSelection(
                         selectedFellowships,
                         setSelectedFellowships,
-                        f
+                        f.name
                       )
                     }
-                    className={`px-4 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${selectedFellowships.includes(f) ? 'bg-[#1A1C1E] text-white border-[#1A1C1E] shadow-lg' : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'}`}
+                    className={`px-4 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${selectedFellowships.includes(f.name) ? 'bg-[#1A1C1E] text-white border-[#1A1C1E] shadow-lg' : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'}`}
                   >
-                    {f}
+                    {f.name}
                   </button>
                 ))}
               </div>
@@ -1264,15 +1389,15 @@ const PrayerModule = () => {
                 Select Cells
               </label>
               <div className='flex flex-wrap gap-2'>
-                {CELLS.map((c) => (
+                {cellsList.map((c: any) => (
                   <button
-                    key={c}
+                    key={c.id || c.name}
                     onClick={() =>
-                      toggleSelection(selectedCells, setSelectedCells, c)
+                      toggleSelection(selectedCells, setSelectedCells, c.name)
                     }
-                    className={`px-4 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${selectedCells.includes(c) ? 'bg-[#1A1C1E] text-white border-[#1A1C1E] shadow-lg' : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'}`}
+                    className={`px-4 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${selectedCells.includes(c.name) ? 'bg-[#1A1C1E] text-white border-[#1A1C1E] shadow-lg' : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'}`}
                   >
-                    {c}
+                    {c.name}
                   </button>
                 ))}
               </div>
@@ -1406,106 +1531,12 @@ const PrayerModule = () => {
           title='Approve Prayer Submission'
           size='lg'
         >
-          <div className='p-10 space-y-10'>
-            <div className='flex justify-between items-start'>
-              <div>
-                <h4 className='text-3xl font-black text-[#1A1C1E] tracking-tight uppercase'>
-                  {reviewingSubmission.title}
-                </h4>
-                <p className='text-sm font-bold text-slate-400 uppercase tracking-widest mt-1'>
-                  {reviewingSubmission.date}
-                </p>
-              </div>
-              <div className='text-right'>
-                <p className='text-[10px] font-black uppercase text-slate-400'>
-                  Submitted By
-                </p>
-                <p className='text-sm font-bold text-[#1A1C1E]'>
-                  {reviewingSubmission.submittedBy}
-                </p>
-              </div>
-            </div>
-
-            <div className='flex items-center justify-between p-6 bg-yellow-50 rounded-2xl border border-yellow-100'>
-              <div className='flex items-center gap-4'>
-                <Info className='text-yellow-500' size={24} />
-                <div>
-                  <p className='text-xs font-black text-yellow-600 uppercase'>
-                    Reviewing Pending Batch
-                  </p>
-                  <p className='text-[11px] font-medium text-yellow-500'>
-                    Carefully verify participants before approving for database
-                    sync.
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => handleApprove(reviewingSubmission.id)}
-                className='px-6 py-3 bg-white text-[#1A1C1E] rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-[#CCA856] hover:text-white transition-all'
-              >
-                Mark All Present
-              </button>
-            </div>
-
-            <div className='space-y-4'>
-              <p className='text-[10px] font-black uppercase tracking-widest text-slate-400'>
-                {reviewingSubmission.participants.length} Participants Selected
-              </p>
-              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-                {reviewingSubmission.participants.map((p: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className='flex items-center justify-between p-6 bg-white border border-slate-100 rounded-xl hover:border-[#CCA856] transition-all cursor-pointer group'
-                  >
-                    <div className='flex items-center gap-4'>
-                      <div className='w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center text-slate-300 font-black text-[10px] group-hover:bg-[#CCA856] group-hover:text-white transition-all'>
-                        {p.name[0]}
-                      </div>
-                      <div>
-                        <p className='text-sm font-black text-[#1A1C1E]'>
-                          {p.name}
-                        </p>
-                        <p className='text-[10px] font-bold text-slate-400 uppercase tracking-tighter'>
-                          {p.cell}
-                        </p>
-                      </div>
-                    </div>
-                    <div className='flex items-center gap-3'>
-                      <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest ${p.status === 'Approved' ? 'bg-green-50 text-green-500' :
-                        p.status === 'Rejected' ? 'bg-red-50 text-red-500' :
-                          'bg-yellow-50 text-yellow-500'
-                        }`}>
-                        {p.status || 'Pending'}
-                      </span>
-                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${p.status === 'Approved' ? 'border-green-100 bg-green-50 text-green-500' :
-                        'border-slate-100 text-slate-300'
-                        }`}>
-                        <Check size={14} />
-                      </div>
-                    </div>
-                  </div>
-
-                ))}
-              </div>
-            </div>
-
-            <div className='flex gap-6 pt-4'>
-              <button
-                onClick={() => handleReject(reviewingSubmission.id, reviewingSubmission.ids)}
-                className='flex-1 py-5 border border-slate-100 rounded-xl text-xs font-black uppercase tracking-[0.2em] text-red-400 hover:bg-red-50 hover:border-red-100 transition-all'
-              >
-                Reject Entire Batch
-              </button>
-              <button
-                onClick={() => handleApprove(reviewingSubmission.id, reviewingSubmission.ids)}
-                className='flex-1 py-5 bg-[#1A1C1E] text-white rounded-xl text-xs font-black uppercase tracking-[0.2em] shadow-2xl shadow-black/20 hover:bg-[#CCA856] transition-all'
-              >
-                Approve {reviewingSubmission.participants.length} Selected
-                Entries
-              </button>
-
-            </div>
-          </div>
+          <ReviewSubmissionContent
+            submission={reviewingSubmission}
+            onClose={() => setReviewingSubmission(null)}
+            onApprove={handleApprove}
+            onReject={handleReject}
+          />
         </Modal>
       )}
 
@@ -1595,4 +1626,215 @@ const PrayerModule = () => {
     </div>
   );
 };
+
+const ReviewSubmissionContent = ({ submission, onClose, onApprove, onReject }: any) => {
+  const [checkedParticipants, setCheckedParticipants] = useState<string[]>([]);
+  const [duplicates, setDuplicates] = useState<string[]>([]);
+
+  // Split participants
+  const pendingParticipants = useMemo(() =>
+    submission?.participants?.filter((p: any) => p.status !== 'Approved') || [],
+    [submission]);
+
+  const approvedParticipants = useMemo(() =>
+    submission?.participants?.filter((p: any) => p.status === 'Approved') || [],
+    [submission]);
+
+  useEffect(() => {
+    // 1. Initialize checked list (check all PENDING items by default)
+    if (pendingParticipants.length > 0) {
+      setCheckedParticipants(pendingParticipants.map((p: any) => p.id));
+    }
+
+    // 2. Identify Duplicates
+    if (submission?.participants) {
+      const idCounts: Record<string, number> = {};
+      const duplicateIds: string[] = [];
+
+      submission.participants.forEach((p: any) => {
+        const key = p.id;
+        if (!key) return;
+        idCounts[key] = (idCounts[key] || 0) + 1;
+      });
+
+      Object.keys(idCounts).forEach(key => {
+        if (idCounts[key] > 1) duplicateIds.push(key);
+      });
+      setDuplicates(duplicateIds);
+    }
+  }, [submission, pendingParticipants]);
+
+  const toggleParticipant = (id: string, status: string) => {
+    if (status === 'Approved') return;
+
+    setCheckedParticipants(prev =>
+      prev.includes(id)
+        ? prev.filter(pId => pId !== id)
+        : [...prev, id]
+    );
+  };
+
+  const handleToggleAll = () => {
+    const allPendingSelected = pendingParticipants.every((p: any) => checkedParticipants.includes(p.id));
+
+    if (allPendingSelected) {
+      setCheckedParticipants([]);
+    } else {
+      setCheckedParticipants(pendingParticipants.map((p: any) => p.id));
+    }
+  };
+
+  const areAllSelected = pendingParticipants.length > 0 &&
+    pendingParticipants.every((p: any) => checkedParticipants.includes(p.id));
+
+  return (
+    <div className='p-10 space-y-10'>
+      <div className='flex justify-between items-start'>
+        <div>
+          <h4 className='text-3xl font-black text-[#1A1C1E] tracking-tight uppercase'>
+            {submission.title}
+          </h4>
+          <p className='text-sm font-bold text-slate-400 uppercase tracking-widest mt-1'>
+            {submission.date}
+          </p>
+        </div>
+        <div className='text-right'>
+          <p className='text-[10px] font-black uppercase text-slate-400'>
+            Submitted By
+          </p>
+          <p className='text-sm font-bold text-[#1A1C1E]'>
+            {submission.submittedBy}
+          </p>
+        </div>
+      </div>
+
+      <div className='flex items-center justify-between p-6 bg-yellow-50 rounded-2xl border border-yellow-100'>
+        <div className='flex items-center gap-4'>
+          <Info className='text-yellow-500' size={24} />
+          <div>
+            <p className='text-xs font-black text-yellow-600 uppercase'>
+              Reviewing Pending Batch
+            </p>
+            <p className='text-[11px] font-medium text-yellow-500'>
+              Carefully verify participants before approving for database
+              sync.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={handleToggleAll}
+          className='px-6 py-3 bg-white text-[#1A1C1E] rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-[#CCA856] hover:text-white transition-all w-48'
+        >
+          {areAllSelected ? 'Unselect All' : 'Mark All Present'}
+        </button>
+      </div>
+
+      <div className='space-y-4'>
+        <p className='text-[10px] font-black uppercase tracking-widest text-slate-400'>
+          {checkedParticipants.length} Participants Selected
+        </p>
+
+        {/* PENDING / REJECTED GRID */}
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+          {pendingParticipants.map((p: any, idx: number) => {
+            const isChecked = checkedParticipants.includes(p.id);
+            const isDuplicate = duplicates.includes(p.id);
+
+            return (
+              <div
+                key={p.id || idx}
+                onClick={() => toggleParticipant(p.id, p.status)}
+                className={`first-letter:flex items-center justify-between p-6 bg-white border rounded-xl transition-all group relative cursor-pointer
+                  ${isChecked ? 'border-[#CCA856] ring-1 ring-[#CCA856]/20' : 'border-slate-100 hover:border-slate-200'}
+                  ${isDuplicate ? 'ring-2 ring-red-500/10 border-red-500/50' : ''}`}
+              >
+                {isDuplicate && (
+                  <div className="absolute -top-2 -right-2 px-2 py-1 bg-red-500 text-white text-[8px] font-black uppercase tracking-widest rounded-md shadow-sm z-10">
+                    Duplicate
+                  </div>
+                )}
+
+                <div className='flex items-center justify-between w-full'>
+                  <div className='flex items-center gap-4'>
+                    <div>
+                      <p className='text-sm font-black text-[#1A1C1E]'>
+                        {p.name}
+                      </p>
+                      <p className='text-[10px] font-bold text-slate-400 uppercase tracking-tighter'>
+                        {p.cell}
+                      </p>
+                    </div>
+                  </div>
+                  <div className='flex items-center gap-3'>
+                    <span className={`px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest ${p.status === 'Rejected' ? 'bg-red-50 text-red-500' : 'bg-yellow-50 text-yellow-500'}`}>
+                      {p.status || 'Pending'}
+                    </span>
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all 
+                        ${isChecked ? 'border-green-500 bg-green-500 text-white' : 'border-slate-200 text-transparent'}`}>
+                      <Check size={14} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* APPROVED SECTION */}
+      {approvedParticipants.length > 0 && (
+        <div className='space-y-4 pt-6 border-t border-slate-100'>
+          <p className='text-[10px] font-black uppercase tracking-widest text-[#1A1C1E]'>
+            Approved Participants ({approvedParticipants.length})
+          </p>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+            {approvedParticipants.map((p: any, idx: number) => (
+              <div
+                key={p.id || idx}
+                className='flex items-center justify-between p-6 bg-slate-50 border border-slate-100 rounded-xl opacity-60'
+              >
+                <div className='flex items-center gap-4'>
+                  <div>
+                    <p className='text-sm font-black text-[#1A1C1E]'>
+                      {p.name}
+                    </p>
+                    <p className='text-[10px] font-bold text-slate-400 uppercase tracking-tighter'>
+                      {p.cell}
+                    </p>
+                  </div>
+                </div>
+                <span className='px-2 py-1 rounded text-[8px] font-black uppercase tracking-widest bg-green-50 text-green-500'>
+                  Approved
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className='flex gap-6 pt-4'>
+        <button
+          disabled={checkedParticipants.length === 0}
+          onClick={() => onReject(submission.id, checkedParticipants)}
+          className={`flex-1 py-4 px-6 border border-slate-100 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all
+            ${checkedParticipants.length > 0 ? 'text-red-400 hover:bg-red-50 hover:border-red-100' : 'text-slate-300 cursor-not-allowed'}`}
+        >
+          Reject {checkedParticipants.length > 0 ? `${checkedParticipants.length} Selected` : 'Selection'}
+        </button>
+        <button
+          disabled={checkedParticipants.length === 0}
+          onClick={() => onApprove(submission.id, checkedParticipants)}
+          className={`flex-1 py-4 px-6 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-black/10 transition-all
+            ${checkedParticipants.length > 0
+              ? 'bg-[#1A1C1E] text-white hover:bg-[#CCA856]'
+              : 'bg-slate-100 text-slate-300 cursor-not-allowed shadow-none'}`}
+        >
+          Approve {checkedParticipants.length > 0 ? `${checkedParticipants.length} Selected` : 'Selection'}
+        </button>
+
+      </div>
+    </div>
+  );
+};
+
 export default PrayerModule;

@@ -57,14 +57,23 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}, isSanctum
     });
 
     if (!response.ok) {
+        // Handle 401 without auto-reloading to allow fallback logic
         if (response.status === 401) {
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('sanctum_token');
-            window.location.reload();
-            throw new Error('Session expired. Redirecting to login...');
+            console.warn(`Unauthorized access to ${endpoint} (Sanctum: ${isSanctum})`);
+            // We do NOT reload here. We allow the error to bubble up.
         }
-        const error = await response.json().catch(() => ({ message: 'Request failed' }));
-        throw new Error(error.message || `HTTP ${response.status}`);
+
+        const errorBody = await response.json().catch(() => ({ message: 'Request failed' }));
+        const error: any = new Error(errorBody.message || `HTTP ${response.status}`);
+
+        // Attach response details so callers can check status (e.g. for fallbacks)
+        error.response = {
+            status: response.status,
+            data: errorBody
+        };
+        error.status = response.status;
+
+        throw error;
     }
 
     const text = await response.text();
@@ -426,9 +435,10 @@ export const prayerGroupAPI = {
     },
 
     // Admin/Leader: Get all prayer meetings for the church
-    getAllMeetings: async (): Promise<any[]> => {
+    getAllMeetings: async (churchId?: number): Promise<any[]> => {
         try {
-            const response = await api.get('/admin/prayer-group/meeting/all');
+            const query = churchId ? `?church_id=${churchId}` : '';
+            const response = await api.get(`/admin/prayer-group/meeting/all${query}`);
             console.log('getAllMeetings RAW response:', response);
             console.log('getAllMeetings data.data:', response.data?.data);
             return response.data || [];
@@ -459,18 +469,23 @@ export const prayerGroupAPI = {
     },
 
     // Admin/Leader: Get attendance records (history)
-    getRecords: async (prayerGroupId?: string): Promise<any[]> => {
+    getRecords: async (prayerGroupId?: string, churchId?: number): Promise<any[]> => {
         let endpoint = '/admin/prayer-group/record';
-        if (prayerGroupId) {
-            endpoint += `?prayergroup_id=${prayerGroupId}`;
+        const params = [];
+        if (prayerGroupId) params.push(`prayergroup_id=${prayerGroupId}`);
+        if (churchId) params.push(`church_id=${churchId}`);
+
+        if (params.length > 0) {
+            endpoint += `?${params.join('&')}`;
         }
         const response = await api.get(endpoint);
         return response.data || [];
     },
 
     // Admin: Get ALL records for church (History/Past Tab)
-    getAllRecords: async (): Promise<any[]> => {
-        const response = await api.get('/admin/prayer-group/records/all');
+    getAllRecords: async (churchId?: number): Promise<any[]> => {
+        const query = churchId ? `?church_id=${churchId}` : '';
+        const response = await api.get(`/admin/prayer-group/records/all${query}`);
         return response.data || [];
     },
 
@@ -483,8 +498,9 @@ export const prayerGroupAPI = {
     },
 
     // Analytics
-    getAnalytics: async (): Promise<any> => {
-        const response = await api.get('/admin/prayer-group/analytics/overview');
+    getAnalytics: async (churchId?: number): Promise<any> => {
+        const query = churchId ? `?church_id=${churchId}` : '';
+        const response = await api.get(`/admin/prayer-group/analytics/overview${query}`);
         return response.data || {};
     },
 
@@ -675,6 +691,21 @@ export const authAPI = {
 };
 
 // ============================================================================
+// ACCOUNT API FUNCTIONS
+// ============================================================================
+
+export const accountAPI = {
+    getProfile: async (userId: string | number): Promise<any> => {
+        const response = await scApi.get(`/account/${userId}`);
+        return response.data || {};
+    },
+
+    switchChurch: async (churchId: string | number): Promise<any> => {
+        return await scApi.get(`/account/church/switch/${churchId}`);
+    }
+};
+
+// ============================================================================
 // STRUCTURE API FUNCTIONS (Churches, Fellowships, Cells)
 // ============================================================================
 
@@ -746,6 +777,56 @@ export const memberAPI = {
         if (mapped.length > 0) console.log('DEBUG: First mapped member:', mapped[0]);
         return mapped;
     },
+
+    getRecords: async (filters: any): Promise<any[]> => {
+        const response = await api.post('/member/records', filters);
+
+        let data: any[] = [];
+        if (Array.isArray(response)) {
+            data = response;
+        } else if (response && response.data && Array.isArray(response.data)) {
+            data = response.data;
+        }
+
+        return data.map((m: any) => ({
+            ...m,
+            id: m.id || m._id,
+            name: m.name || m.full_name || 'Unknown Member'
+        }));
+    },
+
+    search: async (query: string, filters?: any): Promise<any[]> => {
+        // Construct query parameters
+        let endpoint = `/member/search?q=${encodeURIComponent(query)}`;
+        if (filters) {
+            if (filters.fellowship && filters.fellowship.length > 0) {
+                // Assuming backend supports comma-separated or repeated params. Let's send raw filters in body via POST search or query params
+                // If GET, simpler:
+                endpoint += `&fellowship=${encodeURIComponent(filters.fellowship.join(','))}`;
+            }
+            if (filters.cell && filters.cell.length > 0) {
+                endpoint += `&cell=${encodeURIComponent(filters.cell.join(','))}`;
+            }
+        }
+
+        // Try POST if simpler for complex filters, but GET /search is standard. 
+        // Let's assume there is a general search endpoint. If not, filtered 'getAllMembers' locally is heavy.
+        // Or usage of 'getRecords' with name filter?
+
+        try {
+            const response = await api.get(endpoint);
+            let data = [];
+            if (Array.isArray(response)) data = response;
+            else if (response.data && Array.isArray(response.data)) data = response.data;
+            else if (response.data && response.data.data && Array.isArray(response.data.data)) data = response.data.data;
+
+            return data;
+        } catch (e) {
+            console.warn("Member search failed, falling back to local filter on getAllMembers roughly...", e);
+            // Fallback: This is heavy but safer if backend endpoints missing
+            return [];
+        }
+    }
 };
 
 // Export auth utilities

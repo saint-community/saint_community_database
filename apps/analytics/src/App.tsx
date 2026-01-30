@@ -1,13 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  LayoutDashboard,
   TrendingUp,
   Building2,
   List,
   UserPlus,
   Zap,
   Sliders,
-  Settings,
   LogOut,
   Search,
   Bell
@@ -15,7 +13,8 @@ import {
 
 import { Logo } from './constants';
 import LoginPage from './components/LoginPage';
-import { getAuthToken } from './api';
+import { getAuthToken, parseJwt, accountAPI } from './api';
+import ChurchSwitcher from './components/ChurchSwitcher';
 
 // Features
 import DashboardModule from './features/Dashboard';
@@ -30,10 +29,79 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] =
     useState<boolean>(!!getAuthToken());
   const [activeModule, setActiveModule] = useState<string>('Church Meetings');
+  const [user, setUser] = useState<any>(null);
+
+  // Persist selected church to survive refreshes and handle token statelessness
+  const [selectedChurchId, setSelectedChurchId] = useState<number | null>(() => {
+    const saved = localStorage.getItem('selected_church_id');
+    return saved ? Number(saved) : null;
+  });
+
+  const fetchUserProfile = async () => {
+    try {
+      const token = getAuthToken();
+      if (!token) return;
+
+      const session = parseJwt(token);
+
+      // Handle nested admin_meta structure from Laravel Sanctum/JWT
+      const userId = session?.id || session?.admin_meta?.id || session?.sub;
+
+      if (session && userId) {
+        try {
+          // Try to fetch latest profile
+          const profile = await accountAPI.getProfile(userId);
+          if (profile && profile.data) {
+            // If backend returns flat user object
+            setUser(profile.data);
+          } else {
+            // Fallback to token data if profile is empty/fails but token is valid
+            // Token structure: { admin_meta: { ...user fields... } }
+            // We want 'user' state to match the shape expected by UI (name, role, churches)
+            if (session.admin_meta) {
+              setUser(session.admin_meta);
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching user profile, using token data:', err);
+          // Fallback to token data is critical for "Church Switcher" if API fails
+          if (session.admin_meta) {
+            setUser(session.admin_meta);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error parsing token or fetching profile:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUserProfile();
+    } else {
+      setUser(null);
+    }
+  }, [isAuthenticated]);
 
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('selected_church_id'); // Clear church selection
     setIsAuthenticated(false);
+    setUser(null);
+    setSelectedChurchId(null);
+  };
+
+  const handleChurchSwitch = (churchId: number) => {
+    setSelectedChurchId(churchId);
+    localStorage.setItem('selected_church_id', String(churchId));
+
+    // Update local user state immediately so UI reflects the change
+    if (user) {
+      setUser({
+        ...user,
+        church_id: churchId
+      });
+    }
   };
 
   const navItems = [
@@ -99,13 +167,18 @@ const App: React.FC = () => {
         <header className='flex justify-between items-center mb-12'>
           <div className='flex flex-col'>
             <h1 className='text-2xl font-black text-[#1A1C1E] tracking-tight'>
-              🌟 Hello!
+              🌟 Hello{user ? `, ${user.name.split(' ')[0]}!` : '!'}
             </h1>
             <p className='text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1 opacity-70'>
               Admin HQ / {activeModule}
             </p>
           </div>
           <div className='flex items-center gap-6'>
+            {/* Church Switcher - Logic relaxed to let component handle visibility */}
+            {user && (
+              <ChurchSwitcher user={user} onSwitch={handleChurchSwitch} />
+            )}
+
             <div className='relative group'>
               <Search
                 className='absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors'
@@ -123,7 +196,7 @@ const App: React.FC = () => {
             </button>
             <div className='w-12 h-12 rounded border-2 border-white shadow shadow-slate-200 overflow-hidden flex-shrink-0'>
               <img
-                src='https://ui-avatars.com/api/?name=SC&background=1A1C1E&color=CCA856&font-size=0.5'
+                src={`https://ui-avatars.com/api/?name=${user ? user.name : 'SC'}&background=1A1C1E&color=CCA856&font-size=0.5`}
                 className='w-full h-full object-cover'
                 alt='User'
               />
@@ -131,13 +204,18 @@ const App: React.FC = () => {
           </div>
         </header>
         <div className='max-w-[1300px] mx-auto pb-20'>
-          {activeModule === 'Dashboard' && <DashboardModule />}
-          {activeModule === 'Analytics' && <AnalyticsModule />}
-          {activeModule === 'Evangelism' && <EvangelismModule />}
-          {activeModule === 'Follow Up' && <FollowUpModule />}
-          {activeModule === 'Church Meetings' && <ChurchMeetingsModule />}
-          {activeModule === 'Study Group' && <StudyGroupModule />}
-          {activeModule === 'Prayer Group' && <PrayerModule />}
+          {activeModule === 'Dashboard' && <DashboardModule key={selectedChurchId} />}
+          {activeModule === 'Analytics' && <AnalyticsModule key={selectedChurchId} />}
+          {activeModule === 'Evangelism' && <EvangelismModule key={selectedChurchId} />}
+          {activeModule === 'Follow Up' && <FollowUpModule key={selectedChurchId} />}
+          {activeModule === 'Church Meetings' && <ChurchMeetingsModule key={selectedChurchId} />}
+          {activeModule === 'Study Group' && <StudyGroupModule key={selectedChurchId} />}
+          {activeModule === 'Prayer Group' && (
+            <PrayerModule
+              key={selectedChurchId}
+              user={user ? { ...user, church_id: selectedChurchId || user.church_id } : null}
+            />
+          )}
         </div>
       </main>
     </div>
