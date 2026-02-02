@@ -6,6 +6,7 @@ import {
   useQuery,
 } from '@tanstack/react-query';
 import _ from 'lodash';
+import { useMe } from './useMe';
 
 interface WorkerFilters {
   church_id?: string;
@@ -56,11 +57,15 @@ export const useWorkerForm = (token: string) => {
 };
 
 export const useWorkerOption = () => {
+  const { data: user } = useMe();
+  const churchId = user?.church_id?.toString() || '';
+
   return useQuery({
-    queryKey: [QUERY_PATHS.WORKERS],
-    queryFn: () => getWorkers({ church_id: '' }),
+    queryKey: [QUERY_PATHS.WORKERS, churchId],
+    queryFn: () => getWorkers({ church_id: churchId }),
+    enabled: !!churchId,
     select: (data) => {
-      return data?.data?.map(
+      return data?.map(
         (worker: {
           id: string;
           first_name: string;

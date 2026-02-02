@@ -64,10 +64,10 @@ export const QUERY_PATHS = {
   PRAYER_GROUP_DELETE: '/api/prayer-groups/:id',
 
   // admin prayer group meetings
-  ADMIN_PRAYER_GROUP_ALL: '/api/admin/prayer-group/meeting/all',
-  ADMIN_PRAYER_GROUP_CREATE: '/api/admin/prayer-group/meeting/create',
-  ADMIN_PRAYER_GROUP_UPDATE: '/api/admin/prayer-group/meeting/:id',
-  ADMIN_PRAYER_GROUP_DELETE: '/api/admin/prayer-group/meeting/:id',
+  ADMIN_PRAYER_GROUP_ALL: '/api/prayer_groups',
+  ADMIN_PRAYER_GROUP_CREATE: '/api/prayer-groups',
+  ADMIN_PRAYER_GROUP_UPDATE: '/api/prayer-groups/:id',
+  ADMIN_PRAYER_GROUP_DELETE: '/api/prayer-groups/:id',
 
   // admin prayer group management
   ADMIN_PRAYER_GROUP_CREATE_GROUP: '/api/admin/prayer-group/create',
