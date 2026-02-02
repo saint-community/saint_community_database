@@ -59,3 +59,18 @@ export const getInitials = (name: string) =>
     .split(' ')
     .map((word) => word[0])
     .join('');
+
+export const formatTimeTo12Hr = (time: string): string => {
+  if (!time) return '';
+  const [hourStr, minuteStr = '00'] = time.split(':');
+  const hour24 = Number(hourStr);
+  const minute = Number(minuteStr);
+
+  if (Number.isNaN(hour24)) return time;
+
+  const period = hour24 >= 12 ? 'pm' : 'am';
+  const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+  const minutesPart = minute === 0 ? '' : `:${minuteStr.padStart(2, '0')}`;
+
+  return `${hour12}${minutesPart}${period}`;
+};

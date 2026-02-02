@@ -10,7 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@workspace/ui/components/select';
-import { MultiSelect } from './ui/multi-select';
 import { FieldInfo } from '@workspace/ui/components/field-info';
 import { TimePicker } from './ui/TimePicker';
 import { useForm } from '@workspace/ui/lib/react-hook-form';
@@ -21,6 +20,7 @@ import { ReactNode, useMemo, useState } from 'react';
 import { z } from 'zod';
 
 import { useWorkerOption } from '@/hooks/workers';
+import { useMe } from '@/hooks/useMe';
 import {
   createAdminPrayerGroupMeeting,
   updateAdminPrayerGroupMeeting,
@@ -31,6 +31,7 @@ import {
   PRAYER_GROUP_PERIODS,
   QUERY_PATHS,
 } from '@/utils/constants';
+import { formatTimeTo12Hr } from '@/utils/helper';
 
 const formSchema = z.object({
   prayergroupDay: z
@@ -39,12 +40,16 @@ const formSchema = z.object({
   period: z.string().min(1, { message: 'Please select a period.' }),
   startTime: z.string().min(1, { message: 'Start time is required.' }),
   endTime: z.string().min(1, { message: 'End time is required.' }),
-  prayergroupLeader: z.array(z.string()).optional().default([]),
+  prayergroupLeader: z.string().min(1, { message: 'Please select a leader.' }),
 });
+
+type PrayerGroupResponse = AdminPrayerGroupMeetingPayload & {
+  id?: number;
+};
 
 type AddNewPrayerMeetingProps = {
   mode?: 'create' | 'edit';
-  prayerGroup?: AdminPrayerGroupMeetingPayload & { _id?: string };
+  prayerGroup?: PrayerGroupResponse;
   trigger?: ReactNode;
   onSuccess?: () => void;
 };
@@ -58,20 +63,19 @@ export function AddNewPrayerMeeting({
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
   const { data: workerOptions, isLoading: workersLoading } = useWorkerOption();
+  const { data: user } = useMe();
 
   const isEdit = mode === 'edit';
 
   const defaultValues = useMemo(
     () => ({
-      prayergroupDay: prayerGroup?.prayergroup_day || '',
+      prayergroupDay: prayerGroup?.day || '',
       period: prayerGroup?.period || '',
       startTime: prayerGroup?.start_time || '',
       endTime: prayerGroup?.end_time || '',
-      prayergroupLeader: prayerGroup?.prayergroup_leader
-        ? Array.isArray(prayerGroup.prayergroup_leader)
-          ? prayerGroup.prayergroup_leader
-          : [prayerGroup.prayergroup_leader]
-        : [],
+      prayergroupLeader: prayerGroup?.leader_id
+        ? String(prayerGroup.leader_id)
+        : '',
     }),
     [prayerGroup]
   );
@@ -94,12 +98,12 @@ export function AddNewPrayerMeeting({
 
   const updateMutation = useMutation({
     mutationFn: ({
-      _id,
+      id,
       payload,
     }: {
-      _id: string;
+      id: number;
       payload: AdminPrayerGroupMeetingPayload;
-    }) => updateAdminPrayerGroupMeeting(_id, payload),
+    }) => updateAdminPrayerGroupMeeting(String(id), payload),
     onSuccess: () => {
       toast.success('Prayer meeting updated');
       setOpen(false);
@@ -122,16 +126,21 @@ export function AddNewPrayerMeeting({
       onSubmit: formSchema,
     },
     onSubmit: async ({ value }) => {
-      const payload = {
-        prayergroup_day: value.prayergroupDay,
-        period: value.period,
+      // Format schedule as "10am to 2pm"
+      const schedule = `${formatTimeTo12Hr(value.startTime)} to ${formatTimeTo12Hr(value.endTime)}`;
+
+      const payload: AdminPrayerGroupMeetingPayload = {
+        church_id: user?.church_id || 0,
+        leader_id: Number(value.prayergroupLeader) || 0,
         start_time: value.startTime,
         end_time: value.endTime,
-        prayergroup_leader: value.prayergroupLeader?.length ? value.prayergroupLeader.join(', ') : '',
+        period: value.period,
+        day: value.prayergroupDay,
+        schedule,
       };
 
-      if (isEdit && prayerGroup?._id) {
-        updateMutation.mutate({ _id: prayerGroup._id, payload });
+      if (isEdit && prayerGroup?.id) {
+        updateMutation.mutate({ id: prayerGroup.id, payload });
       } else {
         createMutation.mutate(payload);
       }
@@ -262,23 +271,35 @@ export function AddNewPrayerMeeting({
         </div>
 
         <div className='space-y-2'>
-          <Label htmlFor='prayergroupLeader'>Prayer Group Leaders</Label>
+          <Label htmlFor='prayergroupLeader'>Prayer Group Leader</Label>
           <form.Field
             name='prayergroupLeader'
             children={(field) => (
               <>
-                <MultiSelect
-                  options={workerOptions?.map((worker: { value: number; label: string }) => ({
-                    value: worker.label,
-                    label: worker.label
-                  })) || []}
+                <Select
                   value={field.state.value}
                   onValueChange={(value) => field.handleChange(value)}
-                  placeholder={
-                    workersLoading ? 'Loading leaders...' : 'Select leaders'
-                  }
-                  searchable={false}
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        workersLoading ? 'Loading leaders...' : 'Select leader'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {workerOptions?.map(
+                      (worker: { value: number; label: string }) => (
+                        <SelectItem
+                          key={worker.value}
+                          value={String(worker.value)}
+                        >
+                          {worker.label}
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
                 <FieldInfo field={field} />
               </>
             )}
