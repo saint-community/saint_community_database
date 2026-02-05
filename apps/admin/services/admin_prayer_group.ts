@@ -13,9 +13,9 @@ export interface AdminPrayerGroupMeetingPayload {
   schedule: string;
 }
 
-export const getAdminPrayerGroupMeetings = async () => {
+export const getAdminPrayerGroupMeetings = async (church_id: number) => {
   const { data } = await ApiCaller.get(
-    QUERY_PATHS.ADMIN_PRAYER_GROUP_ALL
+    QUERY_PATHS.ADMIN_PRAYER_GROUP_ALL.replace(':church_id', String(church_id))
   );
   return data || [];
 };

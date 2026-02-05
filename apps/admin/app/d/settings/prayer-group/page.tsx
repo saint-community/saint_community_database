@@ -26,11 +26,16 @@ type PrayerGroupMeeting = AdminPrayerGroupMeetingPayload & {
   id: number;
   createdAt?: string;
   updatedAt?: string;
+  leader?: {
+    first_name: string;
+    last_name: string;
+    id: number;
+  };
 };
 
 export default function PrayerGroupSettingsPage() {
   const { data: user } = useMe();
-  const { data: prayerGroups } = useAdminPrayerGroupMeetings();
+  const { data: prayerGroups } = useAdminPrayerGroupMeetings(user?.church_id);
   const { data: stats } = useStatistics();
   const queryClient = useQueryClient();
   const openAlertModal = useModalStore(({ openAlertModal }) => openAlertModal);
@@ -148,7 +153,7 @@ export default function PrayerGroupSettingsPage() {
                   <User className='h-5 w-5 text-amber-600' />
                   <div>
                     <div className='text-base text-foreground'>
-                      Leader ID: {pg?.leader_id || 'No leader assigned'}
+                    {pg?.leader?.first_name} {pg?.leader?.last_name || 'No leader assigned'}
                     </div>
                     <CardDescription className='text-xs'>
                       Prayer Leader
