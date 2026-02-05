@@ -143,15 +143,13 @@ const FollowUpModule = () => {
         ]);
 
         const memberNames = Array.isArray(membersData)
-          ? membersData.map((m: any) =>
-            m.first_name || m.last_name
-              ? `${m.first_name || ''} ${m.last_name || ''}`.trim()
-              : m.email
-          )
+          ? membersData.map((m: any) => m.name || m.full_name || 'Unknown Member')
           : [];
 
         const workerNames = Array.isArray(workersData)
-          ? workersData.map((w: any) => `${w.first_name} ${w.last_name}`.trim())
+          ? workersData.map((w: any) =>
+            `${w.name || w.full_name || w.first_name || 'Unknown Worker'} (w)`
+          )
           : [];
 
         const uniqueNames = Array.from(
@@ -217,22 +215,31 @@ const FollowUpModule = () => {
   // Stats calculation
   const stats = useMemo(() => {
     if (backendStats) {
+      // Use new backend stats format
       return {
-        totalSessions: backendStats.total_sessions || 0,
-        completionCount: 0,
-        completionRate: 0,
-        totalHours: Math.round((backendStats.total_minutes || 0) / 60),
-        avgDuration: 0,
-        activeMembers: backendStats.total_members_taught || 0,
+        totalSessions: backendStats.totalSessions || 0,
+        completionCount: backendStats.completionCount || 0,
+        completionRate: backendStats.completionRate || 0,
+        totalHours: backendStats.totalHours || 0,
+        avgDuration: backendStats.avgDurationFormatted || '0m',
+        activeMembers: backendStats.activeMembers || 0,
       };
     }
 
+    // Fallback: Calculate from local sessions data
     const memberCounts: Record<string, number> = {};
     let totalMinutes = 0;
     let totalRecords = 0;
-    const uniqueMembers = new Set<string>();
+    const uniqueWorkers = new Set<string>(); // Workers who taught
 
     sessions.forEach((s) => {
+      // Add participants (workers who taught) to unique set
+      if (s.participants && Array.isArray(s.participants)) {
+        s.participants.forEach((participant) => {
+          uniqueWorkers.add(participant.toLowerCase());
+        });
+      }
+
       s.records.forEach((r) => {
         totalRecords++;
         totalMinutes += parseToMinutes(r.duration);
@@ -243,7 +250,6 @@ const FollowUpModule = () => {
           .filter(Boolean);
         names.forEach((name) => {
           memberCounts[name] = (memberCounts[name] || 0) + 1;
-          uniqueMembers.add(name);
         });
       });
     });
@@ -251,8 +257,9 @@ const FollowUpModule = () => {
     const completionCount = Object.values(memberCounts).filter(
       (count) => count >= 10
     ).length;
+    const totalMembersTaught = Object.keys(memberCounts).length;
     const completionRate =
-      uniqueMembers.size > 0 ? (completionCount / uniqueMembers.size) * 100 : 0;
+      totalMembersTaught > 0 ? (completionCount / totalMembersTaught) * 100 : 0;
     const avgDuration = totalRecords > 0 ? totalMinutes / totalRecords : 0;
 
     return {
@@ -260,8 +267,8 @@ const FollowUpModule = () => {
       completionCount,
       completionRate: Math.round(completionRate),
       totalHours: Math.round(totalMinutes / 60),
-      avgDuration: Math.round(avgDuration),
-      activeMembers: uniqueMembers.size,
+      avgDuration: Math.round(avgDuration) + 'm',
+      activeMembers: uniqueWorkers.size, // Only workers who taught
     };
   }, [sessions, backendStats]);
 
@@ -563,7 +570,7 @@ const FollowUpModule = () => {
             />
             <StatCard
               title='Avg Duration'
-              value={`${stats.avgDuration}m`}
+              value={stats.avgDuration}
               icon={<Clock3 size={18} />}
               variant='default'
             />

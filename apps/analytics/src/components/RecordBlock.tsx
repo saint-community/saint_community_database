@@ -63,12 +63,12 @@ const RecordBlock = ({
                 </div>
                 {!readOnly && (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-[100px] overflow-y-auto custom-scrollbar p-2 bg-[#F8F9FA] border border-slate-100 rounded">
-                        {membersOnly
+                        {Array.from(new Set(membersOnly
                             .filter((m: string) => !exclude.includes(m))
-                            .filter((m: string) => m.toLowerCase().includes((searches[rec.id] || '').toLowerCase()))
-                            .map((m: string) => (
+                            .filter((m: string) => m.toLowerCase().includes((searches[rec.id] || '').toLowerCase()))))
+                            .map((m: string, idx: number) => (
                                 <button
-                                    key={m}
+                                    key={`${m}-${idx}`}
                                     onClick={() => {
                                         const current = rec.personFollowedUp ? rec.personFollowedUp.split(', ') : [];
                                         if (!current.includes(m)) onUpdate(rec.id, { personFollowedUp: [...current, m].join(', ') });

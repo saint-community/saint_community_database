@@ -192,28 +192,25 @@ const EvangelismModule = () => {
 
   // Computed Stats for Overview
   const stats = useMemo(() => {
-    // Always calculate involved from sessions as backend stats might not include it yet
-    const uniqueParticipants = new Set<string>();
-    sessions.forEach((s) => {
-      s.participants.forEach((p) => uniqueParticipants.add(p));
-    });
-    const totalInvolved = uniqueParticipants.size;
-
     if (backendStats) {
+      // Use new backend stats format
       return {
-        saved: backendStats.total_saved || 0,
-        filled: backendStats.total_filled || 0,
-        healed: backendStats.total_healed || 0,
-        workersInvolved: totalInvolved,
-        membersInvolved: 0, // Keep members 0 for now as we only track "participants" which are mixed
+        saved: backendStats.totalSaved || 0,
+        filled: backendStats.totalFilled || 0,
+        healed: backendStats.totalHealed || 0,
+        workersInvolved: backendStats.workersInvolved || 0,
+        membersInvolved: backendStats.membersInvolved || 0,
       };
     }
 
+    // Fallback: Calculate from local sessions data
+    const uniqueParticipants = new Set<string>();
     let saved = 0,
       filled = 0,
       healed = 0;
 
     sessions.forEach((s) => {
+      s.participants.forEach((p) => uniqueParticipants.add(p));
       s.records.forEach((r) => {
         if (r.isSaved) saved++;
         if (r.isFilled) filled++;
@@ -225,7 +222,7 @@ const EvangelismModule = () => {
       saved,
       filled,
       healed,
-      workersInvolved: totalInvolved,
+      workersInvolved: uniqueParticipants.size,
       membersInvolved: 0,
     };
   }, [sessions, backendStats]);
@@ -292,16 +289,12 @@ const EvangelismModule = () => {
         console.log('Workers Data Raw:', workersData);
 
         const memberNames = Array.isArray(membersData)
-          ? membersData.map((m: any) =>
-            m.first_name || m.last_name
-              ? `${m.first_name || ''} ${m.last_name || ''} `.trim()
-              : m.email
-          )
+          ? membersData.map((m: any) => m.name || m.full_name || 'Unknown Member')
           : [];
 
         const workerNames = Array.isArray(workersData)
           ? workersData.map((w: any) =>
-            `${w.first_name} ${w.last_name} `.trim()
+            `${w.name || w.full_name || w.first_name || 'Unknown Worker'} (w)`
           )
           : [];
 

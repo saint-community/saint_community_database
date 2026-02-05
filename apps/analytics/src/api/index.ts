@@ -30,6 +30,12 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}, isSanctum
         headers['Authorization'] = `Bearer ${token}`;
     }
 
+    // Add selected church ID from localStorage to override token's church_id
+    const selectedChurchId = localStorage.getItem('selected_church_id');
+    if (selectedChurchId) {
+        headers['x-church-id'] = selectedChurchId;
+    }
+
     // For Sanctum requests, we need to use the SC repo URL.
     // Assuming API_BASE_URL (localhost:4000) is for NestJS services (JWT).
     // The SC repo URL (auth login URL base) needs to be extracted or configured.
@@ -153,7 +159,7 @@ const transformEvangelismToBackend = (session: EvangelismSession) => {
         session_date: session.date,
         start_time: session.time,
         location_area: session.location,
-        team_members: session.participants.map(name => ({
+        participants: session.participants.map(name => ({
             id: '0',  // Using placeholder ID
             type: 'worker',
             name,
@@ -161,13 +167,14 @@ const transformEvangelismToBackend = (session: EvangelismSession) => {
         saved_count: session.records.filter(r => r.isSaved).length,
         filled_count: session.records.filter(r => r.isFilled).length,
         healed_count: session.records.filter(r => r.isHealed).length,
-        souls: session.records.map(record => ({
+        records: session.records.map(record => ({
             name: record.personReached,
             gender: record.gender,
             age: record.age,
             phone: record.phone,
             address: record.address,
             status: primaryStatus(record),
+            // impact_types: impactTypes(record), // Backend DTO might strict check? No, DTO usually whitelist but let's pass it.
             impact_types: impactTypes(record),
             note: record.comments,
             healed_condition_before: record.healedConditionBefore || '',
@@ -180,12 +187,12 @@ const transformEvangelismToBackend = (session: EvangelismSession) => {
 const transformEvangelismFromBackend = (data: any): EvangelismSession => {
     return {
         id: data._id || data.id,
-        // Ensure date is yyyy-MM-dd for HTML input compatibility
-        date: data.session_date ? data.session_date.toString().substring(0, 10) : new Date().toISOString().substring(0, 10),
-        time: data.start_time,
-        location: data.location_area,
-        participants: data.team_members?.map((tm: any) => tm.name) || [],
-        records: data.souls?.map((soul: any, idx: number) => ({
+        // Ensure date is yyyy-MM-dd for HTML input compatibility. Prefer data.date (DB) over generated fallback.
+        date: data.date ? data.date.toString().substring(0, 10) : (data.session_date ? data.session_date.toString().substring(0, 10) : new Date().toISOString().substring(0, 10)),
+        time: data.date && new Date(data.date).toISOString().includes('T') ? new Date(data.date).toISOString().split('T')[1].substring(0, 5) : (data.start_time || ''),
+        location: data.location_area || '',
+        participants: data.participants?.map((tm: any) => tm.name) || [],
+        records: data.records?.map((soul: any, idx: number) => ({
             id: `${data._id || data.id}-soul-${idx}`,
             personReached: soul.name,
             gender: soul.gender,
@@ -253,22 +260,39 @@ const transformFollowUpToBackend = (session: FollowUpSession) => {
 };
 
 const transformFollowUpFromBackend = (data: any): FollowUpSession => {
+    // Backend returns grouped "Session" with "records" array
+    // Map backend records to frontend records
+    const mappedRecords = data.records?.map((rec: any, index: number) => ({
+        id: rec._id || `${data._id || data.id}-record-${index}`,
+        personFollowedUp: rec.members_taught?.map((m: any) => m.name).join(', ') || '',
+        subjectTaught: rec.subject || 'General',
+        materialSource: rec.material_used || '', // Mapped from backend
+        duration: String(rec.duration_minutes || 0),
+        comments: rec.comments || '',
+    })) || [];
+
+    // Fallback if records array is empty or structurally different (legacy safety)
+    if (mappedRecords.length === 0) {
+        const singleRecord: FollowUpRecord = {
+            id: `${data._id || data.id}-record-0`,
+            personFollowedUp: data.members_taught?.map((m: any) => m.name).join(', ') || data.participants?.map((m: any) => m.name).join(', ') || 'Unknown Search',
+            subjectTaught: data.subject || 'General',
+            materialSource: data.material_used || '',
+            duration: String(data.duration_minutes || 0),
+            comments: data.comments || '',
+        };
+        mappedRecords.push(singleRecord);
+    }
+
     return {
-        id: data._id || data.id,
-        date: data.session_date ? data.session_date.toString().substring(0, 10) : new Date().toISOString().substring(0, 10),
-        time: data.start_time,
-        worker: data.participants?.[0]?.name || 'Unknown',
-        location: data.location_area,
-        summary: data.summary || '',
+        id: data.id || data._id,
+        date: data.date ? data.date.toString().substring(0, 10) : new Date().toISOString().substring(0, 10),
+        time: data.date && new Date(data.date).toISOString().includes('T') ? new Date(data.date).toISOString().split('T')[1].substring(0, 5) : '',
+        worker: 'Worker',
+        location: data.location_area || '',
+        summary: data.session_summary || '',
         participants: data.participants?.map((p: any) => p.name) || [],
-        records: data.records?.map((record: any, idx: number) => ({
-            id: `${data._id || data.id}-record-${idx}`,
-            personFollowedUp: record.members_taught?.map((m: any) => m.name).join(', ') || '',
-            subjectTaught: record.topic,
-            materialSource: record.material,
-            duration: String(record.duration_minutes || 0),
-            comments: record.comments || '',
-        })) || [],
+        records: mappedRecords,
         createdAt: data.createdAt || new Date().toISOString(),
     };
 };
@@ -384,6 +408,10 @@ export const attendanceAPI = {
         return await api.post('/attendance/admin/meeting', meeting);
     },
 
+    updateMeeting: async (id: string, meeting: any): Promise<any> => {
+        return await api.patch(`/attendance/admin/meeting/${id}`, meeting);
+    },
+
     markAttendance: async (data: any): Promise<any> => {
         return await api.post('/attendance/mark', data);
     },
@@ -409,6 +437,22 @@ export const attendanceAPI = {
         const response = await api.get('/attendance/admin/stats');
         return response.data || {};
     },
+
+    // --- Templates ---
+    createTemplate: async (data: any): Promise<any> => {
+        return await api.post('/attendance/admin/template', data);
+    },
+
+    getTemplates: async (): Promise<any[]> => {
+        const response = await api.get('/attendance/admin/templates');
+        const body = response.data;
+        if (Array.isArray(body)) return body;
+        return body.data || [];
+    },
+
+    generateMeetingFromTemplate: async (templateId: string, date: string): Promise<any> => {
+        return await api.post(`/attendance/admin/template/${templateId}/generate`, { date });
+    },
 };
 
 // ============================================================================
@@ -417,10 +461,9 @@ export const attendanceAPI = {
 
 export const prayerGroupAPI = {
     getStats: async (): Promise<any> => {
-        // Assuming stats endpoint is also under admin/prayer-group/stats or similar
-        // Based on pattern: /api/admin/prayer-group/stats
-        const response = await api.get('/admin/prayer-group/stats');
-        return response.data || {};
+        // Backend route: GET /api/prayergroup/admin/stats
+        const response = await api.get('/prayergroup/admin/stats');
+        return response.data?.data || {};
     },
 
     // Admin/Leader: Create a new prayer meeting day/slot
@@ -758,8 +801,21 @@ export const structureAPI = {
 
 export const memberAPI = {
     getAllMembers: async (): Promise<any[]> => {
-        const response = await api.get('/member/all');
-        console.log('DEBUG: getAllMembers raw response:', response);
+        // Check for Admin Context
+        const token = getAuthToken();
+        let isAdmin = false;
+        if (token) {
+            const decoded: any = parseJwt(token);
+            // Check for admin_meta or specific role strings
+            if (decoded?.admin_meta || ['admin', 'super_admin', 'church_pastor'].includes(decoded?.role)) {
+                isAdmin = true;
+            }
+        }
+
+        const endpoint = isAdmin ? '/member/admin/all' : '/member/all';
+        const response = await api.get(endpoint);
+
+        console.log(`DEBUG: getAllMembers (${isAdmin ? 'Admin' : 'Worker'}) raw response:`, response);
         let data = [];
         if (Array.isArray(response)) data = response;
         else if (response.data && Array.isArray(response.data)) data = response.data;

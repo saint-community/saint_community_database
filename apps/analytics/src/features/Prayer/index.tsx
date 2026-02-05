@@ -183,20 +183,25 @@ const PrayerModule = ({ user }: { user: any }) => {
 
   const fetchAnalytics = async () => {
     try {
-      const data = await prayerGroupAPI.getAnalytics(user?.church_id);
-      // Ensure graph data has at least empty structure if missing
-      if (!data.graphData || data.graphData.length === 0) {
-        data.graphData = [
+      // Use getStats for overview metrics
+      const statsData = await prayerGroupAPI.getStats();
+
+      // Map backend stats to analytics data
+      setAnalyticsData({
+        totalParticipants: statsData.totalParticipants || 0,
+        activeCells: statsData.activeCells || 0,
+        avgAttendance: statsData.avgAttendance || 0,
+        monthlyTarget: statsData.monthlyTarget || 'On Track',
+        graphData: statsData.graphData || [
           { name: 'W1', value: 0 },
           { name: 'W2', value: 0 },
           { name: 'W3', value: 0 },
           { name: 'W4', value: 0 },
           { name: 'W5', value: 0 },
-        ];
-      }
-      setAnalyticsData(data);
+        ]
+      });
     } catch (error) {
-      console.error("Failed to fetch analytics", error);
+      console.error("Failed to fetch prayer group stats", error);
     }
   };
 
