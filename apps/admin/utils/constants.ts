@@ -64,7 +64,7 @@ export const QUERY_PATHS = {
   PRAYER_GROUP_DELETE: '/api/prayer-groups/:id',
 
   // admin prayer group meetings
-  ADMIN_PRAYER_GROUP_ALL: '/api/prayer_groups',
+  ADMIN_PRAYER_GROUP_ALL: '/api/prayer-groups/:church_id',
   ADMIN_PRAYER_GROUP_CREATE: '/api/prayer-groups',
   ADMIN_PRAYER_GROUP_UPDATE: '/api/prayer-groups/:id',
   ADMIN_PRAYER_GROUP_DELETE: '/api/prayer-groups/:id',

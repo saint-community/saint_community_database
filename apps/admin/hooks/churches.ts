@@ -4,8 +4,8 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 export const useChurches = (page: number = 1) => {
   return useQuery({
-    queryKey: [QUERY_PATHS.CHURCHES, page, searchFilters],
-    queryFn: () => getChurches(filters),
+    queryKey: [QUERY_PATHS.CHURCHES, page],
+    queryFn: () => getChurches(),
     placeholderData: keepPreviousData,
   });
 };
@@ -49,8 +49,6 @@ export const useChurchesOption = (enabled: boolean = true) => {
         label: church.name,
         value: String(church.id),
       }));
-      // console.log('useChurchesOption - mapped data:', mapped);
-      return mapped;
     },
   });
 };

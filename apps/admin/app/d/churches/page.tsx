@@ -42,7 +42,7 @@ export default function Page() {
   }, [filters.name]);
   
   // Always call hooks first, before any conditional logic
-  const { data } = useChurches(filters);
+  const { data } = useChurches(filters as any);
   const { data: stats } = useStatistics();
   
   const isAdmin = React.useMemo(() => {
