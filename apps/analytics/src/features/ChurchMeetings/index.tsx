@@ -1,106 +1,106 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
-    LayoutDashboard,
-    Users,
-    UserPlus,
-    BarChart3,
-    Settings,
-    LogOut,
-    Search,
-    Bell,
-    Filter,
-    Plus,
-    Download,
-    Calendar,
-    MapPin,
-    CheckCircle2,
-    Clock,
-    MoreVertical,
-    X,
-    TrendingUp,
-    ShieldCheck,
-    Building2,
-    Edit2,
-    Trash2,
-    Phone,
-    HeartPulse,
-    UserCheck,
-    Flame,
-    ChevronRight,
-    Sparkles,
-    Info,
-    MoreHorizontal,
-    Home,
-    Repeat,
-    List,
-    User,
-    Activity,
-    Sliders,
-    ChevronDown,
-    Check,
-    FileText,
-    Music,
-    QrCode,
-    FileSpreadsheet,
-    BookOpen,
-    Clock3,
-    BarChart as BarChartIcon,
-    UserSearch,
-    CheckSquare,
-    Square,
-    AlertCircle,
-    UserMinus,
-    LayoutGrid,
-    PieChart as PieChartIcon,
-    MousePointer2,
-    Layers,
-    Zap,
-    ChevronLeft,
-    Mail,
-    Eye,
-    ChevronUp,
-    Link2,
-    ExternalLink,
-    Globe,
+  LayoutDashboard,
+  Users,
+  UserPlus,
+  BarChart3,
+  Settings,
+  LogOut,
+  Search,
+  Bell,
+  Filter,
+  Plus,
+  Download,
+  Calendar,
+  MapPin,
+  CheckCircle2,
+  Clock,
+  MoreVertical,
+  X,
+  TrendingUp,
+  ShieldCheck,
+  Building2,
+  Edit2,
+  Trash2,
+  Phone,
+  HeartPulse,
+  UserCheck,
+  Flame,
+  ChevronRight,
+  Sparkles,
+  Info,
+  MoreHorizontal,
+  Home,
+  Repeat,
+  List,
+  User,
+  Activity,
+  Sliders,
+  ChevronDown,
+  Check,
+  FileText,
+  Music,
+  QrCode,
+  FileSpreadsheet,
+  BookOpen,
+  Clock3,
+  BarChart as BarChartIcon,
+  UserSearch,
+  CheckSquare,
+  Square,
+  AlertCircle,
+  UserMinus,
+  LayoutGrid,
+  PieChart as PieChartIcon,
+  MousePointer2,
+  Layers,
+  Zap,
+  ChevronLeft,
+  Mail,
+  Eye,
+  ChevronUp,
+  Link2,
+  ExternalLink,
+  Globe,
 } from 'lucide-react';
 import {
-    ResponsiveContainer,
-    AreaChart,
-    Area,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    BarChart,
-    Bar,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  BarChart,
+  Bar,
 } from 'recharts';
 import {
-    EvangelismSession,
-    EvangelismRecord,
-    FollowUpSession,
-    FollowUpRecord,
-    Meeting,
-    AttendanceSubmission,
-    MeetingType,
-    MeetingFrequency,
+  EvangelismSession,
+  EvangelismRecord,
+  FollowUpSession,
+  FollowUpRecord,
+  Meeting,
+  AttendanceSubmission,
+  MeetingType,
+  MeetingFrequency,
 } from '../../types';
 import { Logo, COLORS } from '../../constants';
 import {
-    mockEvangelismSessions,
-    mockFollowUpSessions,
-    attendanceTrend,
-    attendanceComparisonData,
+  mockEvangelismSessions,
+  mockFollowUpSessions,
+  attendanceTrend,
+  attendanceComparisonData,
 } from '../../data/mockData';
 import {
-    evangelismAPI,
-    followUpAPI,
-    attendanceAPI,
-    prayerGroupAPI,
-    studyGroupAPI,
-    memberAPI,
-    structureAPI,
-    getAuthToken,
-    parseJwt,
+  evangelismAPI,
+  followUpAPI,
+  attendanceAPI,
+  prayerGroupAPI,
+  studyGroupAPI,
+  memberAPI,
+  structureAPI,
+  getAuthToken,
+  parseJwt,
 } from '../../api';
 
 import StatCard from '../../components/StatCard';
@@ -108,22 +108,29 @@ import Modal from '../../components/Modal';
 import CodeCountdown from '../../components/CodeCountdown';
 import DatePickerCalendar from '../../components/DatePickerCalendar';
 import {
-    WORKERS_LIST,
-    MEMBERS_LIST,
-    ROLES,
-    FIRST_TIMERS_EXAMPLES,
-    FELLOWSHIPS,
-    CELLS,
+  WORKERS_LIST,
+  MEMBERS_LIST,
+  ROLES,
+  FIRST_TIMERS_EXAMPLES,
 } from '../../data/lists';
 import { getMemberGroup } from '../../utils/helpers';
-const ChurchMeetingsModule = () => {
+
+interface ChurchMeetingsModuleProps {
+  user?: any;
+}
+
+const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => {
   const [activeTab, setActiveTab] = useState('Overview');
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [templates, setTemplates] = useState<any[]>([]); // New State
   const [submissions, setSubmissions] = useState<AttendanceSubmission[]>([]);
   const [activeCodes, setActiveCodes] = useState<
     Record<string, { code: string; expiresAt: number }>
   >({});
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false); // New Modal State
+  const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false); // New Modal State
+  const [selectedTemplate, setSelectedTemplate] = useState<any>(null); // New State
   const [isViewMeetingModalOpen, setIsViewMeetingModalOpen] = useState(false);
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
@@ -150,7 +157,7 @@ const ChurchMeetingsModule = () => {
   const [allMembers, setAllMembers] = useState<any[]>([]);
 
   const [selectedChurchContext, setSelectedChurchContext] =
-    useState<string>(''); // Church ID or 'global'
+    useState<string>(() => localStorage.getItem('selected_church_id') || ''); // Church ID or 'global'
   const [mScope, setMScope] = useState('Global Ministry');
   const [mScopeId, setMScopeId] = useState<string>('');
   const [mDate, setMDate] = useState('');
@@ -177,36 +184,32 @@ const ChurchMeetingsModule = () => {
       try {
         setIsLoading(true);
 
-        // Fetch churches if admin
-        let churches = [];
-        const token = getAuthToken();
-        if (token) {
-          const decoded = parseJwt(token);
-          if (decoded?.admin_meta?.role) {
-            setCurrentUserRole(decoded.admin_meta.role);
-          }
-          if (decoded?.admin_meta?.role === 'admin') {
-            try {
-              const [cData, fData, celData] = await Promise.all([
-                structureAPI.getChurches(),
-                structureAPI.getFellowships(),
-                structureAPI.getCells(),
-              ]);
-              setAvailableChurches(cData);
-              setAvailableFellowships(fData);
-              setAvailableCells(celData);
-            } catch (e) {
-              console.error('Failed to fetch structure data for admin', e);
-            }
-          }
+        // Fetch churches from user profile instead of API (to avoid 403 permission error)
+        const userChurches = user?.churches || [];
+        setAvailableChurches(userChurches);
+
+        // Fetch fellowships, cells for everyone (needed for dropdowns)
+        try {
+          const [fData, celData] = await Promise.all([
+            structureAPI.getFellowships(),
+            structureAPI.getCells(),
+          ]);
+          setAvailableFellowships(fData);
+          setAvailableCells(celData);
+        } catch (e) {
+          console.error('Failed to fetch structure data', e);
         }
 
-        // 1. Fetch Meetings (Critical)
+        // 1. Fetch Meetings & Templates (Critical)
         try {
-          const meetingsData = await attendanceAPI.getMeetings();
+          const [meetingsData, templatesData] = await Promise.all([
+            attendanceAPI.getMeetings(),
+            attendanceAPI.getTemplates()
+          ]);
           setMeetings(meetingsData);
+          setTemplates(templatesData);
         } catch (e) {
-          console.error('Failed to fetch meetings', e);
+          console.error('Failed to fetch meetings/templates', e);
         }
 
         // 2. Fetch History & Stats (Secondary)
@@ -417,7 +420,7 @@ const ChurchMeetingsModule = () => {
       };
 
       setIsLoading(true);
-      const res = await attendanceAPI.createMeeting(payload as any); // Type cast if needed, or ensure strict mapping
+      const res = await attendanceAPI.updateMeeting(meetingId, payload as any);
       setIsLoading(false);
 
       if (res && res.data && res.data.attendance_code) {
@@ -445,12 +448,18 @@ const ChurchMeetingsModule = () => {
     setMTitle('');
     setMType('Sunday Service');
     setMFreq('Weekly');
-    setMScope('Church-wide');
+    setMScope('Global Ministry'); // Default per requirement
     setMScopeId('');
     setMTime('08:00');
     setMDate(new Date().toISOString().split('T')[0]);
-    setIsMeetingModalOpen(true);
+
+    if (activeTab === 'Recurring') {
+      setIsTemplateModalOpen(true);
+    } else {
+      setIsMeetingModalOpen(true);
+    }
   };
+
 
   const openMarkAttendanceModal = (meeting: Meeting) => {
     setSelectedMeetingForAttendance(meeting);
@@ -524,6 +533,88 @@ const ChurchMeetingsModule = () => {
     }
   };
 
+  const saveTemplate = async () => {
+    // Determine Scope Type and Value based on selection
+    let scopeType = 'Church';
+    let scopeValue: string | number = mScope;
+
+    if (mScope === 'Global Ministry') {
+      scopeType = 'Global';
+      scopeValue = 'all';
+    } else {
+      const isChurch = availableChurches.some((c) => c.name === mScope);
+      if (isChurch) {
+        scopeType = 'Church';
+        const church = availableChurches.find((c) => c.name === mScope);
+        scopeValue = church ? church.id : mScope;
+      } else {
+        const isFellowship = availableFellowships.some((f) => f.name === mScope);
+        if (isFellowship) {
+          scopeType = 'Fellowship';
+          const fellowship = availableFellowships.find((f) => f.name === mScope);
+          scopeValue = fellowship ? fellowship.id : mScope;
+        } else {
+          const isCell = availableCells.some((c) => c.name === mScope);
+          if (isCell) {
+            scopeType = 'Cell';
+            const cell = availableCells.find((c) => c.name === mScope);
+            scopeValue = cell ? cell.id : mScope;
+          }
+        }
+      }
+    }
+
+    if (mScopeId) {
+      scopeValue = mScopeId;
+    }
+
+    const payload = {
+      title: mTitle,
+      type: mType,
+      frequency: mFreq,
+      scope: mScope,
+      scope_type: scopeType,
+      scope_id: scopeValue,
+      scope_value: scopeValue,
+      default_time: mTime,
+    };
+
+    try {
+      setIsLoading(true);
+      await attendanceAPI.createTemplate(payload);
+      const updatedTemplates = await attendanceAPI.getTemplates();
+      setTemplates(updatedTemplates);
+      setIsTemplateModalOpen(false);
+      resetMeetingForm();
+    } catch (err: any) {
+      console.error('Failed to create template:', err);
+      setError(err.message || 'Failed to create template');
+      alert('Failed to create template. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const generateMeeting = async () => {
+    if (!selectedTemplate) return;
+    try {
+      setIsLoading(true);
+      // Use either _id or id depending on what the backend returns
+      await attendanceAPI.generateMeetingFromTemplate(selectedTemplate._id || selectedTemplate.id, mDate);
+      const updatedMeetings = await attendanceAPI.getMeetings();
+      setMeetings(updatedMeetings);
+      setIsGenerateModalOpen(false);
+      setActiveTab('Meetings');
+      alert('Meeting generated successfully!');
+    } catch (err: any) {
+      console.error('Failed to generate meeting:', err);
+      setError(err.message || 'Failed to generate meeting');
+      alert('Failed to generate meeting.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const saveMeeting = async () => {
     // Determine Scope Type and Value based on selection
     let scopeType = 'Church';
@@ -567,6 +658,34 @@ const ChurchMeetingsModule = () => {
       scopeValue = mScopeId;
     }
 
+    // Derive church_id and fellowship_id based on scope_type
+    let churchId: number | undefined;
+    let fellowshipId: number | undefined;
+
+    if (scopeType === 'Church') {
+      // For church-level meetings, church_id = scope_id
+      churchId = scopeValue ? Number(scopeValue) : undefined;
+    } else if (scopeType === 'Fellowship') {
+      // For fellowship meetings, find the fellowship and get its church_id
+      const fellowship = availableFellowships.find(
+        (f) => f.id.toString() === scopeValue?.toString() || f.name === mScope
+      );
+      if (fellowship) {
+        churchId = fellowship.church_id;
+        fellowshipId = fellowship.id;
+      }
+    } else if (scopeType === 'Cell') {
+      // For cell meetings, find the cell and get its church_id and fellowship_id
+      const cell = availableCells.find(
+        (c) => c.id.toString() === scopeValue?.toString() || c.name === mScope
+      );
+      if (cell) {
+        churchId = cell.church_id;
+        fellowshipId = cell.fellowship_id;
+      }
+    }
+    // For Global Ministry, both remain undefined (null in backend)
+
     // Generate code and expiry
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(); // 12 hours from now
@@ -579,6 +698,8 @@ const ChurchMeetingsModule = () => {
       scope_type: scopeType,
       scope_value: scopeValue,
       scope_id: scopeValue, // CRITICAL FIX: Backend expects scope_id for linking parent church
+      church_id: churchId, // NEW: Church context
+      fellowship_id: fellowshipId, // NEW: Fellowship context
       attendance_code: code,
       code_expires_at: expiresAt,
       time: mTime,
@@ -592,10 +713,7 @@ const ChurchMeetingsModule = () => {
       setIsLoading(true);
       if (editingMeeting) {
         // For edit, maybe don't regenerate code if existed, but for now safe to send
-        await attendanceAPI.createMeeting({
-          ...meetingData,
-          id: editingMeeting.id,
-        });
+        await attendanceAPI.updateMeeting(editingMeeting.id, meetingData);
       } else {
         await attendanceAPI.createMeeting(meetingData);
       }
@@ -620,7 +738,9 @@ const ChurchMeetingsModule = () => {
     setMScopeId('');
     setMDate('');
     setMTime('');
-    setSelectedChurchContext('');
+    // Initialize with current church from localStorage (church switcher)
+    const currentChurchId = localStorage.getItem('selected_church_id');
+    setSelectedChurchContext(currentChurchId || '');
   };
 
   const openViewModal = (meeting: Meeting) => {
@@ -886,7 +1006,7 @@ const ChurchMeetingsModule = () => {
       </div>
 
       <div className='flex gap-4 border-b border-slate-200'>
-        {['Overview', 'Meetings', 'Attendance Submissions', 'History'].map(
+        {['Overview', 'Meetings', 'Recurring', 'Attendance Submissions', 'History'].map(
           (tab) => (
             <button
               key={tab}
@@ -1277,18 +1397,21 @@ const ChurchMeetingsModule = () => {
                         {m.title}
                       </td>
                       <td className='px-6 py-5'>
-                        {activeCodes[m.id] ? (
+                        {activeCodes[m.id] || (m.attendance_code && new Date(m.code_expires_at) > new Date()) ? (
                           <div className='flex items-center gap-3'>
                             <span className='px-3 py-1 bg-gold/10 text-[#CCA856] rounded font-mono font-black text-sm border border-gold/20'>
-                              {activeCodes[m.id].code}
+                              {activeCodes[m.id]?.code || m.attendance_code}
                             </span>
                             <CodeCountdown
-                              expiresAt={activeCodes[m.id].expiresAt}
+                              expiresAt={
+                                activeCodes[m.id]?.expiresAt ||
+                                (m.code_expires_at ? new Date(m.code_expires_at).getTime() : 0)
+                              }
                             />
                           </div>
                         ) : (
                           <span className='text-[10px] font-black text-slate-300 uppercase tracking-widest italic'>
-                            No code
+                            No active code
                           </span>
                         )}
                       </td>
@@ -1402,6 +1525,13 @@ const ChurchMeetingsModule = () => {
                 if (m.scope === 'Global Ministry' || m.scope === 'Global')
                   return 'Global Ministry';
 
+                // Helper to find church by ID with type coercion
+                const findChurchById = (churchId: any) => {
+                  return availableChurches.find(
+                    (c) => c.id?.toString() === churchId?.toString()
+                  );
+                };
+
                 // Same logic as fixed openViewModal to find context name
                 if (m.scope_type === 'Fellowship') {
                   const f = availableFellowships.find(
@@ -1411,11 +1541,11 @@ const ChurchMeetingsModule = () => {
                       f.name === m.scope
                   );
                   if (f && f.church_id) {
-                    const c = availableChurches.find(
-                      (c) => c.id.toString() === f.church_id.toString()
-                    );
-                    return c ? c.name : 'Unknown Church';
+                    const c = findChurchById(f.church_id);
+                    if (c) return c.name;
                   }
+                  // Fallback: Try to get church from current user context
+                  if (user?.church_name) return user.church_name;
                   return m.scope; // Fallback
                 } else if (m.scope_type === 'Cell') {
                   const c = availableCells.find(
@@ -1425,11 +1555,11 @@ const ChurchMeetingsModule = () => {
                       ce.name === m.scope
                   );
                   if (c && c.church_id) {
-                    const ch = availableChurches.find(
-                      (ch) => ch.id.toString() === c.church_id.toString()
-                    );
-                    return ch ? ch.name : 'Unknown Church';
+                    const ch = findChurchById(c.church_id);
+                    if (ch) return ch.name;
                   }
+                  // Fallback: Try to get church from current user context
+                  if (user?.church_name) return user.church_name;
                   return m.scope;
                 } else {
                   // Try to match scope name to a church
@@ -1439,11 +1569,11 @@ const ChurchMeetingsModule = () => {
                   if (church) return church.name;
                   // Or via scope_id if it was a Church type
                   if (m.scope_type === 'Church' && m.scope_id) {
-                    const ch = availableChurches.find(
-                      (c) => c.id.toString() === m.scope_id?.toString()
-                    );
+                    const ch = findChurchById(m.scope_id);
                     if (ch) return ch.name;
                   }
+                  // Final fallback: Use current user's church
+                  if (user?.church_name) return user.church_name;
                 }
 
                 return m.scope || 'N/A';
@@ -2112,44 +2242,79 @@ const ChurchMeetingsModule = () => {
             </div>
             <div className='bg-white border border-slate-200 rounded-lg p-2 max-h-[220px] overflow-y-auto custom-scrollbar'>
               <div className='grid grid-cols-1 md:grid-cols-2 gap-1'>
-                {allMembers
-                  .filter((m) =>
+                {(() => {
+                  // Filter members based on meeting scope
+                  let filteredMembers = allMembers;
+
+                  if (selectedMeetingForAttendance) {
+                    const { church_id, fellowship_id, scope_type } = selectedMeetingForAttendance;
+
+                    // Apply filters based on scope type
+                    if (scope_type === 'Fellowship' && fellowship_id) {
+                      // For fellowship meetings, show only members from that fellowship
+                      filteredMembers = allMembers.filter(
+                        (m) => m.fellowship_id?.toString() === fellowship_id?.toString()
+                      );
+                    } else if (scope_type === 'Church' && church_id) {
+                      // For church meetings, show all members from that church
+                      filteredMembers = allMembers.filter(
+                        (m) => m.church_id?.toString() === church_id?.toString()
+                      );
+                    } else if (scope_type === 'Cell') {
+                      // For cell meetings, filter by cell_id if available
+                      const cell_id = selectedMeetingForAttendance.scope_id;
+                      if (cell_id) {
+                        filteredMembers = allMembers.filter(
+                          (m) => m.cell_id?.toString() === cell_id?.toString()
+                        );
+                      }
+                    }
+                    // For Global meetings, show all members (no filter)
+                  }
+
+                  // Apply search filter
+                  const searchFiltered = filteredMembers.filter((m) =>
                     (m.name || '')
                       .toLowerCase()
                       .includes(memberSearchTerm.toLowerCase())
-                  )
-                  .map((m, idx) => {
-                    const isSelected = attendanceMembers.includes(
-                      m.id || m.name
-                    ); // Fallback to name if ID missing, but prefer ID
-                    return (
-                      <div
-                        key={m.id || idx}
-                        onClick={() =>
-                          setAttendanceMembers((prev) =>
-                            isSelected
-                              ? prev.filter((x) => x !== (m.id || m.name))
-                              : [...prev, m.id || m.name]
-                          )
-                        }
-                        className={`p-2.5 rounded cursor-pointer transition-all flex items-center gap-3 border ${isSelected ? 'border-[#1A1C1E] bg-slate-50' : 'border-transparent hover:bg-slate-50'}`}
-                      >
-                        {isSelected ? (
-                          <CheckSquare size={16} className='text-[#1A1C1E]' />
-                        ) : (
-                          <Square size={16} className='text-slate-300' />
-                        )}
-                        <span className='text-[13px] font-bold text-slate-700'>
-                          {m.name}
-                        </span>
-                      </div>
-                    );
-                  })}
-                {allMembers.length === 0 && (
-                  <p className='col-span-2 text-center py-6 text-[11px] text-slate-400 italic'>
-                    No members found.
-                  </p>
-                )}
+                  );
+
+                  return searchFiltered.length > 0 ? (
+                    searchFiltered.map((m, idx) => {
+                      const isSelected = attendanceMembers.includes(
+                        m.id || m.name
+                      );
+                      return (
+                        <div
+                          key={m.id || idx}
+                          onClick={() =>
+                            setAttendanceMembers((prev) =>
+                              isSelected
+                                ? prev.filter((x) => x !== (m.id || m.name))
+                                : [...prev, m.id || m.name]
+                            )
+                          }
+                          className={`p-2.5 rounded cursor-pointer transition-all flex items-center gap-3 border ${isSelected ? 'border-[#1A1C1E] bg-slate-50' : 'border-transparent hover:bg-slate-50'}`}
+                        >
+                          {isSelected ? (
+                            <CheckSquare size={16} className='text-[#1A1C1E]' />
+                          ) : (
+                            <Square size={16} className='text-slate-300' />
+                          )}
+                          <span className='text-[13px] font-bold text-slate-700'>
+                            {m.name}
+                          </span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className='col-span-2 text-center py-6 text-[11px] text-slate-400 italic'>
+                      {filteredMembers.length === 0
+                        ? `No members found in this ${selectedMeetingForAttendance?.scope_type?.toLowerCase() || 'scope'}.`
+                        : 'No members match your search.'}
+                    </p>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -2323,19 +2488,22 @@ const ChurchMeetingsModule = () => {
 
       {/* DEFINE / EDIT MEETING MODAL */}
       <Modal
-        isOpen={isMeetingModalOpen}
+        isOpen={isMeetingModalOpen || isTemplateModalOpen}
         onClose={() => {
           setIsMeetingModalOpen(false);
+          setIsTemplateModalOpen(false);
           setIsReadOnlyMode(false);
           setEditingMeeting(null);
           resetMeetingForm();
         }}
         title={
-          isReadOnlyMode
-            ? 'Meeting Details'
-            : editingMeeting
-              ? 'Edit Meeting Structure'
-              : 'Define New Meeting Structure'
+          isTemplateModalOpen
+            ? 'Create Recurring Template'
+            : isReadOnlyMode
+              ? 'Meeting Details'
+              : editingMeeting
+                ? 'Edit Meeting Structure'
+                : 'Define New Meeting Structure'
         }
         size='md'
       >
@@ -2397,19 +2565,21 @@ const ChurchMeetingsModule = () => {
             </div>
           </div>
 
-          <div className='grid grid-cols-2 gap-4'>
-            <div className='space-y-2'>
-              <label className='text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1'>
-                Start Date
-              </label>
-              <input
-                type='date'
-                value={mDate}
-                onChange={(e) => setMDate(e.target.value)}
-                disabled={isReadOnlyMode}
-                className={`w-full px-4 py-3 bg-[#F8F9FA] border border-slate-200 rounded-lg outline-none font-bold text-sm shadow-sm focus:border-[#CCA856] ${isReadOnlyMode ? 'opacity-60 cursor-not-allowed' : ''}`}
-              />
-            </div>
+          <div className={`grid gap-4 ${isTemplateModalOpen ? 'grid-cols-1' : 'grid-cols-2'}`}>
+            {!isTemplateModalOpen && (
+              <div className='space-y-2'>
+                <label className='text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1'>
+                  Start Date
+                </label>
+                <input
+                  type='date'
+                  value={mDate}
+                  onChange={(e) => setMDate(e.target.value)}
+                  disabled={isReadOnlyMode}
+                  className={`w-full px-4 py-3 bg-[#F8F9FA] border border-slate-200 rounded-lg outline-none font-bold text-sm shadow-sm focus:border-[#CCA856] ${isReadOnlyMode ? 'opacity-60 cursor-not-allowed' : ''}`}
+                />
+              </div>
+            )}
             <div className='space-y-2'>
               <label className='text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1'>
                 Time of Meeting
@@ -2565,20 +2735,56 @@ const ChurchMeetingsModule = () => {
                 </label>
                 <select
                   value={mScope}
-                  onChange={(e) => setMScope(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setMScope(val);
+
+                    // Attempt to find ID for non-admin selection
+                    // If "Entire Church", clear ID.
+                    if (val === 'Entire Church') {
+                      setMScopeId('');
+                      return;
+                    }
+
+                    // Check Fellowship
+                    const fellowship = availableFellowships.find(
+                      (f) => f.name === val
+                    );
+                    if (fellowship) {
+                      setMScopeId(fellowship.id.toString());
+                      return;
+                    }
+
+                    // Check Cell
+                    const cell = availableCells.find((c) => c.name === val);
+                    if (cell) {
+                      setMScopeId(cell.id.toString());
+                      return;
+                    }
+
+                    setMScopeId('');
+                  }}
                   className='w-full px-4 py-3 bg-[#F8F9FA] border border-slate-200 rounded-lg outline-none font-bold text-sm shadow-sm'
                 >
                   <option>Entire Church</option>
-                  <optgroup label='Fellowship'>
-                    {FELLOWSHIPS.map((f) => (
-                      <option key={f}>{f}</option>
-                    ))}
-                  </optgroup>
-                  <optgroup label='Cell'>
-                    {CELLS.map((c) => (
-                      <option key={c}>{c}</option>
-                    ))}
-                  </optgroup>
+                  {availableFellowships.length > 0 && (
+                    <optgroup label='Fellowship'>
+                      {availableFellowships.map((f) => (
+                        <option key={f.id} value={f.name}>
+                          {f.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {availableCells.length > 0 && (
+                    <optgroup label='Cell'>
+                      {availableCells.map((c) => (
+                        <option key={c.id} value={c.name}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </div>
             )}
@@ -2586,14 +2792,53 @@ const ChurchMeetingsModule = () => {
 
           {!isReadOnlyMode && (
             <button
-              onClick={saveMeeting}
+              onClick={isTemplateModalOpen ? saveTemplate : saveMeeting}
               className='w-full py-4 bg-[#1A1C1E] text-white rounded-lg font-black text-xs uppercase tracking-widest shadow-2xl mt-4 hover:bg-[#CCA856] transition-all'
             >
-              {editingMeeting
-                ? 'Update Configuration'
-                : 'Save Meeting Configuration'}
+              {isTemplateModalOpen
+                ? 'Save Template'
+                : (editingMeeting
+                  ? 'Update Configuration'
+                  : 'Save Meeting Configuration')}
             </button>
           )}
+        </div>
+      </Modal>
+
+      {/* GENERATE MEETING MODAL */}
+      <Modal
+        isOpen={isGenerateModalOpen}
+        onClose={() => {
+          setIsGenerateModalOpen(false);
+          setSelectedTemplate(null);
+        }}
+        title='Generate Meeting Instance'
+        size='md'
+      >
+        <div className='bg-white p-6'>
+          <p className='text-sm text-slate-600 mb-6'>
+            Generate a new meeting instance for <strong>{selectedTemplate?.title}</strong>.
+            <br />Please confirm the date below.
+          </p>
+
+          <div className='space-y-2'>
+            <label className='text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1'>
+              Meeting Date
+            </label>
+            <input
+              type='date'
+              value={mDate}
+              onChange={(e) => setMDate(e.target.value)}
+              className='w-full px-4 py-3 bg-[#F8F9FA] border border-slate-200 rounded-lg outline-none font-bold text-sm shadow-sm focus:border-[#CCA856]'
+            />
+          </div>
+
+          <button
+            onClick={generateMeeting}
+            className='w-full py-4 bg-[#1A1C1E] text-white rounded-lg font-black text-xs uppercase tracking-widest shadow-2xl mt-6 hover:bg-green-600 transition-all flex items-center justify-center gap-2'
+          >
+            <Zap size={16} /> Generate Meeting
+          </button>
         </div>
       </Modal>
     </div>

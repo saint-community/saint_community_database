@@ -208,7 +208,7 @@ const App: React.FC = () => {
           {activeModule === 'Analytics' && <AnalyticsModule key={selectedChurchId} />}
           {activeModule === 'Evangelism' && <EvangelismModule key={selectedChurchId} />}
           {activeModule === 'Follow Up' && <FollowUpModule key={selectedChurchId} />}
-          {activeModule === 'Church Meetings' && <ChurchMeetingsModule key={selectedChurchId} />}
+          {activeModule === 'Church Meetings' && <ChurchMeetingsModule key={selectedChurchId} user={user} />}
           {activeModule === 'Study Group' && <StudyGroupModule key={selectedChurchId} />}
           {activeModule === 'Prayer Group' && (
             <PrayerModule
