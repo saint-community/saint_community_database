@@ -289,7 +289,8 @@ const PrayerModule = ({ user }: { user: any }) => {
         const [fs, cs, churches] = await Promise.all([
           structureAPI.getFellowships().catch(e => { console.warn("Fellowships fetch failed", e); return []; }),
           structureAPI.getCells().catch(e => { console.warn("Cells fetch failed", e); return []; }),
-          structureAPI.getChurches().catch(e => { console.warn("Churches fetch failed", e); return []; })
+          // Use user.churches if available
+          (user?.churches && user.churches.length > 0) ? Promise.resolve(user.churches) : structureAPI.getChurches().catch(e => { console.warn("Churches fetch failed", e); return []; })
         ]);
 
         // Find Isolo Church ID

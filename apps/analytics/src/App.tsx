@@ -31,6 +31,18 @@ const App: React.FC = () => {
   const [activeModule, setActiveModule] = useState<string>('Church Meetings');
   const [user, setUser] = useState<any>(null);
 
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('sanctum_token');
+      setIsAuthenticated(false);
+      setUser(null);
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+  }, []);
+
   // Persist selected church to survive refreshes and handle token statelessness
   const [selectedChurchId, setSelectedChurchId] = useState<number | null>(() => {
     const saved = localStorage.getItem('selected_church_id');
@@ -47,26 +59,56 @@ const App: React.FC = () => {
       // Handle nested admin_meta structure from Laravel Sanctum/JWT
       const userId = session?.id || session?.admin_meta?.id || session?.sub;
 
+      // Get saved church preference
+      const savedChurchId = localStorage.getItem('selected_church_id');
+
       if (session && userId) {
         try {
           // Try to fetch latest profile
           const profile = await accountAPI.getProfile(userId);
+          let userData = null;
+
           if (profile && profile.data) {
-            // If backend returns flat user object
-            setUser(profile.data);
-          } else {
-            // Fallback to token data if profile is empty/fails but token is valid
-            // Token structure: { admin_meta: { ...user fields... } }
-            // We want 'user' state to match the shape expected by UI (name, role, churches)
-            if (session.admin_meta) {
-              setUser(session.admin_meta);
-            }
+            userData = profile.data;
+          } else if (session.admin_meta) {
+            // Fallback to token data
+            userData = session.admin_meta;
           }
+
+          if (userData) {
+            // If we have a saved church preference, override the default church_id
+            if (savedChurchId) {
+              const sid = Number(savedChurchId);
+              const selectedChurch = userData.churches?.find((c: any) => c.church_id === sid);
+              if (selectedChurch) {
+                userData = {
+                  ...userData,
+                  church_id: sid,
+                  church_name: selectedChurch.church_name
+                };
+              }
+            }
+            setUser(userData);
+          }
+
         } catch (err) {
           console.error('Error fetching user profile, using token data:', err);
           // Fallback to token data is critical for "Church Switcher" if API fails
           if (session.admin_meta) {
-            setUser(session.admin_meta);
+            let userData = session.admin_meta;
+            // Apply saved preference to fallback data too
+            if (savedChurchId) {
+              const sid = Number(savedChurchId);
+              const selectedChurch = userData.churches?.find((c: any) => c.church_id === sid);
+              if (selectedChurch) {
+                userData = {
+                  ...userData,
+                  church_id: sid,
+                  church_name: selectedChurch.church_name || userData.church_name
+                };
+              }
+            }
+            setUser(userData);
           }
         }
       }
@@ -97,9 +139,13 @@ const App: React.FC = () => {
 
     // Update local user state immediately so UI reflects the change
     if (user) {
+      // Find the selected church details to update the church_name
+      const selectedChurch = user.churches?.find((c: any) => c.church_id === churchId);
+
       setUser({
         ...user,
-        church_id: churchId
+        church_id: churchId,
+        church_name: selectedChurch?.church_name || user.church_name
       });
     }
   };
@@ -209,7 +255,7 @@ const App: React.FC = () => {
           {activeModule === 'Evangelism' && <EvangelismModule key={selectedChurchId} />}
           {activeModule === 'Follow Up' && <FollowUpModule key={selectedChurchId} />}
           {activeModule === 'Church Meetings' && <ChurchMeetingsModule key={selectedChurchId} user={user} />}
-          {activeModule === 'Study Group' && <StudyGroupModule key={selectedChurchId} />}
+          {activeModule === 'Study Group' && <StudyGroupModule key={selectedChurchId} user={user} selectedChurch={selectedChurchId} />}
           {activeModule === 'Prayer Group' && (
             <PrayerModule
               key={selectedChurchId}
