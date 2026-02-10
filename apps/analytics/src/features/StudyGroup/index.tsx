@@ -117,10 +117,14 @@ import {
   CELLS,
 } from '../../data/lists';
 import { getMemberGroup } from '../../utils/helpers';
-const StudyGroupModule = () => {
+const StudyGroupModule = ({ user, selectedChurch }: { user: any; selectedChurch: any }) => {
+  // const { user, selectedChurch } = useOutletContext<any>(); // Removed: App uses conditional rendering, not Outlet
   const [activeTab, setActiveTab] = useState<
     'Assignments' | 'Submissions' | 'History'
   >('Assignments');
+  /* 
+   * FIX: Renamed back to isAddAssignmentOpen to match usages throughout the file 
+   */
   const [isAddAssignmentOpen, setIsAddAssignmentOpen] = useState(false);
   const [isAddSubmissionOpen, setIsAddSubmissionOpen] = useState(false);
   const [isEditAssignmentOpen, setIsEditAssignmentOpen] = useState(false);
@@ -135,7 +139,7 @@ const StudyGroupModule = () => {
 
   // New Submission Form States
   const [submissionForm, setSubmissionForm] = useState({
-    church: '',
+    church: user?.church_id?.toString() || user?.admin_meta?.church_id?.toString() || '',
     fellowship: 'None',
     cell: 'None',
     member: '',
@@ -148,6 +152,10 @@ const StudyGroupModule = () => {
   // Auto-select based on User Role (JWT)
   useEffect(() => {
     if (isAddSubmissionOpen) {
+      if (user?.church_id) {
+        setSubmissionForm(prev => ({ ...prev, church: user.church_id.toString() }));
+      }
+      // Keep existing logic as fallback
       const token = getAuthToken(); // JWT Token for NestJS/Admin
       if (token) {
         const decoded = parseJwt(token);
@@ -157,25 +165,30 @@ const StudyGroupModule = () => {
 
           setSubmissionForm((prev) => {
             let updates: any = {};
-            if (
-              role === 'church_pastor' ||
-              role === 'fellowship_leader' ||
-              role === 'cell_leader'
-            ) {
-              if (church_id) updates.church = church_id.toString();
+            if (church_id && !prev.church) updates.church = church_id.toString(); // Only set if empty
+
+            // Auto-fill fellowship and cell irrespective of role if available
+            if (fellowship_id && !prev.fellowship || prev.fellowship === 'None') {
+              updates.fellowship = fellowship_id.toString();
             }
-            if (role === 'fellowship_leader' || role === 'cell_leader') {
-              if (fellowship_id) updates.fellowship = fellowship_id.toString();
+            if (cell_id && !prev.cell || prev.cell === 'None') {
+              updates.cell = cell_id.toString();
             }
-            if (role === 'cell_leader') {
-              if (cell_id) updates.cell = cell_id.toString();
+
+            // Also check for flat user object properties
+            if (user?.fellowship_id && (!prev.fellowship || prev.fellowship === 'None')) {
+              updates.fellowship = user.fellowship_id.toString();
             }
+            if (user?.cell_id && (!prev.cell || prev.cell === 'None')) {
+              updates.cell = user.cell_id.toString();
+            }
+
             return { ...prev, ...updates };
           });
         }
       }
     }
-  }, [isAddSubmissionOpen]);
+  }, [isAddSubmissionOpen, user]);
   const [memberModalSearch, setMemberModalSearch] = useState('');
   const [showMemberModalSuggestions, setShowMemberModalSuggestions] =
     useState(false);
@@ -197,7 +210,8 @@ const StudyGroupModule = () => {
   const fetchStructureData = async () => {
     try {
       const [churchesData, fellowshipsData, cellsData] = await Promise.all([
-        structureAPI.getChurches(),
+        // Use user.churches if available to avoid 403 on /churches/all
+        (user?.churches && user.churches.length > 0) ? Promise.resolve(user.churches) : structureAPI.getChurches().catch(e => []),
         structureAPI.getFellowships(),
         structureAPI.getCells(),
       ]);
@@ -212,7 +226,7 @@ const StudyGroupModule = () => {
   useEffect(() => {
     fetchMembers();
     fetchStructureData();
-  }, []);
+  }, [user]);
 
   // Filtered members for modal search
   // Filtered members for modal search
@@ -488,16 +502,25 @@ const StudyGroupModule = () => {
   const [isLoadingStudyGroup, setIsLoadingStudyGroup] = useState(false);
 
   // Fetch Study Group Data
+  /* 
+   * FIX: Pass selectedChurch to usage of API so we fetch data for the intended church, 
+   * not just the user's home church.
+   */
   const fetchStudyGroupData = async () => {
     try {
       setIsLoadingStudyGroup(true);
+      // Use selectedChurch if available, or fall back to user's church
+      const targetChurchId = selectedChurch ? Number(selectedChurch) : (user?.church_id || user?.admin_meta?.church_id);
+
+      console.log('DEBUG: Fetching StudyGroup data for church:', targetChurchId);
+
       const [assignments, current, subs] = await Promise.all([
-        studyGroupAPI.getAllAssignments(),
-        studyGroupAPI.getCurrentAssignment().catch((err) => {
+        studyGroupAPI.getAllAssignments(targetChurchId),
+        studyGroupAPI.getCurrentAssignment(targetChurchId).catch((err) => {
           console.warn('No current assignment found, continuing...', err);
           return null;
         }),
-        studyGroupAPI.getSubmissions(),
+        studyGroupAPI.getSubmissions(targetChurchId),
       ]);
 
       const mappedAssignments = assignments.map((a: any) => ({
@@ -529,26 +552,28 @@ const StudyGroupModule = () => {
       }
 
       // Map Submissions
-      const mappedSubmissions = subs.map((s: any) => ({
-        id: s.id,
-        assignmentTitle:
-          s.study_group_title || s.assignment_title || 'Unknown Assignment',
-        submittedBy: s.member_name || 'Unknown Member',
-        phone: s.member_phone || '',
-        email: s.member_email || '',
-        // count: 1, // Individual submission
-        date: s.created_at || new Date().toISOString(),
-        status: s.status || 'Pending', // Pending, Approved, Rejected
-        week: s.week_number
-          ? `Week ${s.week_number}`
-          : s.week
-            ? `Week ${s.week}`
-            : 'Week --',
-        member: s.member_name || 'Unknown Member', // For card display
-        studentNotes: s.content || '', // Assuming 'content' field holds notes
-        isLate: s.is_late,
-        type: s.submission_method,
-      }));
+      const mappedSubmissions = subs.map((s: any) => {
+        // Try to find assignment title from the just-fetched assignments list
+        const relatedAssignment = assignments.find((a: any) => a.id === s.study_group_id);
+        const derivedTitle = relatedAssignment ? relatedAssignment.title : 'Unknown Assignment';
+
+        return {
+          id: s._id || s.id, // Handle MongoDB _id
+          studyGroupId: s.study_group_id,
+          memberId: s.member_id,
+          assignmentTitle: s.study_group_title || s.assignment_title || derivedTitle,
+          submittedBy: s.member_name || 'Unknown Member', // Will enrich this in render if still unknown
+          phone: s.member_phone || '',
+          email: s.member_email || '',
+          date: s.created_at || new Date().toISOString(),
+          status: s.status || 'Pending',
+          week: s.week_number ? `Week ${s.week_number}` : (s.week ? `Week ${s.week}` : 'Week --'),
+          member: s.member_name || 'Unknown Member',
+          studentNotes: s.content || '',
+          isLate: s.is_late,
+          type: s.submission_method,
+        };
+      });
       setSubmissions(mappedSubmissions);
     } catch (error) {
       console.error('Failed to fetch study group data', error);
@@ -559,7 +584,7 @@ const StudyGroupModule = () => {
 
   useEffect(() => {
     fetchStudyGroupData();
-  }, []);
+  }, [selectedChurch]); // Refetch when church changes
 
   // Assignment Data
   // const assignments = [
@@ -589,23 +614,37 @@ const StudyGroupModule = () => {
   const history = submissions
     .filter((s) => {
       const status = (s.status || '').toLowerCase();
-      return status === 'graded' || status === 'approved';
+      // FIX: Revert to only showing processed submissions in History
+      return ['graded', 'approved'].includes(status);
     })
-    .map((s) => ({
-      id: s.id,
-      title: s.assignmentTitle,
-      week: s.week,
-      member: s.submittedBy,
-      role: 'Member', // Ideally role should come from API
-      phone: s.phone,
-      email: s.email,
-      submitted: new Date(s.date).toLocaleString(),
-      type: 'Online By Member', // Placeholder
-      status: s.status,
-      feedback: 'No feedback provided.', // Placeholder until feedback is mapped
-      gradedBy: 'Admin', // Placeholder
-      link: '#', // Placeholder
-    }));
+    .map((s) => {
+      // Enrich member name if unknown
+      let memberName = s.member;
+      if (memberName === 'Unknown Member' && s.memberId) {
+        const foundMember = members.find((m: any) => (m._id === s.memberId || m.id === s.memberId));
+        if (foundMember) {
+          memberName = foundMember.first_name || foundMember.last_name
+            ? `${foundMember.first_name || ''} ${foundMember.last_name || ''}`.trim()
+            : foundMember.email;
+        }
+      }
+
+      return {
+        id: s.id,
+        title: s.assignmentTitle,
+        week: s.week,
+        member: memberName,
+        role: 'Member',
+        phone: s.phone,
+        email: s.email,
+        submitted: new Date(s.date).toLocaleString(),
+        type: 'Online By Member',
+        status: s.status,
+        feedback: 'No feedback provided.',
+        gradedBy: 'Admin',
+        link: '#',
+      };
+    });
 
   const MOCK_MEMBERS_FULL = [
     {
@@ -1567,36 +1606,6 @@ const StudyGroupModule = () => {
           </div>
 
           <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
-            <div className='space-y-2'>
-              <label className='text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 ml-2 text-red-500'>
-                Church *
-              </label>
-              <div className='relative'>
-                <select
-                  className='w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-[20px] outline-none font-bold text-xs appearance-none focus:border-[#2563EB] transition-all shadow-inner'
-                  value={submissionForm.church}
-                  onChange={(e) =>
-                    setSubmissionForm({
-                      ...submissionForm,
-                      church: e.target.value,
-                      fellowship: 'None',
-                      cell: 'None',
-                    })
-                  }
-                >
-                  <option value=''>Select a church</option>
-                  {churches.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  className='absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none'
-                  size={16}
-                />
-              </div>
-            </div>
             <div className='space-y-2'>
               <label className='text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 ml-2'>
                 Fellowship

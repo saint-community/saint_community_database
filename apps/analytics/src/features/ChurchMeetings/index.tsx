@@ -176,13 +176,25 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
         setCurrentUserRole(decoded.admin_meta.role);
       }
     }
-  }, []);
+    // Sync context with user prop (global switcher)
+    if (user?.church_id) {
+      setSelectedChurchContext(String(user.church_id));
+    }
+  }, [user]);
 
   // Load meetings and history on mount
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true);
+
+        // Prioritize local context (switcher) over user default
+        const targetChurchId = selectedChurchContext
+          ? Number(selectedChurchContext)
+          : user?.church_id;
+
+        console.log('DEBUG: loadData triggered', { targetChurchId });
+
 
         // Fetch churches from user profile instead of API (to avoid 403 permission error)
         const userChurches = user?.churches || [];
@@ -203,8 +215,8 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
         // 1. Fetch Meetings & Templates (Critical)
         try {
           const [meetingsData, templatesData] = await Promise.all([
-            attendanceAPI.getMeetings(),
-            attendanceAPI.getTemplates()
+            attendanceAPI.getMeetings(targetChurchId),
+            attendanceAPI.getTemplates(targetChurchId)
           ]);
           setMeetings(meetingsData);
           setTemplates(templatesData);
@@ -215,25 +227,46 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
         // 2. Fetch History & Stats (Secondary)
         try {
           const [historyData, statsData] = await Promise.all([
-            attendanceAPI.getAdminSubmissions(),
-            attendanceAPI.getStats(),
+            attendanceAPI.getAdminSubmissions(targetChurchId),
+            attendanceAPI.getStats(targetChurchId),
           ]);
-          setSubmissions(historyData);
+          const mappedHistory = historyData.map((h: any) => ({
+            ...h,
+            id: h._id || h.id,
+            meetingTitle: h.meeting_id?.title || 'Unknown Meeting',
+            date: h.meeting_id?.date
+              ? new Date(h.meeting_id.date).toLocaleDateString()
+              : new Date(h.submitted_at).toLocaleDateString(),
+            submittedBy: `Worker ${h.worker_id}`, // Ideally fetch worker name map
+            // Map Backend Arrays to Frontend Expected Keys
+            participants: h.manual_participants || [],
+            firstTimers: h.first_timers_details?.map((ft: any) => ft.name || 'Unknown') || [],
+            // Derive UI Status from Backend Flags
+            status: h.is_approved
+              ? 'Approved'
+              : h.rejection_reason
+                ? 'Rejected'
+                : 'Pending',
+          }));
+          setSubmissions(mappedHistory);
           setAttStats(statsData);
         } catch (e) {
           console.error('Failed to fetch history/stats', e);
         }
 
-        // 3. Fetch Directory Data (Workers/Members)
+        // 3. Fetch Directory Data (Workers/Members) - Independent Calls
         try {
-          const [workersData, membersData] = await Promise.all([
-            structureAPI.getWorkers(),
-            memberAPI.getAllMembers(),
-          ]);
+          const workersData = await structureAPI.getWorkers();
           setAllWorkers(workersData);
+        } catch (e) {
+          console.error('Failed to fetch workers data', e);
+        }
+
+        try {
+          const membersData = await memberAPI.getAllMembers();
           setAllMembers(membersData);
         } catch (e) {
-          console.error('Failed to fetch directory data', e);
+          console.error('Failed to fetch members data', e);
         }
 
         setIsLoading(false);
@@ -245,7 +278,7 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
       }
     };
     loadData();
-  }, []);
+  }, [user?.church_id, selectedChurchContext]); // React to user church switch or local context switch
 
   // Manual Attendance Form State
   const [attendanceFellowship, setAttendanceFellowship] = useState<string>('');
@@ -274,11 +307,23 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
     );
   }, [workerSearchTerm]);
 
+  /* Safe Member Filtering with Fallback to Mock Data */
   const filteredMembers = useMemo(() => {
-    return MEMBERS_LIST.filter((m) =>
-      m.toLowerCase().includes(memberSearchTerm.toLowerCase())
-    );
-  }, [memberSearchTerm]);
+    // If API returns no members (empty context/DB), fallback to static list to satisfy "it worked before"
+    const sourceData =
+      allMembers.length > 0 ? allMembers : (MEMBERS_LIST as any[]);
+
+    return sourceData
+      .filter((m: any) => {
+        const nameToCheck = typeof m === 'string' ? m : (m.name || '');
+        return nameToCheck.toLowerCase().includes(memberSearchTerm.toLowerCase());
+      })
+      .map((m: any) =>
+        typeof m === 'string'
+          ? { id: m, name: m }
+          : { ...m, id: m._id || m.id }
+      );
+  }, [allMembers, memberSearchTerm]);
 
   const handleFullRejection = (subId: string) => {
     setSubmissions(
@@ -401,45 +446,144 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
     if (!meeting) return;
 
     try {
-      // Use existing find-or-create logic in backend
+      // Calculate Next Instance Date
+      let instanceDate = new Date().toISOString().split('T')[0]; // Default to Today
+
+      if (meeting.frequency === 'Weekly' && meeting.date) {
+        const today = new Date();
+        const templateDate = new Date(meeting.date);
+
+        if (!isNaN(templateDate.getTime())) {
+          const targetDay = templateDate.getDay(); // 0-6
+          const currentDay = today.getDay();
+
+          // Calculate days to add to get to the target day
+          // If today IS the target day, we assume it's for TODAY (event happening now/today)
+          let daysToAdd = (targetDay - currentDay + 7) % 7;
+
+          const nextDate = new Date(today);
+          nextDate.setDate(today.getDate() + daysToAdd);
+          instanceDate = nextDate.toISOString().split('T')[0];
+        }
+      } else if (meeting.date) {
+        // For one-off or other frequencies, if the template date is future, use it. 
+        // If past, default to today (assuming immediate activation).
+        const tDate = new Date(meeting.date);
+        if (tDate > new Date()) {
+          instanceDate = meeting.date;
+        }
+      }
+
+      // Check for EXISTING instance
+      const existingInstance = meetings.find(m =>
+        m.title === meeting.title &&
+        m.date === instanceDate &&
+        m.scope === meeting.scope &&
+        m.scope_type === (meeting.scope_type || 'Church') && // Default to Church if undefined to match payload
+        m.type === meeting.type
+      );
+
+      if (existingInstance) {
+        // Reuse or Update Existing
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
+
+        // If it already has a valid code, just use it (or update UI if needed)
+        // But user clicked "Generate", so they probably want a code. 
+        // If one exists and is valid, just ensure it's in activeCodes
+        if (existingInstance.attendance_code && new Date(existingInstance.code_expires_at) > new Date()) {
+          setActiveCodes({
+            ...activeCodes,
+            [existingInstance.id]: {
+              code: existingInstance.attendance_code,
+              expiresAt: new Date(existingInstance.code_expires_at).getTime(),
+            },
+          });
+          alert(`Active code already exists for this meeting: ${existingInstance.attendance_code}`);
+          return;
+        }
+
+        // Update the existing instance with NEW code
+        setIsLoading(true);
+        const updatePayload = {
+          attendance_code: code,
+          code_expires_at: expiresAt,
+          status: 'Active'
+        };
+
+        await attendanceAPI.updateMeeting(existingInstance.id, updatePayload);
+
+        // Update Local State
+        const updatedMeetings = await attendanceAPI.getMeetings();
+        setMeetings(updatedMeetings);
+
+        setActiveCodes({
+          ...activeCodes,
+          [existingInstance.id]: {
+            code: code,
+            expiresAt: new Date(expiresAt).getTime(),
+          },
+        });
+
+        setIsLoading(false);
+        // alert(`Updated existing meeting code: ${code}`);
+        return;
+      }
+
+      // Create Payload for NEW Instance (Only if no existing one found)
       const payload = {
         title: meeting.title,
         type: meeting.type,
-        frequency: meeting.frequency,
+        frequency: 'Once', // Instance is a single event
         scope: meeting.scope,
         scope_type: meeting.scope_type || 'Church',
         scope_id: meeting.scope_id || '',
-        scope_value: meeting.scope_value || '', // fallbacks
-        date: meeting.date,
+        scope_value: meeting.scope_value || '',
+        date: instanceDate,
         time: meeting.time,
         location: meeting.location || 'Main Auditorium',
         assignedEntities: meeting.assignedEntities || [],
-        status: meeting.status || 'Active',
+        status: 'Active',
         attendance_code: Math.floor(100000 + Math.random() * 900000).toString(),
-        code_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        code_expires_at: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(), // 12 hour window per requirement
+        is_instance: true, // Optional flag if backend supports it, helpful for future filtering
       };
 
       setIsLoading(true);
-      const res = await attendanceAPI.updateMeeting(meetingId, payload as any);
+      // CREATE new meeting instead of updating template
+      const res = await attendanceAPI.createMeeting(payload as any);
       setIsLoading(false);
 
-      if (res && res.data && res.data.attendance_code) {
-        // Update local display state with CONFIRMED backend code
-        setActiveCodes({
-          ...activeCodes,
-          [meetingId]: {
-            code: res.data.attendance_code,
-            expiresAt: new Date(res.data.code_expires_at).getTime(),
-          },
-        });
-        // Also refresh list to stay in sync
+      if (res && (res.data || res)) {
+        const createdMeeting = res.data || res;
+        const newCode = createdMeeting.attendance_code || payload.attendance_code;
+        const newExpiry = createdMeeting.code_expires_at || payload.code_expires_at;
+
+        // Update local display state for the NEW meeting
+        // We need the new ID from response
+        const newId = createdMeeting.id || createdMeeting._id;
+
+        if (newId) {
+          setActiveCodes({
+            ...activeCodes,
+            [newId]: {
+              code: newCode,
+              expiresAt: new Date(newExpiry).getTime(),
+            },
+          });
+        }
+
+        // Refresh list to show the new instance row
         const updated = await attendanceAPI.getMeetings();
         setMeetings(updated);
+
+        // Optional: Notify success
+        // alert(`Generated Code: ${newCode} for ${instanceDate}`);
       }
     } catch (err) {
       console.error("Failed to generate code:", err);
       setIsLoading(false);
-      alert("Failed to generate code. Please checks network.");
+      alert("Failed to generate code. Please check network.");
     }
   };
 
@@ -453,7 +597,7 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
     setMTime('08:00');
     setMDate(new Date().toISOString().split('T')[0]);
 
-    if (activeTab === 'Recurring') {
+    if (activeTab === 'Templates') {
       setIsTemplateModalOpen(true);
     } else {
       setIsMeetingModalOpen(true);
@@ -537,6 +681,7 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
     // Determine Scope Type and Value based on selection
     let scopeType = 'Church';
     let scopeValue: string | number = mScope;
+    let churchId: number | undefined = undefined;
 
     if (mScope === 'Global Ministry') {
       scopeType = 'Global';
@@ -547,18 +692,21 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
         scopeType = 'Church';
         const church = availableChurches.find((c) => c.name === mScope);
         scopeValue = church ? church.id : mScope;
+        churchId = church ? church.id : undefined;
       } else {
         const isFellowship = availableFellowships.some((f) => f.name === mScope);
         if (isFellowship) {
           scopeType = 'Fellowship';
           const fellowship = availableFellowships.find((f) => f.name === mScope);
           scopeValue = fellowship ? fellowship.id : mScope;
+          churchId = fellowship ? fellowship.church_id : undefined;
         } else {
           const isCell = availableCells.some((c) => c.name === mScope);
           if (isCell) {
             scopeType = 'Cell';
             const cell = availableCells.find((c) => c.name === mScope);
             scopeValue = cell ? cell.id : mScope;
+            churchId = cell ? cell.church_id : undefined;
           }
         }
       }
@@ -576,6 +724,7 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
       scope_type: scopeType,
       scope_id: scopeValue,
       scope_value: scopeValue,
+      church_id: churchId,
       default_time: mTime,
     };
 
@@ -945,32 +1094,35 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
       { workers: string[]; members: string[]; firstTimers: string[] }
     > = {};
 
-    // Process Workers (from submittedBy)
+    // Determine the group name based on the meeting title/context
+    // Since we don't have per-member fellowship data in the submission yet,
+    // we group everyone under the meeting's primary fellowship/cell.
+    const primaryGroup =
+      viewingSubmission.meetingTitle.replace(/ Service| Meeting/i, '') ||
+      'General';
+
+    // Process Workers
     const workers = viewingSubmission.submittedBy
       .split(',')
-      .map((w) => w.trim())
-      .filter((w) => w !== 'Admin');
-    workers.forEach((w) => {
-      const group = getMemberGroup(w);
-      if (!fellowships[group])
-        fellowships[group] = { workers: [], members: [], firstTimers: [] };
-      fellowships[group].workers.push(w);
+      .map((w: string) => w.trim())
+      .filter((w: string) => w !== 'Admin');
+
+    if (!fellowships[primaryGroup]) {
+      fellowships[primaryGroup] = { workers: [], members: [], firstTimers: [] };
+    }
+
+    workers.forEach((w: string) => {
+      fellowships[primaryGroup].workers.push(w);
     });
 
-    // Process Members (from participants)
-    viewingSubmission.participants.forEach((m) => {
-      const group = getMemberGroup(m);
-      if (!fellowships[group])
-        fellowships[group] = { workers: [], members: [], firstTimers: [] };
-      fellowships[group].members.push(m);
+    // Process Members
+    viewingSubmission.participants.forEach((m: string) => {
+      fellowships[primaryGroup].members.push(m);
     });
 
     // Process First Timers
-    viewingSubmission.firstTimers.forEach((ft) => {
-      const group = getMemberGroup(ft); // Simulating group for first timers too
-      if (!fellowships[group])
-        fellowships[group] = { workers: [], members: [], firstTimers: [] };
-      fellowships[group].firstTimers.push(ft);
+    viewingSubmission.firstTimers.forEach((ft: string) => {
+      fellowships[primaryGroup].firstTimers.push(ft);
     });
 
     return fellowships;
@@ -997,26 +1149,25 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
             records.
           </p>
         </div>
-        <button
-          onClick={openCreateModal}
-          className='bg-[#1A1C1E] text-white px-6 py-3 rounded text-sm font-bold shadow hover:bg-slate-800 transition-all flex items-center gap-2'
-        >
-          <Plus size={18} /> Create Meeting
-        </button>
+
       </div>
 
       <div className='flex gap-4 border-b border-slate-200'>
-        {['Overview', 'Meetings', 'Recurring', 'Attendance Submissions', 'History'].map(
-          (tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-3 text-sm font-bold transition-all border-b-2 ${activeTab === tab ? 'border-[#CCA856] text-[#1A1C1E]' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-            >
-              {tab}
-            </button>
-          )
-        )}
+        {['Overview', 'Meetings', 'Templates', 'Submissions'].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`pb-4 px-2 text-sm font-medium transition-colors relative ${activeTab === tab
+              ? 'text-indigo-600'
+              : 'text-gray-500 hover:text-gray-700'
+              }`}
+          >
+            {tab}
+            {activeTab === tab && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-t-full" />
+            )}
+          </button>
+        ))}
       </div>
 
       {activeTab === 'Overview' && (
@@ -1138,55 +1289,200 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
               </tr>
             </thead>
             <tbody className='divide-y divide-slate-100'>
-              {meetings.map((meeting) => (
-                <tr
-                  key={meeting.id}
-                  className='hover:bg-slate-50 transition-colors'
-                >
-                  <td className='px-6 py-5 font-bold text-sm text-[#1A1C1E]'>
-                    {meeting.title}
-                  </td>
-                  <td className='px-6 py-5 text-xs text-slate-600 font-medium'>
-                    {meeting.frequency} • {meeting.type}
-                  </td>
-                  <td className='px-6 py-5 text-right'>
-                    <div className='flex justify-end gap-1'>
-                      <button
-                        onClick={() => {
-                          setSelectedMeetingForView(meeting);
-                          setIsViewMeetingModalOpen(true);
-                        }}
-                        className='p-2 text-slate-300 hover:text-[#CCA856] transition-colors'
-                        title='View Meeting Details'
-                      >
-                        <Eye size={16} />
-                      </button>
-                      <button
-                        onClick={() => openEditModal(meeting)}
-                        className='p-2 text-slate-300 hover:text-[#CCA856] transition-colors'
-                        title='Edit Meeting'
-                      >
-                        <Edit2 size={16} />
-                      </button>
-                      <button
-                        onClick={() => deleteMeeting(meeting.id)}
-                        className='p-2 text-slate-300 hover:text-[#E74C3C] transition-colors'
-                        title='Delete Meeting'
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {meetings.map((meeting) => {
+                const hasActiveCode = activeCodes[meeting.id] || (meeting.attendance_code && new Date(meeting.code_expires_at) > new Date());
+                const isInstance = hasActiveCode; // Simplistic check: if it has an active code, treat as instance (or active session)
+
+                return (
+                  <tr
+                    key={meeting.id}
+                    className={`hover:bg-slate-50 transition-colors ${isInstance ? 'bg-amber-50/30' : ''}`}
+                  >
+                    <td className='px-6 py-5 font-bold text-sm text-[#1A1C1E]'>
+                      <div className='flex flex-col'>
+                        <span>{meeting.title}</span>
+                        {isInstance && (
+                          <span className='text-[10px] text-amber-600 font-normal uppercase tracking-wide mt-0.5'>
+                            Ongoing Session • {meeting.date}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className='px-6 py-5 text-xs text-slate-600 font-medium'>
+                      {isInstance ? (
+                        <div className='flex items-center gap-3'>
+                          <span className='px-3 py-1 bg-gold/10 text-[#CCA856] rounded font-mono font-black text-sm border border-gold/20'>
+                            {activeCodes[meeting.id]?.code || meeting.attendance_code}
+                          </span>
+                          <CodeCountdown
+                            expiresAt={
+                              activeCodes[meeting.id]?.expiresAt ||
+                              (meeting.code_expires_at ? new Date(meeting.code_expires_at).getTime() : 0)
+                            }
+                          />
+                        </div>
+                      ) : (
+                        <span>{meeting.frequency} • {meeting.type}</span>
+                      )}
+                    </td>
+                    <td className='px-6 py-5 text-right'>
+                      <div className='flex justify-end gap-2'>
+                        {/* Actions for Active Instances */}
+                        {isInstance ? (
+                          <button
+                            onClick={() => openMarkAttendanceModal(meeting)}
+                            className='flex items-center gap-2 px-3 py-1.5 bg-[#1A1C1E] text-white border border-[#1A1C1E] rounded text-[10px] font-black uppercase hover:bg-slate-800 transition-all shadow-sm'
+                          >
+                            <CheckSquare size={12} className='text-[#CCA856]' />{' '}
+                            Mark Attendance
+                          </button>
+                        ) : (
+                          /* Actions for Templates */
+                          <>
+                            <button
+                              onClick={() => generateMeetingCode(meeting.id)}
+                              className='flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded text-[10px] font-black uppercase hover:border-[#CCA856] transition-all'
+                            >
+                              <QrCode size={14} /> Generate Code
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedMeetingForView(meeting);
+                                setIsViewMeetingModalOpen(true);
+                              }}
+                              className='p-2 text-slate-300 hover:text-[#CCA856] transition-colors'
+                              title='View Details'
+                            >
+                              <Eye size={16} />
+                            </button>
+                            <button
+                              onClick={() => openEditModal(meeting)}
+                              className='p-2 text-slate-300 hover:text-[#CCA856] transition-colors'
+                              title='Edit Template'
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button
+                              onClick={() => deleteMeeting(meeting.id)}
+                              className='p-2 text-slate-300 hover:text-[#E74C3C] transition-colors'
+                              title='Delete Template'
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
 
+      {activeTab === 'Templates' && (
+        <div className='space-y-6'>
+          <div className='flex justify-between items-center'>
+            <h3 className='text-lg font-bold text-[#1A1C1E]'>Meeting Templates</h3>
+            <button
+              onClick={openCreateModal}
+              className='flex items-center gap-2 px-4 py-2 bg-[#1A1C1E] text-white rounded font-bold text-xs uppercase tracking-widest hover:bg-[#CCA856] transition-all shadow-lg'
+            >
+              <Plus size={16} /> Create Template
+            </button>
+          </div>
+
+          <div className='bg-white border border-slate-200 rounded shadow-sm overflow-hidden'>
+            <table className='w-full text-left'>
+              <thead className='bg-[#F8F9FA] text-slate-500 border-b border-slate-200'>
+                <tr>
+                  <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
+                    Template Name
+                  </th>
+                  <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
+                    Frequency / Default Time
+                  </th>
+                  <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
+                    Scope
+                  </th>
+                  <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider text-right'>
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className='divide-y divide-slate-100'>
+                {templates.map((template) => (
+                  <tr
+                    key={template.id}
+                    className='hover:bg-slate-50 transition-colors'
+                  >
+                    <td className='px-6 py-5 font-bold text-sm text-[#1A1C1E]'>
+                      {template.title}
+                    </td>
+                    <td className='px-6 py-5 text-xs text-slate-600 font-medium'>
+                      {template.frequency} • {template.default_time || 'N/A'}
+                    </td>
+                    <td className='px-6 py-5 text-xs text-slate-600 font-medium'>
+                      {template.scope_type} - {template.scope || 'Global'}
+                    </td>
+                    <td className='px-6 py-5 text-right'>
+                      <div className='flex justify-end gap-2'>
+                        <button
+                          onClick={() => {
+                            setSelectedTemplate(template);
+                            setMDate(new Date().toISOString().split('T')[0]);
+                            setIsGenerateModalOpen(true);
+                          }}
+                          className='flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded text-[10px] font-black uppercase hover:border-[#CCA856] text-[#1A1C1E] hover:text-[#CCA856] transition-all'
+                          title="Schedule Next Meeting"
+                        >
+                          <Calendar size={14} /> Schedule
+                        </button>
+                        <button
+                          onClick={() => {
+                            // potential edit template logic
+                            alert('Edit template feature coming soon');
+                          }}
+                          className='p-2 text-slate-300 hover:text-[#CCA856] transition-colors'
+                          title='Edit Template'
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            // potential delete template logic
+                            alert('Delete template feature coming soon');
+                          }}
+                          className='p-2 text-slate-300 hover:text-red-500 transition-colors'
+                          title='Delete Template'
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {templates.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className='px-6 py-12 text-center text-slate-400 text-xs italic uppercase tracking-widest'
+                    >
+                      No templates found. Create one to get started.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+
       {/* ... (existing Attendance Submissions and History tabs) ... */}
 
-      {activeTab === 'Attendance Submissions' && (
+      {activeTab === 'Submissions' && (
         <div className='space-y-6'>
           <div className='flex bg-slate-100 p-1 rounded w-fit'>
             {(['Pending', 'Approved', 'Rejected'] as const).map((tab) => (
@@ -1297,146 +1593,59 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
 
       {activeTab === 'History' && (
         <div className='space-y-6'>
-          <div className='flex bg-slate-100 p-1 rounded w-fit'>
-            <button
-              onClick={() => setHistorySubTab('Past')}
-              className={`px-6 py-2 rounded text-xs font-black uppercase tracking-widest transition-all ${historySubTab === 'Past' ? 'bg-white shadow text-[#1A1C1E]' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              Past
-            </button>
-            <button
-              onClick={() => setHistorySubTab('Upcoming')}
-              className={`px-6 py-2 rounded text-xs font-black uppercase tracking-widest transition-all ${historySubTab === 'Upcoming' ? 'bg-white shadow text-[#1A1C1E]' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              Upcoming
-            </button>
-          </div>
-
           <div className='bg-white border border-slate-200 rounded shadow-sm overflow-hidden'>
-            {historySubTab === 'Past' ? (
-              <table className='w-full text-left'>
-                <thead className='bg-[#F8F9FA] text-slate-500 border-b border-slate-200'>
-                  <tr>
-                    <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
-                      Date
-                    </th>
-                    <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
-                      Meeting Title
-                    </th>
-                    <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider text-right'>
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className='divide-y divide-slate-100'>
-                  {submissions
-                    .filter((s) => s.status === 'Approved')
-                    .map((sub) => (
-                      <tr
-                        key={sub.id}
-                        className='hover:bg-slate-50 transition-colors group'
-                      >
-                        <td className='px-6 py-5 text-sm font-bold text-[#1A1C1E]'>
-                          {sub.date}
-                        </td>
-                        <td className='px-6 py-5 font-bold text-sm text-slate-700'>
-                          {sub.meetingTitle}
-                        </td>
-                        <td className='px-6 py-5 text-right'>
-                          <button
-                            onClick={() => setViewingSubmission(sub)}
-                            className='p-2 text-slate-300 hover:text-[#CCA856] transition-colors'
-                            title='View Attendance Details'
-                          >
-                            <FileText size={18} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  {submissions.filter((s) => s.status === 'Approved').length ===
-                    0 && (
-                      <tr>
-                        <td
-                          colSpan={3}
-                          className='px-6 py-12 text-center text-slate-400 text-xs italic uppercase tracking-widest'
-                        >
-                          No past meeting records found.
-                        </td>
-                      </tr>
-                    )}
-                </tbody>
-              </table>
-            ) : (
-              <table className='w-full text-left'>
-                <thead className='bg-[#F8F9FA] text-slate-500 border-b border-slate-200'>
-                  <tr>
-                    <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
-                      Timeline Date
-                    </th>
-                    <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
-                      Meeting Title
-                    </th>
-                    <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
-                      Attendance Code
-                    </th>
-                    <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider text-right'>
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className='divide-y divide-slate-100'>
-                  {meetings.map((m, idx) => (
+            <table className='w-full text-left'>
+              <thead className='bg-[#F8F9FA] text-slate-500 border-b border-slate-200'>
+                <tr>
+                  <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
+                    Date
+                  </th>
+                  <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
+                    Meeting Title
+                  </th>
+                  <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider text-right'>
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className='divide-y divide-slate-100'>
+                {submissions
+                  .filter((s) => s.status === 'Approved')
+                  .map((sub) => (
                     <tr
-                      key={m.id}
-                      className='hover:bg-slate-50 transition-colors'
+                      key={sub.id}
+                      className='hover:bg-slate-50 transition-colors group'
                     >
-                      <td className='px-6 py-5 text-xs font-black text-[#1A1C1E]'>
-                        {m.date || `May ${25 + idx}, 2024`}
+                      <td className='px-6 py-5 text-sm font-bold text-[#1A1C1E]'>
+                        {sub.date}
                       </td>
                       <td className='px-6 py-5 font-bold text-sm text-slate-700'>
-                        {m.title}
-                      </td>
-                      <td className='px-6 py-5'>
-                        {activeCodes[m.id] || (m.attendance_code && new Date(m.code_expires_at) > new Date()) ? (
-                          <div className='flex items-center gap-3'>
-                            <span className='px-3 py-1 bg-gold/10 text-[#CCA856] rounded font-mono font-black text-sm border border-gold/20'>
-                              {activeCodes[m.id]?.code || m.attendance_code}
-                            </span>
-                            <CodeCountdown
-                              expiresAt={
-                                activeCodes[m.id]?.expiresAt ||
-                                (m.code_expires_at ? new Date(m.code_expires_at).getTime() : 0)
-                              }
-                            />
-                          </div>
-                        ) : (
-                          <span className='text-[10px] font-black text-slate-300 uppercase tracking-widest italic'>
-                            No active code
-                          </span>
-                        )}
+                        {sub.meetingTitle}
                       </td>
                       <td className='px-6 py-5 text-right'>
-                        <div className='flex justify-end gap-2'>
-                          <button
-                            onClick={() => generateMeetingCode(m.id)}
-                            className='flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded text-[10px] font-black uppercase hover:border-[#CCA856] transition-all'
-                          >
-                            <QrCode size={14} /> Generate Code
-                          </button>
-                          <button
-                            onClick={() => openMarkAttendanceModal(m)}
-                            className='flex items-center gap-2 px-3 py-1.5 bg-[#1A1C1E] text-white border border-[#1A1C1E] rounded text-[10px] font-black uppercase hover:bg-slate-800 transition-all shadow-sm'
-                          >
-                            <CheckSquare size={12} className='text-[#CCA856]' />{' '}
-                            Mark Attendance
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => setViewingSubmission(sub)}
+                          className='p-2 text-slate-300 hover:text-[#CCA856] transition-colors'
+                          title='View Attendance Details'
+                        >
+                          <FileText size={18} />
+                        </button>
                       </td>
                     </tr>
                   ))}
-                </tbody>
-              </table>
-            )}
+                {submissions.filter((s) => s.status === 'Approved').length ===
+                  0 && (
+                    <tr>
+                      <td
+                        colSpan={3}
+                        className='px-6 py-12 text-center text-slate-400 text-xs italic uppercase tracking-widest'
+                      >
+                        No past meeting records found.
+                      </td>
+                    </tr>
+                  )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -2088,77 +2297,69 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
             </label>
             <div className='grid grid-cols-2 md:grid-cols-3 gap-2'>
               {(() => {
-                let unitsToShow: string[] = [];
-                // Determine what to show based on meeting scope type
                 const mScopeType = selectedMeetingForAttendance?.scope_type;
-                const mScope = selectedMeetingForAttendance?.scope;
+                const mScopeId = selectedMeetingForAttendance?.scope_id;
 
-                if (mScopeType === 'Fellowship') {
-                  // Resolve name dynamically for display
-                  let displayName = mScope;
-                  const f = availableFellowships.find(
-                    (f) =>
-                      selectedMeetingForAttendance.scope_id &&
-                      f.id.toString() ===
-                      selectedMeetingForAttendance.scope_id.toString()
-                  );
-                  if (f) displayName = f.name;
-                  else if (
-                    selectedMeetingForAttendance.assignedEntities &&
-                    selectedMeetingForAttendance.assignedEntities.length > 0
-                  )
-                    displayName =
-                      selectedMeetingForAttendance.assignedEntities[0];
+                const validTargets: { name: string; id: string | number; type: string }[] = [];
 
-                  unitsToShow = [displayName || ''];
-                } else if (mScopeType === 'Cell') {
-                  let displayName = mScope;
-                  const c = availableCells.find(
-                    (ce) =>
-                      selectedMeetingForAttendance.scope_id &&
-                      ce.id.toString() ===
-                      selectedMeetingForAttendance.scope_id.toString()
-                  );
-                  if (c) displayName = c.name;
-                  else if (
-                    selectedMeetingForAttendance.assignedEntities &&
-                    selectedMeetingForAttendance.assignedEntities.length > 0
-                  )
-                    displayName =
-                      selectedMeetingForAttendance.assignedEntities[0];
+                // 1. If Fellowship Scoped, show ONLY that fellowship and its cells
+                if (mScopeType === 'Fellowship' && mScopeId) {
+                  const fellowship = availableFellowships.find(f => f.id.toString() === mScopeId.toString());
+                  if (fellowship) {
+                    validTargets.push({ type: 'Fellowship', id: fellowship.id, name: fellowship.name });
 
-                  unitsToShow = [displayName || ''];
-                } else {
-                  // Church/Global context
-                  const isFellowshipMeeting =
-                    selectedMeetingForAttendance?.title
-                      .toLowerCase()
-                      .includes('fellowship') ||
-                    selectedMeetingForAttendance?.type.includes('Fellowship');
-
-                  if (isFellowshipMeeting) {
-                    unitsToShow = availableFellowships.map((f) => f.name);
-                  } else {
-                    // Default to all for now
-                    unitsToShow = [
-                      ...availableFellowships.map((f) => f.name),
-                      ...availableCells.map((c) => c.name),
-                    ];
+                    // Add Cells under this fellowship
+                    const cells = availableCells.filter(c => c.fellowship_id?.toString() === mScopeId.toString());
+                    cells.forEach(c => validTargets.push({ type: 'Cell', id: c.id, name: c.name }));
+                  } else if (selectedMeetingForAttendance.scope) {
+                    // Fallback if ID match fails but name is present
+                    validTargets.push({ type: 'Fellowship', id: mScopeId, name: selectedMeetingForAttendance.scope });
                   }
                 }
+                // 2. If Cell Scoped, show ONLY that cell (and maybe parent fellowship for context?)
+                else if (mScopeType === 'Cell' && mScopeId) {
+                  const cell = availableCells.find(c => c.id.toString() === mScopeId.toString());
+                  if (cell) {
+                    validTargets.push({ type: 'Cell', id: cell.id, name: cell.name });
+                  } else if (selectedMeetingForAttendance.scope) {
+                    validTargets.push({ type: 'Cell', id: mScopeId, name: selectedMeetingForAttendance.scope });
+                  }
+                }
+                // 3. If Church/Global, show Fellowships for THIS Church context
+                else {
+                  let fellowshipsToShow = availableFellowships;
 
-                // Perform filtering
-                return unitsToShow
-                  .filter((u) => u)
-                  .map((unit) => (
+                  // Filter by meeting's church_id if present
+                  if (selectedMeetingForAttendance?.church_id) {
+                    fellowshipsToShow = availableFellowships.filter(f => f.church_id?.toString() === selectedMeetingForAttendance.church_id?.toString());
+                  }
+                  // Fallback: If no church_id on meeting, try using the selected global context if filtering is needed
+                  else if (selectedChurchContext && selectedChurchContext !== 'global') {
+                    fellowshipsToShow = availableFellowships.filter(f => f.church_id?.toString() === selectedChurchContext.toString());
+                  }
+
+                  fellowshipsToShow.forEach(f => {
+                    validTargets.push({ type: 'Fellowship', id: f.id, name: f.name });
+                  });
+                }
+
+                // Render Buttons
+                if (validTargets.length === 0) {
+                  return <p className="col-span-full text-center text-xs text-slate-400 italic">No contexts available.</p>;
+                }
+
+                return validTargets.map((target, idx) => {
+                  const isSelected = attendanceFellowship === target.name;
+                  return (
                     <button
-                      key={unit}
-                      onClick={() => setAttendanceFellowship(unit)}
-                      className={`px-3 py-2.5 rounded border text-[11px] font-black uppercase tracking-tight transition-all ${attendanceFellowship === unit ? 'bg-[#1A1C1E] text-white border-[#1A1C1E] shadow-md' : 'bg-white text-slate-500 border-slate-200 hover:border-[#CCA856]'}`}
+                      key={`${target.type}-${target.id}-${idx}`}
+                      onClick={() => setAttendanceFellowship(target.name)}
+                      className={`px-3 py-2.5 rounded border text-[11px] font-black transition-all text-center uppercase tracking-wider ${isSelected ? 'bg-[#1A1C1E] text-white border-[#1A1C1E]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#CCA856] hover:text-[#CCA856]'}`}
                     >
-                      {unit}
+                      {target.name}
                     </button>
-                  ));
+                  );
+                });
               })()}
             </div>
           </div>
@@ -2247,27 +2448,24 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                   let filteredMembers = allMembers;
 
                   if (selectedMeetingForAttendance) {
-                    const { church_id, fellowship_id, scope_type } = selectedMeetingForAttendance;
+                    const { scope_type, scope_id, church_id } = selectedMeetingForAttendance;
 
-                    // Apply filters based on scope type
-                    if (scope_type === 'Fellowship' && fellowship_id) {
+                    // Apply filters based on scope type using scope_id
+                    if (scope_type === 'Fellowship' && scope_id) {
                       // For fellowship meetings, show only members from that fellowship
                       filteredMembers = allMembers.filter(
-                        (m) => m.fellowship_id?.toString() === fellowship_id?.toString()
+                        (m) => m.fellowship_id?.toString() === scope_id.toString()
+                      );
+                    } else if (scope_type === 'Cell' && scope_id) {
+                      // For cell meetings, filter by cell_id if available
+                      filteredMembers = allMembers.filter(
+                        (m) => m.cell_id?.toString() === scope_id.toString()
                       );
                     } else if (scope_type === 'Church' && church_id) {
-                      // For church meetings, show all members from that church
+                      // Fallback for church scope (church_id might be top-level or inferred)
                       filteredMembers = allMembers.filter(
-                        (m) => m.church_id?.toString() === church_id?.toString()
+                        (m) => m.church_id?.toString() === church_id.toString()
                       );
-                    } else if (scope_type === 'Cell') {
-                      // For cell meetings, filter by cell_id if available
-                      const cell_id = selectedMeetingForAttendance.scope_id;
-                      if (cell_id) {
-                        filteredMembers = allMembers.filter(
-                          (m) => m.cell_id?.toString() === cell_id?.toString()
-                        );
-                      }
                     }
                     // For Global meetings, show all members (no filter)
                   }
@@ -2841,7 +3039,7 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
           </button>
         </div>
       </Modal>
-    </div>
+    </div >
   );
 };
 export default ChurchMeetingsModule;

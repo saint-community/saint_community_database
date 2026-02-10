@@ -66,7 +66,8 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}, isSanctum
         // Handle 401 without auto-reloading to allow fallback logic
         if (response.status === 401) {
             console.warn(`Unauthorized access to ${endpoint} (Sanctum: ${isSanctum})`);
-            // We do NOT reload here. We allow the error to bubble up.
+            // Dispatch event for App.tsx to handle logout
+            window.dispatchEvent(new Event('auth:unauthorized'));
         }
 
         const errorBody = await response.json().catch(() => ({ message: 'Request failed' }));
@@ -368,8 +369,9 @@ export const followUpAPI = {
 // ============================================================================
 
 export const attendanceAPI = {
-    getMeetings: async (): Promise<any[]> => {
-        const response = await api.get('/attendance/admin/meetings');
+    getMeetings: async (churchId?: number): Promise<any[]> => {
+        const query = churchId ? `?church_id=${churchId}` : '';
+        const response = await api.get(`/attendance/admin/meetings${query}`);
         const data = response.data || [];
         return data.map((meeting: any) => {
             // Handle Dates
@@ -424,17 +426,20 @@ export const attendanceAPI = {
         await api.delete(`/attendance/admin/meeting/${id}`);
     },
 
-    getHistory: async (): Promise<any[]> => {
-        const response = await api.get('/attendance/history');
+    getHistory: async (churchId?: number): Promise<any[]> => {
+        const query = churchId ? `?church_id=${churchId}` : '';
+        const response = await api.get(`/attendance/history${query}`);
         return response.data || [];
     },
 
-    getAdminSubmissions: async (): Promise<any[]> => {
-        const response = await api.get('/attendance/admin/submissions');
+    getAdminSubmissions: async (churchId?: number): Promise<any[]> => {
+        const query = churchId ? `?church_id=${churchId}` : '';
+        const response = await api.get(`/attendance/admin/submissions${query}`);
         return response.data || [];
     },
-    getStats: async (): Promise<any> => {
-        const response = await api.get('/attendance/admin/stats');
+    getStats: async (churchId?: number): Promise<any> => {
+        const query = churchId ? `?church_id=${churchId}` : '';
+        const response = await api.get(`/attendance/admin/stats${query}`);
         return response.data || {};
     },
 
@@ -443,11 +448,15 @@ export const attendanceAPI = {
         return await api.post('/attendance/admin/template', data);
     },
 
-    getTemplates: async (): Promise<any[]> => {
-        const response = await api.get('/attendance/admin/templates');
+    getTemplates: async (churchId?: number): Promise<any[]> => {
+        const query = churchId ? `?church_id=${churchId}` : '';
+        const response = await api.get(`/attendance/admin/templates${query}`);
         const body = response.data;
-        if (Array.isArray(body)) return body;
-        return body.data || [];
+        let data = [];
+        if (Array.isArray(body)) data = body;
+        else data = body.data || [];
+
+        return data.map((t: any) => ({ ...t, id: t._id || t.id }));
     },
 
     generateMeetingFromTemplate: async (templateId: string, date: string): Promise<any> => {
@@ -461,8 +470,8 @@ export const attendanceAPI = {
 
 export const prayerGroupAPI = {
     getStats: async (): Promise<any> => {
-        // Backend route: GET /api/prayergroup/admin/stats
-        const response = await api.get('/prayergroup/admin/stats');
+        // Backend route: GET /api/prayer-group/admin/stats
+        const response = await api.get('/prayer-group/admin/stats');
         return response.data?.data || {};
     },
 
@@ -619,27 +628,47 @@ export const studyGroupAPI = {
 
     // Get all study groups/assignments
     getAllAssignments: async (churchId?: number): Promise<any[]> => {
-        let endpoint = '/admin/study-group';
+        let endpoint = '/study-groups';
         if (churchId) {
             endpoint += `?church_id=${churchId}`;
         }
-        const response = await api.get(endpoint);
-        return Array.isArray(response) ? response : (response.data || []);
+        try {
+            console.log('DEBUG: Fetching all assignments from', endpoint);
+            const response = await api.get(endpoint);
+            console.log('DEBUG: getAllAssignments response:', response);
+            return Array.isArray(response) ? response : (response.data || []);
+        } catch (error: any) {
+            console.error('DEBUG: getAllAssignments error:', error);
+            if (error.response && error.response.status === 404) {
+                return [];
+            }
+            throw error;
+        }
     },
 
     // Get current week's assignment
     getCurrentAssignment: async (churchId?: number): Promise<any> => {
-        let endpoint = '/admin/study-group/current-week';
+        let endpoint = '/study-groups/current-week';
         if (churchId) {
             endpoint += `?church_id=${churchId}`;
         }
-        const response = await api.get(endpoint);
-        return response;
+        try {
+            console.log('DEBUG: Fetching current assignment from', endpoint);
+            const response = await api.get(endpoint);
+            console.log('DEBUG: getCurrentAssignment response:', response);
+            return response;
+        } catch (error: any) {
+            console.error('DEBUG: getCurrentAssignment error:', error);
+            if (error.response && error.response.status === 404) {
+                return null;
+            }
+            throw error;
+        }
     },
 
     // Get weekly assignments for a specific year
     getWeeklyAssignments: async (year: string, churchId?: string): Promise<any> => {
-        let endpoint = `/admin/study-group/weekly/${year}`;
+        let endpoint = `/study-groups/weekly/${year}`;
         if (churchId) {
             endpoint += `?church_id=${churchId}`;
         }
@@ -649,7 +678,7 @@ export const studyGroupAPI = {
 
     // Get details of a single study group
     getAssignment: async (id: string): Promise<any> => {
-        const response = await api.get(`/admin/study-group/${id}`);
+        const response = await api.get(`/study-groups/${id}`);
         return response;
     },
 
@@ -664,10 +693,18 @@ export const studyGroupAPI = {
     },
 
     // Submissions: Get all submissions
-    getSubmissions: async (): Promise<any[]> => {
-        // Use admin endpoint to ensure we get all submissions including graded/history
-        const response = await api.get('/admin/submissions');
-        return Array.isArray(response) ? response : (response.data || []);
+    // Submissions: Get all submissions
+    getSubmissions: async (churchId?: number): Promise<any[]> => {
+        try {
+            // Use admin endpoint to ensure we get all submissions including graded/history
+            const endpoint = churchId ? `/admin/submissions?church_id=${churchId}` : '/admin/submissions';
+            const response = await api.get(endpoint);
+            return Array.isArray(response) ? response : (response.data || response || []);
+        } catch (error: any) {
+            console.error('DEBUG: getSubmissions error:', error);
+            // Return empty array on error to prevent breaking the whole study group page
+            return [];
+        }
     },
 
     getStats: async (): Promise<any> => {
@@ -813,25 +850,31 @@ export const memberAPI = {
         }
 
         const endpoint = isAdmin ? '/member/admin/all' : '/member/all';
-        const response = await api.get(endpoint);
+        try {
+            const response = await api.get(endpoint);
+            console.log(`DEBUG: getAllMembers (${isAdmin ? 'Admin' : 'Worker'}) raw response:`, response);
+            let data = [];
+            if (Array.isArray(response)) data = response;
+            else if (response.data && Array.isArray(response.data)) data = response.data;
+            else if (response.data && response.data.data && Array.isArray(response.data.data)) data = response.data.data;
 
-        console.log(`DEBUG: getAllMembers (${isAdmin ? 'Admin' : 'Worker'}) raw response:`, response);
-        let data = [];
-        if (Array.isArray(response)) data = response;
-        else if (response.data && Array.isArray(response.data)) data = response.data;
-        else if (response.data && response.data.data && Array.isArray(response.data.data)) data = response.data.data;
+            if (data.length > 0) {
+                // Map/Transform if needed (similar to worker mapping)
+                // For now, return as is or map _id to id
+                return data.map((m: any) => ({
+                    ...m,
+                    id: m._id || m.id
+                }));
+            }
+            return data;
+        } catch (error: any) {
+            if (error.response && error.response.status === 404) {
+                console.warn('getAllMembers: No members found (404), returning empty array.');
+                return [];
+            }
+            throw error;
+        }
 
-        const mapped = data.map((m: any) => {
-            const resolvedName = m.name || m.full_name || 'Unknown Member';
-            if (resolvedName === 'Unknown Member') console.warn('DEBUG: Member missing name/full_name:', m);
-            return {
-                ...m,
-                id: m.id || m._id,
-                name: resolvedName
-            };
-        });
-        if (mapped.length > 0) console.log('DEBUG: First mapped member:', mapped[0]);
-        return mapped;
     },
 
     getRecords: async (filters: any): Promise<any[]> => {
