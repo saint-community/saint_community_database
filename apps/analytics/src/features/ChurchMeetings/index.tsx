@@ -162,6 +162,7 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
   const [mScopeId, setMScopeId] = useState<string>('');
   const [mDate, setMDate] = useState('');
   const [mTime, setMTime] = useState('');
+  const [mDay, setMDay] = useState('Sunday'); // Default Day
   const [mTitle, setMTitle] = useState('');
   const [mType, setMType] = useState<MeetingType>('Sunday Service');
   const [mFreq, setMFreq] = useState<MeetingFrequency>('Weekly');
@@ -239,8 +240,13 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
               : new Date(h.submitted_at).toLocaleDateString(),
             submittedBy: `Worker ${h.worker_id}`, // Ideally fetch worker name map
             // Map Backend Arrays to Frontend Expected Keys
+            // Map Backend Arrays to Frontend Expected Keys
             participants: h.manual_participants || [],
             firstTimers: h.first_timers_details?.map((ft: any) => ft.name || 'Unknown') || [],
+            returning_first_timers: h.returning_first_timers_details?.map((ft: any) => ft.name || 'Unknown') || [],
+            adult_count: h.adult_count || 0,
+            children_count: h.children_count || 0,
+            returning_first_timers_count: h.returning_first_timers_count || 0,
             // Derive UI Status from Backend Flags
             status: h.is_approved
               ? 'Approved'
@@ -596,6 +602,7 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
     setMScopeId('');
     setMTime('08:00');
     setMDate(new Date().toISOString().split('T')[0]);
+    setMDay('Sunday');
 
     if (activeTab === 'Templates') {
       setIsTemplateModalOpen(true);
@@ -726,6 +733,7 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
       scope_value: scopeValue,
       church_id: churchId,
       default_time: mTime,
+      day_of_week: mDay,
     };
 
     try {
@@ -1091,7 +1099,12 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
 
     const fellowships: Record<
       string,
-      { workers: string[]; members: string[]; firstTimers: string[] }
+      {
+        workers: string[];
+        members: string[];
+        firstTimers: string[];
+        returningFirstTimers: string[];
+      }
     > = {};
 
     // Determine the group name based on the meeting title/context
@@ -1108,7 +1121,12 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
       .filter((w: string) => w !== 'Admin');
 
     if (!fellowships[primaryGroup]) {
-      fellowships[primaryGroup] = { workers: [], members: [], firstTimers: [] };
+      fellowships[primaryGroup] = {
+        workers: [],
+        members: [],
+        firstTimers: [],
+        returningFirstTimers: [],
+      };
     }
 
     workers.forEach((w: string) => {
@@ -1124,6 +1142,13 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
     viewingSubmission.firstTimers.forEach((ft: string) => {
       fellowships[primaryGroup].firstTimers.push(ft);
     });
+
+    // Process Returning First Timers
+    if (viewingSubmission.returning_first_timers) {
+      viewingSubmission.returning_first_timers.forEach((rft: string) => {
+        fellowships[primaryGroup].returningFirstTimers.push(rft);
+      });
+    }
 
     return fellowships;
   }, [viewingSubmission]);
@@ -2096,37 +2121,21 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                       </div>
                     </div>
                   </div>
-                  <div className='grid grid-cols-2 lg:grid-cols-4 gap-4 w-full lg:w-auto'>
+                  <div className='grid grid-cols-2 lg:grid-cols-5 gap-4 w-full lg:w-auto'>
                     <div className='text-center p-3 bg-white/5 rounded border border-white/10 min-w-[100px]'>
                       <p className='text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1'>
-                        Total
+                        Adults
                       </p>
                       <h4 className='text-xl font-black text-white'>
-                        {viewingSubmission.participants.length +
-                          viewingSubmission.firstTimers.length +
-                          viewingSubmission.submittedBy
-                            .split(',')
-                            .filter((w) => w.trim() !== 'Admin').length}
+                        {viewingSubmission.adult_count}
                       </h4>
                     </div>
                     <div className='text-center p-3 bg-white/5 rounded border border-white/10 min-w-[100px]'>
                       <p className='text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1'>
-                        Workers
-                      </p>
-                      <h4 className='text-xl font-black text-[#CCA856]'>
-                        {
-                          viewingSubmission.submittedBy
-                            .split(',')
-                            .filter((w) => w.trim() !== 'Admin').length
-                        }
-                      </h4>
-                    </div>
-                    <div className='text-center p-3 bg-white/5 rounded border border-white/10 min-w-[100px]'>
-                      <p className='text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1'>
-                        Members
+                        Children
                       </p>
                       <h4 className='text-xl font-black text-white'>
-                        {viewingSubmission.participants.length}
+                        {viewingSubmission.children_count}
                       </h4>
                     </div>
                     <div className='text-center p-3 bg-white/5 rounded border border-white/10 min-w-[100px]'>
@@ -2135,6 +2144,22 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                       </p>
                       <h4 className='text-xl font-black text-gold'>
                         {viewingSubmission.firstTimers.length}
+                      </h4>
+                    </div>
+                    <div className='text-center p-3 bg-white/5 rounded border border-white/10 min-w-[100px]'>
+                      <p className='text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1'>
+                        Returning FT
+                      </p>
+                      <h4 className='text-xl font-black text-emerald-400'>
+                        {viewingSubmission.returning_first_timers_count || 0}
+                      </h4>
+                    </div>
+                    <div className='text-center p-3 bg-white/5 rounded border border-white/10 min-w-[100px]'>
+                      <p className='text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1'>
+                        Total
+                      </p>
+                      <h4 className='text-xl font-black text-white'>
+                        {(viewingSubmission.adult_count || 0) + (viewingSubmission.children_count || 0)}
                       </h4>
                     </div>
                   </div>
@@ -2156,6 +2181,7 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                         workers: string[];
                         members: string[];
                         firstTimers: string[];
+                        returningFirstTimers: string[];
                       },
                     ][]
                   ).map(([fellowship, data]) => (
@@ -2180,24 +2206,34 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                           </span>
                         </div>
                       </div>
-                      <div className='p-8 grid grid-cols-1 md:grid-cols-3 gap-8'>
+                      <div className='p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8'>
                         {/* Workers Subsection */}
                         <div className='space-y-4'>
                           <p className='text-[10px] font-black text-[#CCA856] uppercase tracking-[0.2em] border-b border-gold/10 pb-2'>
                             Workers
                           </p>
                           <div className='space-y-2'>
-                            {data.workers.map((w) => (
-                              <div
-                                key={w}
-                                className='flex items-center gap-3 group'
-                              >
-                                <div className='w-1.5 h-1.5 rounded-full bg-[#CCA856] group-hover:scale-125 transition-transform'></div>
-                                <span className='text-sm font-bold text-slate-700'>
-                                  {w}
-                                </span>
-                              </div>
-                            ))}
+                            {data.workers.map((wId) => {
+                              const worker = allWorkers.find(
+                                (wk) =>
+                                  wk.id?.toString() === wId.toString() ||
+                                  wk.name === wId
+                              );
+                              const displayName = worker
+                                ? worker.name
+                                : wId;
+                              return (
+                                <div
+                                  key={wId}
+                                  className='flex items-center gap-3 group'
+                                >
+                                  <div className='w-1.5 h-1.5 rounded-full bg-[#CCA856] group-hover:scale-125 transition-transform'></div>
+                                  <span className='text-sm font-bold text-slate-700'>
+                                    {displayName}
+                                  </span>
+                                </div>
+                              );
+                            })}
                             {data.workers.length === 0 && (
                               <span className='text-[11px] text-slate-300 italic'>
                                 No workers listed
@@ -2212,17 +2248,32 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                             Members
                           </p>
                           <div className='space-y-2'>
-                            {data.members.map((m) => (
-                              <div
-                                key={m}
-                                className='flex items-center gap-3 group'
-                              >
-                                <div className='w-1.5 h-1.5 rounded-full bg-slate-300 group-hover:bg-[#1A1C1E] transition-colors'></div>
-                                <span className='text-sm font-bold text-slate-700'>
-                                  {m}
-                                </span>
-                              </div>
-                            ))}
+                            {data.members.map((mId) => {
+                              const member = allMembers.find(
+                                (m) =>
+                                  m.id?.toString() === mId.toString() ||
+                                  m.name === mId
+                              );
+                              const displayName = member
+                                ? member.firstname && member.lastname
+                                  ? `${member.firstname} ${member.lastname}`
+                                  : member.name ||
+                                  member.email ||
+                                  member.phone ||
+                                  'Unnamed Member'
+                                : mId; // Fallback to ID if not found
+                              return (
+                                <div
+                                  key={mId}
+                                  className='flex items-center gap-3 group'
+                                >
+                                  <div className='w-1.5 h-1.5 rounded-full bg-slate-300 group-hover:bg-[#1A1C1E] transition-colors'></div>
+                                  <span className='text-sm font-bold text-slate-700'>
+                                    {displayName}
+                                  </span>
+                                </div>
+                              );
+                            })}
                             {data.members.length === 0 && (
                               <span className='text-[11px] text-slate-300 italic'>
                                 No members listed
@@ -2254,6 +2305,34 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                             {data.firstTimers.length === 0 && (
                               <span className='text-[11px] text-slate-300 italic'>
                                 No first timers listed
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Returning First Timers Subsection */}
+                        <div className='space-y-4'>
+                          <p className='text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] border-b border-emerald-500/10 pb-2'>
+                            Returning FT
+                          </p>
+                          <div className='space-y-2'>
+                            {data.returningFirstTimers.map((rft) => (
+                              <div
+                                key={rft}
+                                className='flex items-center gap-3 group'
+                              >
+                                <CheckCircle2
+                                  size={12}
+                                  className='text-emerald-500 group-hover:scale-110 transition-transform'
+                                />
+                                <span className='text-sm font-bold text-slate-700'>
+                                  {rft}
+                                </span>
+                              </div>
+                            ))}
+                            {data.returningFirstTimers.length === 0 && (
+                              <span className='text-[11px] text-slate-300 italic'>
+                                No returning FT listed
                               </span>
                             )}
                           </div>
@@ -2500,7 +2579,9 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                             <Square size={16} className='text-slate-300' />
                           )}
                           <span className='text-[13px] font-bold text-slate-700'>
-                            {m.name}
+                            {m.firstname && m.lastname
+                              ? `${m.firstname} ${m.lastname}`
+                              : (m.name || m.email || m.phone || 'Unnamed Member')}
                           </span>
                         </div>
                       );
@@ -2763,7 +2844,29 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
             </div>
           </div>
 
-          <div className={`grid gap-4 ${isTemplateModalOpen ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          {isTemplateModalOpen && (
+            <div className='space-y-2 mt-4'>
+              <label className='text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1'>
+                Day of Week
+              </label>
+              <select
+                value={mDay}
+                onChange={(e) => setMDay(e.target.value)}
+                disabled={isReadOnlyMode}
+                className={`w-full px-4 py-3 bg-[#F8F9FA] border border-slate-200 rounded-lg outline-none font-bold text-sm shadow-sm ${isReadOnlyMode ? 'opacity-60 cursor-not-allowed' : ''}`}
+              >
+                <option>Sunday</option>
+                <option>Monday</option>
+                <option>Tuesday</option>
+                <option>Wednesday</option>
+                <option>Thursday</option>
+                <option>Friday</option>
+                <option>Saturday</option>
+              </select>
+            </div>
+          )}
+
+          <div className={`grid gap-4 mt-4 ${isTemplateModalOpen ? 'grid-cols-1' : 'grid-cols-2'}`}>
             {!isTemplateModalOpen && (
               <div className='space-y-2'>
                 <label className='text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1'>
