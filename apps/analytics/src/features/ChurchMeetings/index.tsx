@@ -62,7 +62,11 @@ import {
   Link2,
   ExternalLink,
   Globe,
+  History, // Added
+  SearchCode,
 } from 'lucide-react';
+
+import { CountdownTimer } from './CountdownTimer';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -120,7 +124,7 @@ interface ChurchMeetingsModuleProps {
 }
 
 const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => {
-  const [activeTab, setActiveTab] = useState('Overview');
+  const [activeTab, setActiveTab] = useState('Scheduled'); // Default to Scheduled
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [templates, setTemplates] = useState<any[]>([]); // New State
   const [submissions, setSubmissions] = useState<AttendanceSubmission[]>([]);
@@ -131,6 +135,8 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false); // New Modal State
   const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false); // New Modal State
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null); // New State
+  const [isTemplateHistoryModalOpen, setIsTemplateHistoryModalOpen] = useState(false); // History Modal
+  const [templateHistory, setTemplateHistory] = useState<any[]>([]); // History Data
   const [isViewMeetingModalOpen, setIsViewMeetingModalOpen] = useState(false);
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
@@ -169,6 +175,7 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
   const [isReadOnlyMode, setIsReadOnlyMode] = useState(false);
 
   // Extract User Role
+  // Extract User Role
   useEffect(() => {
     const token = getAuthToken();
     if (token) {
@@ -176,10 +183,15 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
       if (decoded?.admin_meta?.role) {
         setCurrentUserRole(decoded.admin_meta.role);
       }
+    } else if (user?.role) {
+      // Fallback to user prop if token parsing fails or not present (e.g. initial load)
+      setCurrentUserRole(user.role);
     }
+
     // Sync context with user prop (global switcher)
     if (user?.church_id) {
-      setSelectedChurchContext(String(user.church_id));
+      // Only set if not already set or logical default
+      setSelectedChurchContext((prev) => prev || String(user.church_id));
     }
   }, [user]);
 
@@ -593,18 +605,48 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
     }
   };
 
+  const calculateNextOccurrence = (template: any) => {
+    // If it's a specific date (One-off), just return that
+    if (template.date) {
+      return template.date;
+    }
+
+    const today = new Date();
+
+    // Logic for Weekly recurrence
+    if (template.frequency === 'Weekly' && template.day_of_week) {
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const targetDayIndex = days.indexOf(template.day_of_week);
+
+      if (targetDayIndex !== -1) {
+        // Calculate date of the target day within the CURRENT week (Sun-Sat)
+        // because "Scheduled" tab shows THIS week's plan.
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay()); // Go to Sunday
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        const targetDate = new Date(startOfWeek);
+        targetDate.setDate(startOfWeek.getDate() + targetDayIndex);
+
+        // Format as YYYY-MM-DD
+        const year = targetDate.getFullYear();
+        const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+        const day = String(targetDate.getDate()).padStart(2, '0');
+
+        return `${year}-${month}-${day}`;
+      }
+    }
+
+    // Default fallback to today if Logic fails or Monthly/Yearly not yet handled
+    return today.toISOString().split('T')[0];
+  };
+
   const openCreateModal = () => {
     setEditingMeeting(null);
-    setMTitle('');
-    setMType('Sunday Service');
-    setMFreq('Weekly');
-    setMScope('Global Ministry'); // Default per requirement
-    setMScopeId('');
-    setMTime('08:00');
-    setMDate(new Date().toISOString().split('T')[0]);
-    setMDay('Sunday');
+    resetMeetingForm(); // Use the consolidated reset logic which handles scope correctly
 
-    if (activeTab === 'Templates') {
+
+    if (activeTab === 'Meetings') {
       setIsTemplateModalOpen(true);
     } else {
       setIsMeetingModalOpen(true);
@@ -693,6 +735,22 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
     if (mScope === 'Global Ministry') {
       scopeType = 'Global';
       scopeValue = 'all';
+    } else if (mScope === 'Entire Church' || mScope.startsWith('Entire ')) {
+      scopeType = 'Church';
+      scopeValue = mScopeId || selectedChurchContext;
+      churchId = scopeValue ? Number(scopeValue) : undefined;
+      // Try to find church name to replace "Entire Church" string
+      if (scopeValue) {
+        const church = availableChurches.find(
+          (c) => c.id.toString() === scopeValue?.toString()
+        );
+        if (church) {
+          // Send actual church name instead of "Entire Church" to backend
+          // We don't change mScope state here, just the payload value if we want strictness, 
+          // BUT payload uses `scope: mScope`. 
+          // If we want to send the name, we should override it in payload construction.
+        }
+      }
     } else {
       const isChurch = availableChurches.some((c) => c.name === mScope);
       if (isChurch) {
@@ -761,12 +819,27 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
       const updatedMeetings = await attendanceAPI.getMeetings();
       setMeetings(updatedMeetings);
       setIsGenerateModalOpen(false);
-      setActiveTab('Meetings');
+      setActiveTab('Scheduled');
       alert('Meeting generated successfully!');
     } catch (err: any) {
       console.error('Failed to generate meeting:', err);
       setError(err.message || 'Failed to generate meeting');
       alert('Failed to generate meeting.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleViewHistory = async (template: any) => {
+    try {
+      setIsLoading(true);
+      setSelectedTemplate(template);
+      const history = await attendanceAPI.getTemplateHistory(template._id || template.id);
+      setTemplateHistory(history);
+      setIsTemplateHistoryModalOpen(true);
+    } catch (err: any) {
+      console.error('Failed to fetch template history:', err);
+      alert('Failed to fetch history.');
     } finally {
       setIsLoading(false);
     }
@@ -891,13 +964,43 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
     setMTitle('');
     setMType('Sunday Service');
     setMFreq('Weekly');
-    setMScope('Global Ministry');
     setMScopeId('');
     setMDate('');
     setMTime('');
-    // Initialize with current church from localStorage (church switcher)
+
     const currentChurchId = localStorage.getItem('selected_church_id');
     setSelectedChurchContext(currentChurchId || '');
+
+    // Correctly initialize scope based on context
+    if (currentChurchId && currentChurchId !== 'global') {
+      const church = availableChurches.find(
+        (c) => c.id.toString() === currentChurchId
+      );
+
+      if (church) {
+        if (currentUserRole === 'admin') {
+          setMScope(church.name); // Value matches option value, not label ('Entire ' + name)
+        } else {
+          setMScope('Entire Church');
+        }
+        setMScopeId(currentChurchId); // Always set ID if we have context
+      } else {
+        // Fallback if church not found in list but ID exists (likely non-admin restricted view)
+        // If non-admin, default to 'Entire Church' anyway
+        if (currentUserRole !== 'admin') {
+          setMScope('Entire Church');
+          setMScopeId(currentChurchId);
+        } else {
+          // Admin with missing church data?? Fallback to Global to be safe or keep empty?
+          // Better to try to infer or just set Global
+          setMScope('Global Ministry');
+          setMScopeId('');
+        }
+      }
+    } else {
+      setMScope('Global Ministry');
+      setMScopeId('');
+    }
   };
 
   const openViewModal = (meeting: Meeting) => {
@@ -1178,7 +1281,7 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
       </div>
 
       <div className='flex gap-4 border-b border-slate-200'>
-        {['Overview', 'Meetings', 'Templates', 'Submissions'].map((tab) => (
+        {['Overview', 'Scheduled', 'Meetings', 'Submissions'].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -1297,139 +1400,107 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
         </div>
       )}
 
-      {activeTab === 'Meetings' && (
-        <div className='bg-white border border-slate-200 rounded shadow-sm overflow-hidden'>
-          <table className='w-full text-left'>
-            <thead className='bg-[#F8F9FA] text-slate-500 border-b border-slate-200'>
-              <tr>
-                <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
-                  Title & Type
-                </th>
-                <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
-                  Frequency / Scope
-                </th>
-                <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider text-right'>
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className='divide-y divide-slate-100'>
-              {meetings.map((meeting) => {
-                const hasActiveCode = activeCodes[meeting.id] || (meeting.attendance_code && new Date(meeting.code_expires_at) > new Date());
-                const isInstance = hasActiveCode; // Simplistic check: if it has an active code, treat as instance (or active session)
+      {activeTab === 'Scheduled' && (
+        <div className="space-y-8">
+          {/* Active / Today's Meetings Section */}
+          <div className='bg-white border border-slate-200 rounded shadow-sm overflow-hidden'>
+            <div className="bg-slate-50 px-6 py-3 border-b border-slate-200">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">Active & Today's Meetings</h3>
+            </div>
+            <table className='w-full text-left'>
+              <thead className='bg-white text-slate-500 border-b border-slate-100'>
+                <tr>
+                  <th className='px-6 py-3 text-[10px] font-bold uppercase tracking-wider'>
+                    Meeting Details
+                  </th>
+                  <th className='px-6 py-3 text-[10px] font-bold uppercase tracking-wider'>
+                    Code
+                  </th>
+                  <th className='px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-right'>
+                    Status
+                  </th>
+                  <th className='px-6 py-3 text-[10px] font-bold uppercase tracking-wider text-right'>
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className='divide-y divide-slate-100'>
+                {(() => {
+                  const todayStart = new Date();
+                  todayStart.setHours(0, 0, 0, 0);
+                  const todayEnd = new Date();
+                  todayEnd.setHours(23, 59, 59, 999);
 
-                return (
-                  <tr
-                    key={meeting.id}
-                    className={`hover:bg-slate-50 transition-colors ${isInstance ? 'bg-amber-50/30' : ''}`}
-                  >
-                    <td className='px-6 py-5 font-bold text-sm text-[#1A1C1E]'>
-                      <div className='flex flex-col'>
-                        <span>{meeting.title}</span>
-                        {isInstance && (
-                          <span className='text-[10px] text-amber-600 font-normal uppercase tracking-wide mt-0.5'>
-                            Ongoing Session • {meeting.date}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className='px-6 py-5 text-xs text-slate-600 font-medium'>
-                      {isInstance ? (
-                        <div className='flex items-center gap-3'>
-                          <span className='px-3 py-1 bg-gold/10 text-[#CCA856] rounded font-mono font-black text-sm border border-gold/20'>
-                            {activeCodes[meeting.id]?.code || meeting.attendance_code}
-                          </span>
-                          <CodeCountdown
-                            expiresAt={
-                              activeCodes[meeting.id]?.expiresAt ||
-                              (meeting.code_expires_at ? new Date(meeting.code_expires_at).getTime() : 0)
-                            }
-                          />
+                  const activeMeetings = meetings.filter(m => {
+                    if (m.is_active) return true;
+                    if (m.date) {
+                      const mDate = new Date(m.date);
+                      return mDate >= todayStart && mDate <= todayEnd;
+                    }
+                    return false;
+                  });
+
+                  if (activeMeetings.length === 0) {
+                    return (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-8 text-center text-slate-400 text-xs italic">
+                          No active meetings found. Generate one from the schedule below.
+                        </td>
+                      </tr>
+                    )
+                  }
+
+                  return activeMeetings.map(meeting => (
+                    <tr key={meeting.id || meeting._id} className='hover:bg-slate-50'>
+                      <td className='px-6 py-4'>
+                        <div className='flex flex-col'>
+                          <span className="font-bold text-sm text-[#1A1C1E]">{meeting.title}</span>
+                          <span className="text-[10px] text-slate-400">{meeting.type} • {new Date(meeting.date).toLocaleDateString()}</span>
                         </div>
-                      ) : (
-                        <span>{meeting.frequency} • {meeting.type}</span>
-                      )}
-                    </td>
-                    <td className='px-6 py-5 text-right'>
-                      <div className='flex justify-end gap-2'>
-                        {/* Actions for Active Instances */}
-                        {isInstance ? (
-                          <button
-                            onClick={() => openMarkAttendanceModal(meeting)}
-                            className='flex items-center gap-2 px-3 py-1.5 bg-[#1A1C1E] text-white border border-[#1A1C1E] rounded text-[10px] font-black uppercase hover:bg-slate-800 transition-all shadow-sm'
-                          >
-                            <CheckSquare size={12} className='text-[#CCA856]' />{' '}
-                            Mark Attendance
-                          </button>
-                        ) : (
-                          /* Actions for Templates */
-                          <>
-                            <button
-                              onClick={() => generateMeetingCode(meeting.id)}
-                              className='flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded text-[10px] font-black uppercase hover:border-[#CCA856] transition-all'
-                            >
-                              <QrCode size={14} /> Generate Code
-                            </button>
-                            <button
-                              onClick={() => {
-                                setSelectedMeetingForView(meeting);
-                                setIsViewMeetingModalOpen(true);
-                              }}
-                              className='p-2 text-slate-300 hover:text-[#CCA856] transition-colors'
-                              title='View Details'
-                            >
-                              <Eye size={16} />
-                            </button>
-                            <button
-                              onClick={() => openEditModal(meeting)}
-                              className='p-2 text-slate-300 hover:text-[#CCA856] transition-colors'
-                              title='Edit Template'
-                            >
-                              <Edit2 size={16} />
-                            </button>
-                            <button
-                              onClick={() => deleteMeeting(meeting.id)}
-                              className='p-2 text-slate-300 hover:text-[#E74C3C] transition-colors'
-                              title='Delete Template'
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </>
+                      </td>
+                      <td className='px-6 py-4'>
+                        <span className='font-mono text-xs bg-slate-100 px-2 py-1 rounded text-slate-600 font-bold'>
+                          {meeting.attendance_code}
+                        </span>
+                        {meeting.code_expires_at && new Date(meeting.code_expires_at) > new Date() && (
+                          <div className="mt-1">
+                            <CountdownTimer targetDate={meeting.code_expires_at} />
+                          </div>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {activeTab === 'Templates' && (
-        <div className='space-y-6'>
-          <div className='flex justify-between items-center'>
-            <h3 className='text-lg font-bold text-[#1A1C1E]'>Meeting Templates</h3>
-            <button
-              onClick={openCreateModal}
-              className='flex items-center gap-2 px-4 py-2 bg-[#1A1C1E] text-white rounded font-bold text-xs uppercase tracking-widest hover:bg-[#CCA856] transition-all shadow-lg'
-            >
-              <Plus size={16} /> Create Template
-            </button>
+                      </td>
+                      <td className='px-6 py-4 text-right'>
+                        <span className={`text-[10px] font-black uppercase tracking-wider ${meeting.is_active ? 'text-green-600' : 'text-slate-400'}`}>
+                          {meeting.is_active ? 'Active' : 'Ended'}
+                        </span>
+                      </td>
+                      <td className='px-6 py-4 text-right'>
+                        <button
+                          onClick={() => openMarkAttendanceModal(meeting)}
+                          className='text-[10px] font-black uppercase tracking-wider text-[#1A1C1E] hover:underline'
+                        >
+                          Mark Attendance
+                        </button>
+                      </td>
+                    </tr>
+                  ));
+                })()}
+              </tbody>
+            </table>
           </div>
 
+          {/* Scheduled Templates Section */}
           <div className='bg-white border border-slate-200 rounded shadow-sm overflow-hidden'>
+            <div className="bg-slate-50 px-6 py-3 border-b border-slate-200">
+              <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">Scheduled Templates</h3>
+            </div>
             <table className='w-full text-left'>
               <thead className='bg-[#F8F9FA] text-slate-500 border-b border-slate-200'>
                 <tr>
                   <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
-                    Template Name
+                    Title & Type
                   </th>
                   <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
-                    Frequency / Default Time
-                  </th>
-                  <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
-                    Scope
+                    Frequency / Scope
                   </th>
                   <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider text-right'>
                     Actions
@@ -1437,243 +1508,387 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                 </tr>
               </thead>
               <tbody className='divide-y divide-slate-100'>
-                {templates.map((template) => (
-                  <tr
-                    key={template.id}
-                    className='hover:bg-slate-50 transition-colors'
-                  >
-                    <td className='px-6 py-5 font-bold text-sm text-[#1A1C1E]'>
-                      {template.title}
-                    </td>
-                    <td className='px-6 py-5 text-xs text-slate-600 font-medium'>
-                      {template.frequency} • {template.default_time || 'N/A'}
-                    </td>
-                    <td className='px-6 py-5 text-xs text-slate-600 font-medium'>
-                      {template.scope_type} - {template.scope || 'Global'}
-                    </td>
-                    <td className='px-6 py-5 text-right'>
-                      <div className='flex justify-end gap-2'>
-                        <button
-                          onClick={() => {
-                            setSelectedTemplate(template);
-                            setMDate(new Date().toISOString().split('T')[0]);
-                            setIsGenerateModalOpen(true);
-                          }}
-                          className='flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded text-[10px] font-black uppercase hover:border-[#CCA856] text-[#1A1C1E] hover:text-[#CCA856] transition-all'
-                          title="Schedule Next Meeting"
-                        >
-                          <Calendar size={14} /> Schedule
-                        </button>
-                        <button
-                          onClick={() => {
-                            // potential edit template logic
-                            alert('Edit template feature coming soon');
-                          }}
-                          className='p-2 text-slate-300 hover:text-[#CCA856] transition-colors'
-                          title='Edit Template'
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            // potential delete template logic
-                            alert('Delete template feature coming soon');
-                          }}
-                          className='p-2 text-slate-300 hover:text-red-500 transition-colors'
-                          title='Delete Template'
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {templates.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={4}
-                      className='px-6 py-12 text-center text-slate-400 text-xs italic uppercase tracking-widest'
-                    >
-                      No templates found. Create one to get started.
-                    </td>
-                  </tr>
-                )}
+                {(() => {
+                  const now = new Date();
+                  const startOfWeek = new Date(now);
+                  startOfWeek.setDate(now.getDate() - now.getDay());
+                  startOfWeek.setHours(0, 0, 0, 0);
+
+                  const endOfWeek = new Date(startOfWeek);
+                  endOfWeek.setDate(startOfWeek.getDate() + 6);
+                  endOfWeek.setHours(23, 59, 59, 999);
+
+                  const scheduled = templates.filter(t => {
+                    if (t.frequency === 'Weekly') return true;
+                    if (t.date) {
+                      const tDate = new Date(t.date);
+                      return tDate >= startOfWeek && tDate <= endOfWeek;
+                    }
+                    return false;
+                  });
+
+                  if (scheduled.length === 0) {
+                    return (
+                      <tr>
+                        <td colSpan={3} className="px-6 py-12 text-center text-slate-400 text-xs italic uppercase tracking-widest">
+                          No scheduled meetings for this week.
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  return scheduled.map((template) => {
+                    return (
+                      <tr
+                        key={template.id || template._id}
+                        className='hover:bg-slate-50 transition-colors'
+                      >
+                        <td className='px-6 py-5 font-bold text-sm text-[#1A1C1E]'>
+                          <div className='flex flex-col'>
+                            <span>{template.title}</span>
+                            <span className='text-[10px] text-slate-400 font-normal uppercase tracking-wide mt-0.5'>
+                              {template.type}
+                            </span>
+                          </div>
+                        </td>
+                        <td className='px-6 py-5 text-xs text-slate-600 font-medium'>
+                          {template.frequency} • {template.scope_type} - {template.scope || 'Global'}
+                        </td>
+                        <td className='px-6 py-5 text-right'>
+                          {(() => {
+                            const nextDate = calculateNextOccurrence(template);
+                            const today = new Date().toISOString().split('T')[0];
+                            const isToday = nextDate === today;
+
+                            // Check if meeting already exists for this date/template
+                            const existingMeeting = meetings.find(m =>
+                              m.title === template.title &&
+                              m.type === template.type &&
+                              new Date(m.date).toISOString().split('T')[0] === nextDate
+                            );
+
+                            const isGenerated = !!existingMeeting;
+                            const isDisabled = !isToday || isGenerated;
+
+                            let buttonText = "Generate Code";
+                            let buttonTitle = "Generates meeting instance for today";
+
+                            if (isGenerated) {
+                              buttonText = existingMeeting.is_active ? "Active" : "Generated";
+                              buttonTitle = "Meeting already exists for this date";
+                            } else if (!isToday) {
+                              buttonTitle = `Scheduled for ${nextDate}`;
+                            }
+
+                            return (
+                              <div className="flex flex-col items-end gap-1">
+                                <button
+                                  onClick={() => {
+                                    if (isDisabled) return;
+                                    setSelectedTemplate(template);
+                                    setMDate(nextDate);
+                                    setIsGenerateModalOpen(true);
+                                  }}
+                                  disabled={isDisabled}
+                                  className={`flex items-center gap-2 px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-wider transition-colors shadow-sm ml-auto
+                                    ${!isDisabled
+                                      ? 'bg-[#1A1C1E] text-white hover:bg-[#333] cursor-pointer'
+                                      : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'}`}
+                                  title={buttonTitle}
+                                >
+                                  {isGenerated ? <CheckCircle2 size={12} className="text-green-600" /> : <QrCode size={12} className={isDisabled ? 'opacity-50' : ''} />}
+                                  {buttonText}
+                                </button>
+                                {!isToday && !isGenerated && (
+                                  <span className="text-[9px] text-slate-400 font-medium">
+                                    Next: {new Date(nextDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </td>
+                      </tr>
+                    )
+                  });
+                })()}
               </tbody>
-            </table>
+            </table >
           </div>
         </div>
       )}
+
+      {
+        activeTab === 'Meetings' && (
+          <div className='space-y-6'>
+            <div className='flex justify-between items-center'>
+              <h3 className='text-lg font-bold text-[#1A1C1E]'>Meeting Templates</h3>
+              <button
+                onClick={openCreateModal}
+                className='flex items-center gap-2 px-4 py-2 bg-[#1A1C1E] text-white rounded font-bold text-xs uppercase tracking-widest hover:bg-[#CCA856] transition-all shadow-lg'
+              >
+                <Plus size={16} /> Create Meeting
+              </button>
+            </div>
+
+            <div className='bg-white border border-slate-200 rounded shadow-sm overflow-hidden'>
+              <table className='w-full text-left'>
+                <thead className='bg-[#F8F9FA] text-slate-500 border-b border-slate-200'>
+                  <tr>
+                    <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
+                      Meeting Name
+                    </th>
+                    <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
+                      Frequency / Default Time
+                    </th>
+                    <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
+                      Scope
+                    </th>
+                    <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider text-right'>
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className='divide-y divide-slate-100'>
+                  {templates.map((template) => (
+                    <tr
+                      key={template.id}
+                      className='hover:bg-slate-50 transition-colors'
+                    >
+                      <td className='px-6 py-5 font-bold text-sm text-[#1A1C1E]'>
+                        {template.title}
+                      </td>
+                      <td className='px-6 py-5 text-xs text-slate-600 font-medium'>
+                        {template.frequency} • {template.default_time || 'N/A'}
+                      </td>
+                      <td className='px-6 py-5 text-xs text-slate-600 font-medium'>
+                        {template.scope_type} - {template.scope || 'Global'}
+                      </td>
+                      <td className='px-6 py-5 text-right'>
+                        <div className='flex justify-end gap-2'>
+
+                          <button
+                            onClick={() => {
+                              // potential edit template logic
+                              alert('Edit template feature coming soon');
+                            }}
+                            className='p-2 text-slate-300 hover:text-[#CCA856] transition-colors'
+                            title='Edit Template'
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleViewHistory(template)}
+                            className='p-2 text-slate-300 hover:text-[#CCA856] transition-colors'
+                            title='View History'
+                          >
+                            <History size={16} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              // potential delete template logic
+                              alert('Delete template feature coming soon');
+                            }}
+                            className='p-2 text-slate-300 hover:text-red-500 transition-colors'
+                            title='Delete Template'
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {templates.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={4}
+                        className='px-6 py-12 text-center text-slate-400 text-xs italic uppercase tracking-widest'
+                      >
+                        No templates found. Create one to get started.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      }
 
 
       {/* ... (existing Attendance Submissions and History tabs) ... */}
 
-      {activeTab === 'Submissions' && (
-        <div className='space-y-6'>
-          <div className='flex bg-slate-100 p-1 rounded w-fit'>
-            {(['Pending', 'Approved', 'Rejected'] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setSubmissionSubTab(tab)}
-                className={`px-6 py-2 rounded text-xs font-black uppercase tracking-widest transition-all ${submissionSubTab === tab ? 'bg-white shadow text-[#1A1C1E]' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+      {
+        activeTab === 'Submissions' && (
+          <div className='space-y-6'>
+            <div className='flex bg-slate-100 p-1 rounded w-fit'>
+              {(['Pending', 'Approved', 'Rejected'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setSubmissionSubTab(tab)}
+                  className={`px-6 py-2 rounded text-xs font-black uppercase tracking-widest transition-all ${submissionSubTab === tab ? 'bg-white shadow text-[#1A1C1E]' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
 
-          <div className='bg-white border border-slate-200 rounded shadow-sm overflow-hidden'>
-            <table className='w-full text-left'>
-              <thead className='bg-[#F8F9FA] text-slate-500 border-b border-slate-200'>
-                <tr>
-                  <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
-                    Meeting Title
-                  </th>
-                  <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
-                    Submitted By
-                  </th>
-                  <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
-                    Total Count
-                  </th>
-                  <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
-                    Date
-                  </th>
-                  <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider text-right'>
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className='divide-y divide-slate-100'>
-                {submissions
-                  .filter((s) => s.status === submissionSubTab)
-                  .map((sub) => (
-                    <tr
-                      key={sub.id}
-                      className='hover:bg-slate-50 transition-colors'
-                    >
-                      <td className='px-6 py-5 font-bold text-sm text-[#1A1C1E]'>
-                        {sub.meetingTitle}
-                      </td>
-                      <td className='px-6 py-5'>
-                        <div className='flex items-center gap-2'>
-                          <div className='w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-400 border border-slate-200'>
-                            {sub.submittedBy
-                              .split(' ')
-                              .map((n) => n[0])
-                              .join('')}
+            <div className='bg-white border border-slate-200 rounded shadow-sm overflow-hidden'>
+              <table className='w-full text-left'>
+                <thead className='bg-[#F8F9FA] text-slate-500 border-b border-slate-200'>
+                  <tr>
+                    <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
+                      Meeting Title
+                    </th>
+                    <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
+                      Submitted By
+                    </th>
+                    <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
+                      Total Count
+                    </th>
+                    <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
+                      Date
+                    </th>
+                    <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider text-right'>
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className='divide-y divide-slate-100'>
+                  {submissions
+                    .filter((s) => s.status === submissionSubTab)
+                    .map((sub) => (
+                      <tr
+                        key={sub.id}
+                        className='hover:bg-slate-50 transition-colors'
+                      >
+                        <td className='px-6 py-5 font-bold text-sm text-[#1A1C1E]'>
+                          {sub.meetingTitle}
+                        </td>
+                        <td className='px-6 py-5'>
+                          <div className='flex items-center gap-2'>
+                            <div className='w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-400 border border-slate-200'>
+                              {sub.submittedBy
+                                .split(' ')
+                                .map((n) => n[0])
+                                .join('')}
+                            </div>
+                            <span className='text-xs font-bold text-slate-600 truncate max-w-[150px]'>
+                              {sub.submittedBy}
+                            </span>
                           </div>
-                          <span className='text-xs font-bold text-slate-600 truncate max-w-[150px]'>
-                            {sub.submittedBy}
+                        </td>
+                        <td className='px-6 py-5'>
+                          <span
+                            className={`px-2.5 py-1 text-[11px] font-black rounded border ${submissionSubTab === 'Pending' ? 'bg-[#CCA856]/10 text-[#CCA856] border-[#CCA856]/20' : submissionSubTab === 'Approved' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-red-50 text-red-600 border-red-100'}`}
+                          >
+                            {sub.participants.length + sub.firstTimers.length}{' '}
+                            People
                           </span>
-                        </div>
-                      </td>
-                      <td className='px-6 py-5'>
-                        <span
-                          className={`px-2.5 py-1 text-[11px] font-black rounded border ${submissionSubTab === 'Pending' ? 'bg-[#CCA856]/10 text-[#CCA856] border-[#CCA856]/20' : submissionSubTab === 'Approved' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-red-50 text-red-600 border-red-100'}`}
+                        </td>
+                        <td className='px-6 py-5 text-xs text-slate-500 font-medium'>
+                          {sub.date}
+                        </td>
+                        <td className='px-6 py-5 text-right'>
+                          <button
+                            onClick={() => {
+                              setViewingSubmission(sub);
+                              setSelectedParticipants([...sub.participants]);
+                              setSelectedFirstTimers([...sub.firstTimers]);
+                            }}
+                            className={`px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ml-auto ${submissionSubTab === 'Pending' ? 'bg-[#1A1C1E] text-white hover:bg-slate-800' : 'bg-white border border-slate-200 text-[#1A1C1E] hover:border-[#CCA856]'}`}
+                          >
+                            {submissionSubTab === 'Pending' ? (
+                              <>
+                                <CheckCircle2 size={12} /> Review
+                              </>
+                            ) : (
+                              <>
+                                <Info size={12} /> Details
+                              </>
+                            )}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  {submissions.filter((s) => s.status === submissionSubTab)
+                    .length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className='px-6 py-12 text-center text-slate-400 text-xs italic uppercase tracking-widest'
                         >
-                          {sub.participants.length + sub.firstTimers.length}{' '}
-                          People
-                        </span>
-                      </td>
-                      <td className='px-6 py-5 text-xs text-slate-500 font-medium'>
-                        {sub.date}
-                      </td>
-                      <td className='px-6 py-5 text-right'>
-                        <button
-                          onClick={() => {
-                            setViewingSubmission(sub);
-                            setSelectedParticipants([...sub.participants]);
-                            setSelectedFirstTimers([...sub.firstTimers]);
-                          }}
-                          className={`px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ml-auto ${submissionSubTab === 'Pending' ? 'bg-[#1A1C1E] text-white hover:bg-slate-800' : 'bg-white border border-slate-200 text-[#1A1C1E] hover:border-[#CCA856]'}`}
-                        >
-                          {submissionSubTab === 'Pending' ? (
-                            <>
-                              <CheckCircle2 size={12} /> Review
-                            </>
-                          ) : (
-                            <>
-                              <Info size={12} /> Details
-                            </>
-                          )}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                {submissions.filter((s) => s.status === submissionSubTab)
-                  .length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={5}
-                        className='px-6 py-12 text-center text-slate-400 text-xs italic uppercase tracking-widest'
-                      >
-                        No {submissionSubTab.toLowerCase()} submissions found.
-                      </td>
-                    </tr>
-                  )}
-              </tbody>
-            </table>
+                          No {submissionSubTab.toLowerCase()} submissions found.
+                        </td>
+                      </tr>
+                    )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
-      {activeTab === 'History' && (
-        <div className='space-y-6'>
-          <div className='bg-white border border-slate-200 rounded shadow-sm overflow-hidden'>
-            <table className='w-full text-left'>
-              <thead className='bg-[#F8F9FA] text-slate-500 border-b border-slate-200'>
-                <tr>
-                  <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
-                    Date
-                  </th>
-                  <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
-                    Meeting Title
-                  </th>
-                  <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider text-right'>
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className='divide-y divide-slate-100'>
-                {submissions
-                  .filter((s) => s.status === 'Approved')
-                  .map((sub) => (
-                    <tr
-                      key={sub.id}
-                      className='hover:bg-slate-50 transition-colors group'
-                    >
-                      <td className='px-6 py-5 text-sm font-bold text-[#1A1C1E]'>
-                        {sub.date}
-                      </td>
-                      <td className='px-6 py-5 font-bold text-sm text-slate-700'>
-                        {sub.meetingTitle}
-                      </td>
-                      <td className='px-6 py-5 text-right'>
-                        <button
-                          onClick={() => setViewingSubmission(sub)}
-                          className='p-2 text-slate-300 hover:text-[#CCA856] transition-colors'
-                          title='View Attendance Details'
-                        >
-                          <FileText size={18} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                {submissions.filter((s) => s.status === 'Approved').length ===
-                  0 && (
-                    <tr>
-                      <td
-                        colSpan={3}
-                        className='px-6 py-12 text-center text-slate-400 text-xs italic uppercase tracking-widest'
+      {
+        activeTab === 'History' && (
+          <div className='space-y-6'>
+            <div className='bg-white border border-slate-200 rounded shadow-sm overflow-hidden'>
+              <table className='w-full text-left'>
+                <thead className='bg-[#F8F9FA] text-slate-500 border-b border-slate-200'>
+                  <tr>
+                    <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
+                      Date
+                    </th>
+                    <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider'>
+                      Meeting Title
+                    </th>
+                    <th className='px-6 py-4 text-[11px] font-black uppercase tracking-wider text-right'>
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className='divide-y divide-slate-100'>
+                  {submissions
+                    .filter((s) => s.status === 'Approved')
+                    .map((sub) => (
+                      <tr
+                        key={sub.id}
+                        className='hover:bg-slate-50 transition-colors group'
                       >
-                        No past meeting records found.
-                      </td>
-                    </tr>
-                  )}
-              </tbody>
-            </table>
+                        <td className='px-6 py-5 text-sm font-bold text-[#1A1C1E]'>
+                          {sub.date}
+                        </td>
+                        <td className='px-6 py-5 font-bold text-sm text-slate-700'>
+                          {sub.meetingTitle}
+                        </td>
+                        <td className='px-6 py-5 text-right'>
+                          <button
+                            onClick={() => setViewingSubmission(sub)}
+                            className='p-2 text-slate-300 hover:text-[#CCA856] transition-colors'
+                            title='View Attendance Details'
+                          >
+                            <FileText size={18} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  {submissions.filter((s) => s.status === 'Approved').length ===
+                    0 && (
+                      <tr>
+                        <td
+                          colSpan={3}
+                          className='px-6 py-12 text-center text-slate-400 text-xs italic uppercase tracking-widest'
+                        >
+                          No past meeting records found.
+                        </td>
+                      </tr>
+                    )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* DEDICATED VIEW MEETING DETAILS MODAL */}
       <Modal
@@ -2127,7 +2342,10 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                         Adults
                       </p>
                       <h4 className='text-xl font-black text-white'>
-                        {viewingSubmission.adult_count}
+                        {(viewingSubmission.workers?.length || 0) +
+                          (viewingSubmission.participants?.length || 0) +
+                          (viewingSubmission.firstTimers?.length || 0) +
+                          (viewingSubmission.returning_first_timers_count || 0)}
                       </h4>
                     </div>
                     <div className='text-center p-3 bg-white/5 rounded border border-white/10 min-w-[100px]'>
@@ -2159,7 +2377,11 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                         Total
                       </p>
                       <h4 className='text-xl font-black text-white'>
-                        {(viewingSubmission.adult_count || 0) + (viewingSubmission.children_count || 0)}
+                        {(viewingSubmission.workers?.length || 0) +
+                          (viewingSubmission.participants?.length || 0) +
+                          (viewingSubmission.firstTimers?.length || 0) +
+                          (viewingSubmission.returning_first_timers_count || 0) +
+                          (viewingSubmission.children_count || 0)}
                       </h4>
                     </div>
                   </div>
@@ -2464,34 +2686,42 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                 />
               </div>
             </div>
-            <div className='grid grid-cols-2 md:grid-cols-3 gap-2 max-h-[160px] overflow-y-auto custom-scrollbar p-1'>
-              {allWorkers
-                .filter((w) =>
-                  (w.name || '')
-                    .toLowerCase()
-                    .includes(workerSearchTerm.toLowerCase())
-                )
-                .map((w, idx) => {
-                  const isSelected = attendanceWorkers.includes(w.name);
-                  return (
-                    <button
-                      key={w.id || idx}
-                      onClick={() =>
-                        setAttendanceWorkers((prev) =>
-                          isSelected
-                            ? prev.filter((x) => x !== w.name)
-                            : [...prev, w.name]
-                        )
-                      }
-                      className={`px-3 py-2.5 rounded border text-[11px] font-black transition-all text-left flex items-center justify-between ${isSelected ? 'bg-gold/5 border-[#CCA856] text-[#CCA856]' : 'bg-white text-slate-500 border-slate-200 hover:border-[#CCA856]'}`}
-                    >
-                      <span className='truncate'>{w.name}</span>
-                      {isSelected && <Check size={14} />}
-                    </button>
-                  );
-                })}
+            <div className='bg-white border border-slate-200 rounded-lg p-2 max-h-[160px] overflow-y-auto custom-scrollbar'>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-1'>
+                {allWorkers
+                  .filter((w) =>
+                    (w.name || '')
+                      .toLowerCase()
+                      .includes(workerSearchTerm.toLowerCase())
+                  )
+                  .map((w, idx) => {
+                    const isSelected = attendanceWorkers.includes(w.name);
+                    return (
+                      <div
+                        key={w.id || idx}
+                        onClick={() =>
+                          setAttendanceWorkers((prev) =>
+                            isSelected
+                              ? prev.filter((x) => x !== w.name)
+                              : [...prev, w.name]
+                          )
+                        }
+                        className={`p-2.5 rounded cursor-pointer transition-all flex items-center gap-3 border ${isSelected ? 'border-[#1A1C1E] bg-slate-50' : 'border-transparent hover:bg-slate-50'}`}
+                      >
+                        {isSelected ? (
+                          <CheckSquare size={16} className='text-[#1A1C1E]' />
+                        ) : (
+                          <Square size={16} className='text-slate-300' />
+                        )}
+                        <span className='text-[13px] font-bold text-slate-700 truncate'>
+                          {w.name}
+                        </span>
+                      </div>
+                    );
+                  })}
+              </div>
               {allWorkers.length === 0 && (
-                <p className='col-span-3 text-center py-4 text-[10px] text-slate-400 italic'>
+                <p className='text-center py-4 text-[10px] text-slate-400 italic'>
                   No workers found.
                 </p>
               )}
@@ -2607,7 +2837,7 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
               </label>
             </div>
             <div className='grid grid-cols-2 gap-4'>
-              <div className='space-y-2'>
+              {/* <div className='space-y-2'>
                 <label className='text-[10px] font-bold text-slate-500 uppercase tracking-wider'>
                   Adult Numbers
                 </label>
@@ -2620,7 +2850,7 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                   }
                   className='w-full px-4 py-3 bg-[#F8F9FA] border border-slate-200 rounded-lg outline-none font-bold text-sm shadow-sm focus:border-[#CCA856]'
                 />
-              </div>
+              </div> */}
               <div className='space-y-2'>
                 <label className='text-[10px] font-bold text-slate-500 uppercase tracking-wider'>
                   Children Numbers
@@ -3140,6 +3370,65 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
           >
             <Zap size={16} /> Generate Meeting
           </button>
+        </div>
+      </Modal>
+
+      {/* TEMPLATE HISTORY MODAL */}
+      <Modal
+        isOpen={isTemplateHistoryModalOpen}
+        onClose={() => {
+          setIsTemplateHistoryModalOpen(false);
+          setTemplateHistory([]);
+        }}
+        title={`History: ${selectedTemplate?.title}`}
+        size='md'
+      >
+        <div className='bg-white overflow-hidden'>
+          {templateHistory.length > 0 ? (
+            <div className='max-h-[60vh] overflow-y-auto custom-scrollbar'>
+              <table className='w-full text-left'>
+                <thead className='bg-[#F8F9FA] text-slate-500 border-b border-slate-200 sticky top-0'>
+                  <tr>
+                    <th className='px-6 py-3 text-[10px] font-black uppercase tracking-wider'>Date</th>
+                    <th className='px-6 py-3 text-[10px] font-black uppercase tracking-wider'>Code</th>
+                    <th className='px-6 py-3 text-[10px] font-black uppercase tracking-wider text-right'>Status</th>
+                  </tr>
+                </thead>
+                <tbody className='divide-y divide-slate-100'>
+                  {templateHistory.map((meeting) => (
+                    <tr key={meeting._id || meeting.id} className='hover:bg-slate-50'>
+                      <td className='px-6 py-3 text-xs font-bold text-slate-700'>
+                        {meeting.date ? new Date(meeting.date).toLocaleDateString() : 'N/A'}
+                        <div className='text-[10px] text-slate-400 font-normal'>{meeting.time}</div>
+                      </td>
+                      <td className='px-6 py-3'>
+                        <span className='font-mono text-xs bg-slate-100 px-2 py-1 rounded text-slate-600'>
+                          {meeting.attendance_code}
+                        </span>
+                      </td>
+                      <td className='px-6 py-3 text-right'>
+                        <span className={`text-[10px] font-black uppercase tracking-wider ${meeting.is_active ? 'text-green-600' : 'text-slate-400'}`}>
+                          {meeting.is_active ? 'Active' : 'Ended'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className='p-8 text-center text-slate-400 italic text-xs uppercase tracking-widest'>
+              No meetings generated from this template yet.
+            </div>
+          )}
+          <div className='flex justify-end pt-4 mt-4 border-t border-slate-100'>
+            <button
+              onClick={() => setIsTemplateHistoryModalOpen(false)}
+              className='px-6 py-2 bg-slate-100 text-slate-500 rounded font-bold text-xs uppercase tracking-widest hover:bg-slate-200 transition-all'
+            >
+              Close
+            </button>
+          </div>
         </div>
       </Modal>
     </div >
