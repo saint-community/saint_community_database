@@ -105,6 +105,10 @@ export interface AttendanceSubmission {
   date: string;
   participants: string[]; // List of member names
   firstTimers: string[]; // List of first timer names
+  returning_first_timers?: string[]; // List of returning first timer names
+  adult_count?: number;
+  children_count?: number;
+  returning_first_timers_count?: number;
   code: string;
   status: 'Pending' | 'Approved' | 'Rejected';
   createdAt: string;

@@ -462,6 +462,11 @@ export const attendanceAPI = {
     generateMeetingFromTemplate: async (templateId: string, date: string): Promise<any> => {
         return await api.post(`/attendance/admin/template/${templateId}/generate`, { date });
     },
+
+    getTemplateHistory: async (templateId: string): Promise<any[]> => {
+        const response = await api.get(`/attendance/admin/template/${templateId}/history`);
+        return response.data || [];
+    },
 };
 
 // ============================================================================
