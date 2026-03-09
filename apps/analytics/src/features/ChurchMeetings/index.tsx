@@ -559,6 +559,7 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
         scope_value: meeting.scope_value || '',
         date: instanceDate,
         time: meeting.time,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         location: meeting.location || 'Main Auditorium',
         assignedEntities: meeting.assignedEntities || [],
         status: 'Active',
@@ -933,6 +934,7 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
       attendance_code: code,
       code_expires_at: expiresAt,
       time: mTime,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       date: mDate,
       location: 'Main Auditorium', // Consider making dynamic if needed
       assignedEntities: [mScope],
