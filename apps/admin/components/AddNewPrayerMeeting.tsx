@@ -40,7 +40,7 @@ const formSchema = z.object({
   period: z.string().min(1, { message: 'Please select a period.' }),
   startTime: z.string().min(1, { message: 'Start time is required.' }),
   endTime: z.string().min(1, { message: 'End time is required.' }),
-  prayergroupLeader: z.string().min(1, { message: 'Please select a leader.' }),
+  prayergroupLeader: z.string().optional().default(''),
 });
 
 type PrayerGroupResponse = AdminPrayerGroupMeetingPayload & {
