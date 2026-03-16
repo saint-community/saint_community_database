@@ -300,6 +300,7 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
 
   // Manual Attendance Form State
   const [attendanceFellowship, setAttendanceFellowship] = useState<string>('');
+  // Store worker IDs (as strings) so backend can match manual_participants for "attended"
   const [attendanceWorkers, setAttendanceWorkers] = useState<string[]>([]);
   const [attendanceMembers, setAttendanceMembers] = useState<string[]>([]);
   const [attendanceFirstTimers, setAttendanceFirstTimers] = useState<string[]>([
@@ -1126,14 +1127,19 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
   const submitManualAttendance = async () => {
     if (!selectedMeetingForAttendance) return;
 
+    const submittedByNames = attendanceWorkers
+      .map((id) => allWorkers.find((w) => String(w.worker_id ?? w.id) === id)?.name)
+      .filter(Boolean)
+      .join(', ');
+
     const data = {
       meetingId: selectedMeetingForAttendance.id,
       meetingTitle: selectedMeetingForAttendance.title,
-      submittedBy: attendanceWorkers.join(', '),
+      submittedBy: submittedByNames || 'Leader',
       date:
         selectedMeetingForAttendance.date ||
         new Date().toISOString().split('T')[0],
-      participants: attendanceMembers,
+      participants: [...attendanceWorkers, ...attendanceMembers],
       firstTimers: attendanceFirstTimers.filter((ft) => ft.trim() !== ''),
       returningFirstTimers: attendanceReturningFirstTimers.filter(
         (ft) => ft.trim() !== ''
@@ -2697,15 +2703,16 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                       .includes(workerSearchTerm.toLowerCase())
                   )
                   .map((w, idx) => {
-                    const isSelected = attendanceWorkers.includes(w.name);
+                    const workerIdStr = String(w.worker_id ?? w.id ?? '');
+                    const isSelected = attendanceWorkers.includes(workerIdStr);
                     return (
                       <div
-                        key={w.id || idx}
+                        key={w.id ?? w.worker_id ?? idx}
                         onClick={() =>
                           setAttendanceWorkers((prev) =>
                             isSelected
-                              ? prev.filter((x) => x !== w.name)
-                              : [...prev, w.name]
+                              ? prev.filter((x) => x !== workerIdStr)
+                              : [...prev, workerIdStr]
                           )
                         }
                         className={`p-2.5 rounded cursor-pointer transition-all flex items-center gap-3 border ${isSelected ? 'border-[#1A1C1E] bg-slate-50' : 'border-transparent hover:bg-slate-50'}`}
