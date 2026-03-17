@@ -539,11 +539,13 @@ export const prayerGroupAPI = {
         return response.data || [];
     },
 
-    // Admin: Get ALL records for church (History/Past Tab)
-    getAllRecords: async (churchId?: number): Promise<any[]> => {
+    // Admin: Get ALL records for church (History/Past Tab). Returns { records, instancesWithoutRecords }.
+    getAllRecords: async (churchId?: number): Promise<{ records?: any[]; instancesWithoutRecords?: any[] } | any[]> => {
         const query = churchId ? `?church_id=${churchId}` : '';
         const response = await api.get(`/admin/prayer-group/records/all${query}`);
-        return response.data || [];
+        // Backend returns { responseCode, status, message, data: { records, instancesWithoutRecords } }; unwrap to payload
+        const body = response.data ?? response;
+        return body?.data ?? body ?? [];
     },
 
     updateRecordStatus: async (ids: string[], status: string): Promise<any> => {
@@ -610,8 +612,8 @@ export const prayerGroupAPI = {
         await api.put(`/admin/prayer-group/mark-one-absent?prayergroup_id=${prayerGroupId}&attendee_id=${attendeeId}`, null);
     },
 
-    // Admin: Add member to prayer group record
-    addMember: async (data: { prayergroup_id: string; name: string; fellowship: string; fellowship_id: number }): Promise<void> => {
+    // Admin: Add member to prayer group record (attendee_id for dedupe and correct identity)
+    addMember: async (data: { prayergroup_id: string; name: string; fellowship: string; fellowship_id: number; attendee_id?: string }): Promise<void> => {
         await api.post('/admin/prayer-group/add-member', data);
     },
 
