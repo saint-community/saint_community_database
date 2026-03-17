@@ -89,6 +89,7 @@ interface ParticipationSubmission {
   id: string;
   title: string;
   submittedBy: string;
+  submittedByRole?: string; // When provided by API, e.g. "Pastor", "Worker"
   count: number;
   date: string;
   status: 'Pending' | 'Approved' | 'Rejected';
@@ -100,6 +101,11 @@ interface ParticipationSubmission {
     id: string;
   }[];
   ids?: string[]; // For grouped actions
+  sortAt?: number; // For sorting (newest first)
+  instanceId?: string; // PrayerGroup instance _id for Add Participant
+  instanceDate?: string; // Instance date (dd-MM-yyyy) for expiry
+  instanceEndTime?: string; // Instance end_time (HH:MM) for expiry
+  isExpired?: boolean; // Backend is_expired flag; when false, Add Participant is allowed
 }
 
 import { Logo, COLORS } from '../../constants';
@@ -156,16 +162,19 @@ const PrayerModule = ({ user }: { user: any }) => {
   // Modal States
   const [isAddParticipantOpen, setIsAddParticipantOpen] = useState(false);
   const [viewingMeeting, setViewingMeeting] = useState<any>(null);
+  const [meetingParticipantsList, setMeetingParticipantsList] = useState<any[]>([]);
+  const [loadingMeetingParticipants, setLoadingMeetingParticipants] = useState(false);
   const [reviewingSubmission, setReviewingSubmission] = useState<any>(null);
   const [detailsSubmission, setDetailsSubmission] = useState<any>(null);
+  // When opening Add Participant from the Attendance Record Details modal (Past tab), we don't have viewingMeeting
+  const [addParticipantForInstanceId, setAddParticipantForInstanceId] = useState<string | null>(null);
 
   // Multi-select and Search States for Add Participant
   const [selectedFellowships, setSelectedFellowships] = useState<string[]>([]);
   const [selectedCells, setSelectedCells] = useState<string[]>([]);
   const [participantSearch, setParticipantSearch] = useState('');
-  const [selectedParticipants, setSelectedParticipants] = useState<string[]>(
-    []
-  );
+  type ParticipantEntry = { name: string; fellowship: string; fellowship_id: number; cell?: string; cell_id?: any; id?: any; type?: string };
+  const [selectedParticipants, setSelectedParticipants] = useState<ParticipantEntry[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Fetch Prayer Groups (Configs)
@@ -276,94 +285,110 @@ const PrayerModule = ({ user }: { user: any }) => {
     'December 2024',
   ];
 
-  // Data Lists State
-  const [fellowshipsList, setFellowshipsList] = useState<string[]>([]);
-  const [cellsList, setCellsList] = useState<string[]>([]);
-  const [suggestedMembers, setSuggestedMembers] = useState<any[]>([]);
-  const [isSearchingMembers, setIsSearchingMembers] = useState(false);
+  // Data Lists State (fellowships/cells are objects with id, name, church_id)
+  const [fellowshipsList, setFellowshipsList] = useState<any[]>([]);
+  const [cellsList, setCellsList] = useState<any[]>([]);
+  const [churchName, setChurchName] = useState<string>('');
+  const [addParticipantPeople, setAddParticipantPeople] = useState<any[]>([]);
+  const [isLoadingAddParticipantPeople, setIsLoadingAddParticipantPeople] = useState(false);
 
-  // Fetch Structure Data (Fellowships & Cells)
+  // Fetch Structure Data (Fellowships & Cells) scoped to user's church
   useEffect(() => {
     const fetchStructure = async () => {
       try {
+        const churchId = user?.church_id;
         const [fs, cs, churches] = await Promise.all([
           structureAPI.getFellowships().catch(e => { console.warn("Fellowships fetch failed", e); return []; }),
           structureAPI.getCells().catch(e => { console.warn("Cells fetch failed", e); return []; }),
-          // Use user.churches if available
           (user?.churches && user.churches.length > 0) ? Promise.resolve(user.churches) : structureAPI.getChurches().catch(e => { console.warn("Churches fetch failed", e); return []; })
         ]);
 
-        // Find Isolo Church ID
-        const isoloChurch = churches?.find((c: any) => c.name?.includes('Isolo') || c.name?.includes('ISOLO'));
-        const isoloId = isoloChurch?.id || isoloChurch?._id;
+        const churchIdToUse = churchId ?? (churches?.[0]?.id ?? churches?.[0]?._id);
+        const currentChurch = churches?.find((c: any) => (c.id ?? c._id) == churchIdToUse);
+        setChurchName(currentChurch?.name || 'Church');
 
-        if (isoloId) {
-          // Filter by Church ID
-          const filteredFellowships = fs?.filter((f: any) => f.church_id === isoloId || f.church_id == isoloId) || [];
-          const filteredCells = cs?.filter((c: any) => c.church_id === isoloId || c.church_id == isoloId) || [];
-
+        if (churchIdToUse != null) {
+          const filteredFellowships = (Array.isArray(fs) ? fs : []).filter((f: any) => f.church_id == churchIdToUse || f.church_id === churchIdToUse);
+          const filteredCells = (Array.isArray(cs) ? cs : []).filter((c: any) => c.church_id == churchIdToUse || c.church_id === churchIdToUse);
           setFellowshipsList(filteredFellowships);
           setCellsList(filteredCells);
         } else {
-          console.warn("Isolo Church not found in fetchStructure, defaulting to empty or full lists");
-          // Safer to show nothing if we can't filter, to avoid leaking other church data? 
-          // Or show all? User complained about Epe showing up. 
-          // If API fails, lists are empty anyway.
-          // If churches fetch fails but fs/cs succeeds, we can't filter.
-          // Best effort:
-          setFellowshipsList(fs || []);
-          setCellsList(cs || []);
+          setFellowshipsList(Array.isArray(fs) ? fs : []);
+          setCellsList(Array.isArray(cs) ? cs : []);
         }
-
       } catch (error) {
-        console.error("Critical error in fetchStructure, swallowing to prevent crash", error);
+        console.error("Critical error in fetchStructure", error);
         setFellowshipsList([]);
         setCellsList([]);
       }
     };
     fetchStructure();
-  }, []);
+  }, [user?.church_id, user?.churches]);
 
-  // Backend Member Search
+  // Load members + workers when Add Participant modal opens (client-side filter, no search API)
   useEffect(() => {
-    const searchMembers = async () => {
-      if (!participantSearch.trim()) {
-        setSuggestedMembers([]);
-        return;
-      }
-
-      setIsSearchingMembers(true);
+    if (!isAddParticipantOpen) return;
+    const loadPeople = async () => {
+      setIsLoadingAddParticipantPeople(true);
       try {
-        // Construct query filters
-        const filters: any = {};
-        if (selectedFellowships.length > 0) filters.fellowship = selectedFellowships;
-        if (selectedCells.length > 0) filters.cell = selectedCells;
-
-        const results = await memberAPI.search(participantSearch, filters);
-
-        // Map backend results to UI format if needed
-        const mapped = results.map((m: any) => ({
-          name: `${m.firstname} ${m.lastname}`,
-          fellowship: m.fellowship || 'Unknown Fellowship',
-          cell: m.cell || 'Unknown Cell',
-          id: m._id
+        const [membersRes, workersRes] = await Promise.all([
+          memberAPI.getAllMembers().catch(() => []),
+          structureAPI.getWorkers().catch(() => [])
+        ]);
+        const members = Array.isArray(membersRes) ? membersRes : [];
+        const workers = Array.isArray(workersRes) ? workersRes : [];
+        const getFellowshipName = (id: any) => fellowshipsList.find((f: any) => String(f.id ?? f._id) === String(id))?.name || 'Unknown Fellowship';
+        const getCellName = (id: any) => cellsList.find((c: any) => String(c.id ?? c._id) === String(id))?.name;
+        const memberEntries: ParticipantEntry[] = members.map((m: any) => ({
+          name: m.full_name || m.name || 'Unknown',
+          fellowship: m.fellowship_name || m.fellowship || getFellowshipName(m.fellowship_id),
+          fellowship_id: m.fellowship_id ?? 0,
+          cell: m.cell_name || m.cell || getCellName(m.cell_id),
+          cell_id: m.cell_id,
+          id: m._id || m.id,
+          type: 'member'
         }));
-
-        setSuggestedMembers(mapped);
-      } catch (error) {
-        console.error("Failed to search members", error);
+        const workerEntries: ParticipantEntry[] = workers.map((w: any) => ({
+          name: w.name || w.full_name || `${w.first_name || ''} ${w.last_name || ''}`.trim() || 'Unknown',
+          fellowship: w.fellowship_name || w.fellowship || getFellowshipName(w.fellowship_id),
+          fellowship_id: w.fellowship_id ?? 0,
+          cell: w.cell_name || w.cell || getCellName(w.cell_id),
+          cell_id: w.cell_id,
+          id: w.worker_id ?? w.id ?? w._id,
+          type: 'worker'
+        }));
+        setAddParticipantPeople([...memberEntries, ...workerEntries]);
+      } catch (e) {
+        console.error("Failed to load members/workers for Add Participant", e);
+        setAddParticipantPeople([]);
       } finally {
-        setIsSearchingMembers(false);
+        setIsLoadingAddParticipantPeople(false);
       }
     };
+    loadPeople();
+  }, [isAddParticipantOpen, fellowshipsList, cellsList]);
 
-    // Debounce search
-    const timeoutId = setTimeout(() => {
-      searchMembers();
-    }, 300);
+  // Already-added participant ids for this session (avoid duplicates)
+  const existingAttendeeIds = useMemo(
+    () => new Set(
+      meetingParticipantsList
+        .map((p: any) => String(p.attendee_id ?? p._id ?? ''))
+        .filter(Boolean)
+    ),
+    [meetingParticipantsList]
+  );
 
-    return () => clearTimeout(timeoutId);
-  }, [participantSearch, selectedFellowships, selectedCells]);
+  // Church-wide: no fellowship/cell filter; only filter by name search; exclude already-added
+  const filteredParticipantSuggestions = useMemo(() => {
+    let list = addParticipantPeople.filter(
+      (p: any) => !existingAttendeeIds.has(String(p.id ?? ''))
+    );
+    const q = (participantSearch || '').trim().toLowerCase();
+    if (q) {
+      list = list.filter((p: any) => (p.name || '').toLowerCase().includes(q));
+    }
+    return list.slice(0, 50);
+  }, [addParticipantPeople, participantSearch, existingAttendeeIds]);
 
   // Mock Prayer Meetings Data
   // Prayer Meetings Data
@@ -422,13 +447,10 @@ const PrayerModule = ({ user }: { user: any }) => {
     // So it supports non-Ongoing styles.
 
     // Revised logic:
-    // Active Now = "Ongoing"
-    // Else = "Scheduled" (or maintain 'Ongoing' if it just means 'Active Configuration')
-    // But the user plainly thinks "Always Ongoing" is a bug. They likely expect to see:
-    // - "Ongoing" ONLY when it is actually happening right now.
-    // - "Scheduled" or "Upcoming" otherwise.
+    // Ongoing = today, and current time is within [start, end + 2h] (2-hour wiggle after end).
+    // Else = "Scheduled".
 
-    // Let's check:
+    const WIGGLE_MINUTES = 2 * 60; // 2 hours after end time still counts as Ongoing
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
     const startMinutes = startHour * 60 + startMin;
     let endMinutes = endHour * 60 + endMin;
@@ -437,17 +459,17 @@ const PrayerModule = ({ user }: { user: any }) => {
     if (endMinutes === 0) {
       endMinutes = 24 * 60;
     }
-    // Handle overnight meetings (e.g. 23:00 to 01:00) - logic simplifiction for now assuming same-day logical grouping
+    // Handle overnight meetings (e.g. 23:00 to 01:00)
     if (endMinutes < startMinutes) {
       endMinutes += 24 * 60;
     }
+    const endWithWiggle = endMinutes + WIGGLE_MINUTES;
 
     if (currentDayIndex === targetDayIndex) {
-      if (nowMinutes >= startMinutes && nowMinutes < endMinutes) {
+      if (nowMinutes >= startMinutes && nowMinutes < endWithWiggle) {
         return 'Ongoing';
       }
-      if (nowMinutes >= endMinutes) {
-        // Only mark as past if strictly after end time
+      if (nowMinutes >= endWithWiggle) {
         return 'Scheduled';
         // Actually, if it's Tuesday and meeting finished at 7 AM, and now is 10 PM, it's NOT "Scheduled" for today anymore?
         // But it IS "Scheduled" for next week.
@@ -500,17 +522,19 @@ const PrayerModule = ({ user }: { user: any }) => {
 
       console.log('fetchMeetings API data:', data);
       const mapped = data.map((m: any) => ({
-        id: m._id || m.id || m.prayergroup_id || Math.random(),
+        id: m._id || m.id || m.prayergroup_id || m.prayer_meeting_id || Math.random(),
         day: m.prayergroup_day || m.day || 'Unknown Day',
         period: m.period || 'Evening',
         time:
           m.start_time && m.end_time
             ? `${m.start_time} - ${m.end_time}`
             : m.time || '00:00 - 00:00',
-        church: m.church_name || 'Isolo Church',
+        church: m.church_name || m.church || churchName || 'Church',
         participants: m.attendees?.length || m.participants || 0,
         status: calculateMeetingStatus(m.prayergroup_day, m.start_time, m.end_time),
         code: m.prayer_code || m.code || '------',
+        // instance_id from meeting/list API, or _id when list is instances (e.g. getMyGroups returns PrayerGroup docs)
+        instanceId: m.instance_id ?? m.instanceId ?? m._id ?? m.id ?? null,
         expiresAt: m.expiresAt || Date.now() + 2 * 3600000,
       }));
       console.log('fetchMeetings mapped:', mapped);
@@ -536,15 +560,41 @@ const PrayerModule = ({ user }: { user: any }) => {
   const fetchSubmissions = async () => {
     try {
       setIsLoadingSubmissions(true);
-      // data here is a list of PrayerRecord objects
       const data = await prayerGroupAPI.getAllRecords(user?.church_id);
 
-
-      // Map PrayerRecord to ParticipationSubmission interface
-      setSubmissions(groupSubmissions(data));
+      let list: ParticipationSubmission[];
+      if (Array.isArray(data)) {
+        list = groupSubmissions(data);
+        list.sort((a, b) => (b.sortAt ?? new Date(b.date).getTime()) - (a.sortAt ?? new Date(a.date).getTime()));
+      } else {
+        const records = (data as any).records ?? [];
+        const instancesWithoutRecords = (data as any).instancesWithoutRecords ?? [];
+        list = groupSubmissions(records);
+        instancesWithoutRecords.forEach((inst: any) => {
+          const createdAt = inst.createdAt ? new Date(inst.createdAt).getTime() : Date.now();
+          const dateStr = inst.createdAt ? new Date(inst.createdAt).toLocaleDateString() : (inst.date || '');
+          list.push({
+            id: inst._id ?? inst.id,
+            title: inst.prayergroup_day ? `${inst.prayergroup_day} Prayer` : 'Prayer Meeting',
+            submittedBy: '—',
+            count: 0,
+            date: dateStr,
+            status: 'Pending',
+            code: inst.prayer_code || '——',
+            participants: [],
+            ids: [],
+            sortAt: createdAt,
+            instanceId: inst._id != null ? String(inst._id) : inst.id,
+            instanceDate: inst.date,
+            instanceEndTime: inst.end_time,
+            isExpired: inst.is_expired,
+          });
+        });
+        list.sort((a, b) => (b.sortAt ?? new Date(b.date).getTime()) - (a.sortAt ?? new Date(a.date).getTime()));
+      }
+      setSubmissions(list);
     } catch (error) {
       console.error("Failed to fetch past prayer submissions", error);
-      // toast.error("Failed to load past submissions");
     } finally {
       setIsLoadingSubmissions(false);
     }
@@ -558,21 +608,35 @@ const PrayerModule = ({ user }: { user: any }) => {
       const code = record.prayergroup?.prayer_code || 'UNKNOWN';
       const date = new Date(record.createdAt).toLocaleDateString();
       const key = `${code}-${date}`;
+      const sortAt = record.createdAt ? new Date(record.createdAt).getTime() : undefined;
+      const instanceId = record.prayergroup?._id != null ? String(record.prayergroup._id) : undefined;
+      const instanceDate = record.prayergroup?.date;
+      const instanceEndTime = record.prayergroup?.end_time;
+      const isExpired = record.prayergroup?.is_expired;
 
       if (!groups[key]) {
         groups[key] = {
-          id: record._id, // Use first record ID as group ID for now, or generate new
+          id: record._id,
           title: record.prayergroup?.prayergroup_day
             ? `${record.prayergroup.prayergroup_day} Prayer`
             : 'Prayer Meeting',
-          submittedBy: record.name || 'Unknown', // Primary submitter? Or "Multiple"
+          submittedBy: record.submitted_by_name ?? record.name ?? 'Unknown',
+          submittedByRole: record.submitted_by_role,
           participants: [],
           count: 0,
           date: date,
-          status: 'Pending', // Default
+          status: 'Pending',
           code: code,
-          ids: []
+          ids: [],
+          sortAt,
+          instanceId,
+          instanceDate,
+          instanceEndTime,
+          isExpired,
         };
+      }
+      if (sortAt != null && (groups[key].sortAt == null || sortAt > (groups[key].sortAt ?? 0))) {
+        groups[key].sortAt = sortAt;
       }
 
       // Aggregate
@@ -603,7 +667,9 @@ const PrayerModule = ({ user }: { user: any }) => {
       else group.status = 'Approved';
     });
 
-    return Object.values(groups);
+    const result = Object.values(groups);
+    result.sort((a, b) => (b.sortAt ?? new Date(b.date).getTime()) - (a.sortAt ?? new Date(a.date).getTime()));
+    return result;
   };
 
 
@@ -737,18 +803,19 @@ const PrayerModule = ({ user }: { user: any }) => {
 
       // Call the INSTANCE creation endpoint (which generates code)
       const response = await prayerGroupAPI.generateInstance(meetingData);
+      // API may return prayer_group at top level or nested in .data; instance id may be prayergroup_id or _id
+      const newCode = response?.prayer_code ?? response?.data?.prayer_code;
+      const instanceId = response?.prayergroup_id ?? response?.data?.prayergroup_id ?? response?._id ?? response?.id;
 
-      const newCode = response?.data?.prayer_code;
       if (newCode) {
-        // Update the list state immediately (optimistic/fast update)
+        // Update the list state with code, status, and instanceId so row has it for next open
         setPrayerMeetings(prev => prev.map(m =>
-          m.id === meeting.id ? { ...m, code: newCode, status: 'Ongoing' } : m
+          m.id === meeting.id ? { ...m, code: newCode, status: 'Ongoing', instanceId: instanceId ?? m.instanceId } : m
         ));
 
-        // CRITICAL: Also update the modal state if it's properly open and matching
-        // We check if we are currently viewing this meeting
+        // Update modal state so Add Participant is enabled immediately
         if (viewingMeeting && (viewingMeeting.id === meeting.id || viewingMeeting.id === meeting.prayer_meeting_id)) {
-          setViewingMeeting(prev => ({ ...prev, code: newCode, status: 'Ongoing' }));
+          setViewingMeeting(prev => ({ ...prev, code: newCode, status: 'Ongoing', instanceId: instanceId ?? prev?.instanceId }));
         }
       }
 
@@ -782,11 +849,129 @@ const PrayerModule = ({ user }: { user: any }) => {
     }
   };
 
-  const addParticipantFromSearch = (name: string) => {
-    if (name.trim() && !selectedParticipants.includes(name)) {
-      setSelectedParticipants([...selectedParticipants, name]);
+  const addParticipantFromSearch = (entry: ParticipantEntry | string) => {
+    const defaultFellowship = fellowshipsList[0];
+    const toAdd: ParticipantEntry = typeof entry === 'string'
+      ? { name: entry.trim(), fellowship: defaultFellowship?.name ?? 'Church', fellowship_id: Number(defaultFellowship?.id ?? defaultFellowship?._id ?? 0) }
+      : entry;
+    if (!toAdd.name) return;
+    const alreadyInSelection = selectedParticipants.some(p => p.name === toAdd.name && p.fellowship_id === toAdd.fellowship_id);
+    const alreadyInSession = toAdd.id != null && existingAttendeeIds.has(String(toAdd.id));
+    if (!alreadyInSelection && !alreadyInSession) {
+      setSelectedParticipants(prev => [...prev, toAdd]);
       setParticipantSearch('');
       setShowSuggestions(false);
+    }
+  };
+
+  // Instance id for Add Participant: from details modal, from Meeting Logistics modal, or from list
+  const effectiveInstanceId =
+    addParticipantForInstanceId ??
+    viewingMeeting?.instanceId ??
+    (viewingMeeting?.id != null
+      ? prayerMeetings.find((m: any) => m.id === viewingMeeting.id)?.instanceId
+      : undefined);
+
+  // Code is past the add window (instance date + end_time + 2h wiggle)
+  const isInstanceCodeExpired = (instanceDate?: string, instanceEndTime?: string): boolean => {
+    if (!instanceDate || !instanceEndTime) return false;
+    const WIGGLE_MS = 2 * 60 * 60 * 1000;
+    try {
+      // instanceDate may be "dd-MM-yyyy" or locale string; try dd-MM-yyyy first
+      const [d, m, y] = instanceDate.split(/[-/]/);
+      const year = parseInt(y || '', 10);
+      const month = parseInt(m || '', 10) - 1;
+      const day = parseInt(d || '', 10);
+      if (isNaN(year) || isNaN(month) || isNaN(day)) return false;
+      const [eh, em] = instanceEndTime.split(':').map(Number);
+      const endMs = (eh * 60 + (em || 0)) * 60 * 1000;
+      const expiry = new Date(year, month, day).getTime() + endMs + WIGGLE_MS;
+      return Date.now() > expiry;
+    } catch {
+      return false;
+    }
+  };
+
+  const loadMeetingParticipants = async (instanceId: string) => {
+    setLoadingMeetingParticipants(true);
+    try {
+      const res = await prayerGroupAPI.getRecord(instanceId);
+      const list = Array.isArray(res) ? res : (res?.data ?? []);
+      setMeetingParticipantsList(list);
+    } catch (e) {
+      console.error('Failed to load meeting participants', e);
+      setMeetingParticipantsList([]);
+    } finally {
+      setLoadingMeetingParticipants(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!effectiveInstanceId) {
+      setMeetingParticipantsList([]);
+      return;
+    }
+    loadMeetingParticipants(String(effectiveInstanceId));
+  }, [effectiveInstanceId]);
+
+  const handleAddParticipantsSubmit = async () => {
+    const instanceId = effectiveInstanceId;
+    if (!instanceId) {
+      console.warn('No prayer group instance id (generate code first)');
+      return;
+    }
+    if (selectedParticipants.length === 0) return;
+    const openedFromDetails = !!addParticipantForInstanceId;
+    try {
+      for (const p of selectedParticipants) {
+        await prayerGroupAPI.addMember({
+          prayergroup_id: String(instanceId),
+          name: p.name,
+          fellowship: p.fellowship,
+          fellowship_id: Number(p.fellowship_id) || 0,
+          attendee_id: p.id != null && p.id !== '' ? String(p.id) : undefined,
+        });
+      }
+      setSelectedParticipants([]);
+      setParticipantSearch('');
+      setIsAddParticipantOpen(false);
+      setAddParticipantForInstanceId(null);
+      setShowSuggestions(false);
+      setViewingMeeting((prev) => prev ? { ...prev, participants: (prev.participants || 0) + selectedParticipants.length } : prev);
+      fetchMeetings();
+      if (effectiveInstanceId) loadMeetingParticipants(String(effectiveInstanceId));
+      if (openedFromDetails) {
+        const data = await prayerGroupAPI.getAllRecords(user?.church_id);
+        const records = Array.isArray(data) ? data : (data?.records ?? []);
+        const instancesWithoutRecords = Array.isArray(data) ? [] : (data?.instancesWithoutRecords ?? []);
+        const list = groupSubmissions(records);
+        instancesWithoutRecords.forEach((inst: any) => {
+          const createdAt = inst.createdAt ? new Date(inst.createdAt).getTime() : Date.now();
+          const dateStr = inst.createdAt ? new Date(inst.createdAt).toLocaleDateString() : (inst.date || '');
+          list.push({
+            id: inst._id ?? inst.id,
+            title: inst.prayergroup_day ? `${inst.prayergroup_day} Prayer` : 'Prayer Meeting',
+            submittedBy: '—',
+            count: 0,
+            date: dateStr,
+            status: 'Pending',
+            code: inst.prayer_code || '——',
+            participants: [],
+            ids: [],
+            sortAt: createdAt,
+            instanceId: inst._id != null ? String(inst._id) : inst.id,
+            instanceDate: inst.date,
+            instanceEndTime: inst.end_time,
+            isExpired: inst.is_expired,
+          });
+        });
+        list.sort((a, b) => (b.sortAt ?? new Date(b.date).getTime()) - (a.sortAt ?? new Date(a.date).getTime()));
+        setSubmissions(list);
+        const updated = list.find((s: any) => s.instanceId === String(instanceId));
+        if (updated) setDetailsSubmission(updated);
+      }
+    } catch (e) {
+      console.error('Failed to add participants', e);
     }
   };
 
@@ -1312,7 +1497,13 @@ const PrayerModule = ({ user }: { user: any }) => {
                   </tr>
                 </thead>
                 <tbody className='divide-y divide-slate-50'>
-                  {viewingMeeting.participants === 0 ? (
+                  {loadingMeetingParticipants ? (
+                    <tr>
+                      <td colSpan={4} className='px-8 py-16 text-center text-slate-400 text-sm'>
+                        Loading participants…
+                      </td>
+                    </tr>
+                  ) : meetingParticipantsList.length === 0 ? (
                     <tr>
                       <td
                         colSpan={4}
@@ -1322,24 +1513,35 @@ const PrayerModule = ({ user }: { user: any }) => {
                       </td>
                     </tr>
                   ) : (
-                    <tr className='hover:bg-slate-50'>
-                      <td className='px-8 py-6 font-bold text-[#1A1C1E]'>
-                        John Smith
-                      </td>
-                      <td className='px-8 py-6 text-slate-500 font-medium'>
-                        Oke Afa Fellowship
-                      </td>
-                      <td className='px-8 py-6'>
-                        <span className='px-3 py-1 bg-green-50 text-green-500 rounded-full text-[9px] font-black uppercase tracking-widest'>
-                          Present
-                        </span>
-                      </td>
-                      <td className='px-8 py-6 text-right'>
-                        <button className='text-red-400 hover:text-red-600 transition-colors'>
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
+                    meetingParticipantsList.map((p: any) => (
+                      <tr key={p.attendee_id ?? p._id ?? p.name} className='hover:bg-slate-50'>
+                        <td className='px-8 py-6 font-bold text-[#1A1C1E]'>
+                          {p.name || '—'}
+                        </td>
+                        <td className='px-8 py-6 text-slate-500 font-medium'>
+                          {p.fellowship || '—'}
+                        </td>
+                        <td className='px-8 py-6'>
+                          <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${(p.status || '').toLowerCase() === 'approved' || (p.status || '').toLowerCase() === 'present' ? 'bg-green-50 text-green-500' : 'bg-slate-100 text-slate-500'}`}>
+                            {(p.status || 'Pending') === 'Approved' ? 'Present' : (p.status || 'Pending')}
+                          </span>
+                        </td>
+                        <td className='px-8 py-6 text-right'>
+                          <button
+                            type='button'
+                            onClick={() => {
+                              const id = effectiveInstanceId && (p.attendee_id ?? p._id);
+                              if (id && window.confirm('Remove this participant from the session?')) {
+                                prayerGroupAPI.removeMember(String(effectiveInstanceId), String(id)).then(() => loadMeetingParticipants(String(effectiveInstanceId)));
+                              }
+                            }}
+                            className='text-red-400 hover:text-red-600 transition-colors'
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>
@@ -1348,65 +1550,25 @@ const PrayerModule = ({ user }: { user: any }) => {
         </Modal>
       )}
 
-      {/* Add Participant Modal */}
+      {/* Add Participant Modal - stackAbove so it appears on top of Details/Meeting modals */}
       <Modal
         isOpen={isAddParticipantOpen}
-        onClose={() => setIsAddParticipantOpen(false)}
+        onClose={() => {
+          setIsAddParticipantOpen(false);
+          setAddParticipantForInstanceId(null);
+        }}
         title='Add Participant'
         size='lg'
+        stackAbove
       >
         <div className='p-10 space-y-8'>
-          {/* Church Section (Static) */}
+          {/* Church (church-wide meeting; no fellowship/cell filter) */}
           <div className='space-y-2'>
             <label className='text-[10px] font-black uppercase tracking-widest text-slate-400'>
               Church
             </label>
             <div className='w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold text-slate-500'>
-              Isolo Church
-            </div>
-          </div>
-
-          {/* Fellowship and Cell Multi-select Section */}
-          <div className='grid grid-cols-1 md:grid-cols-2 gap-8'>
-            <div className='space-y-4'>
-              <label className='text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-2'>
-                Select Fellowships
-              </label>
-              <div className='flex flex-wrap gap-2'>
-                {fellowshipsList.map((f: any) => (
-                  <button
-                    key={f.id || f.name}
-                    onClick={() =>
-                      toggleSelection(
-                        selectedFellowships,
-                        setSelectedFellowships,
-                        f.name
-                      )
-                    }
-                    className={`px-4 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${selectedFellowships.includes(f.name) ? 'bg-[#1A1C1E] text-white border-[#1A1C1E] shadow-lg' : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'}`}
-                  >
-                    {f.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className='space-y-4'>
-              <label className='text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-2'>
-                Select Cells
-              </label>
-              <div className='flex flex-wrap gap-2'>
-                {cellsList.map((c: any) => (
-                  <button
-                    key={c.id || c.name}
-                    onClick={() =>
-                      toggleSelection(selectedCells, setSelectedCells, c.name)
-                    }
-                    className={`px-4 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${selectedCells.includes(c.name) ? 'bg-[#1A1C1E] text-white border-[#1A1C1E] shadow-lg' : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300'}`}
-                  >
-                    {c.name}
-                  </button>
-                ))}
-              </div>
+              {churchName || 'Church'}
             </div>
           </div>
 
@@ -1417,17 +1579,15 @@ const PrayerModule = ({ user }: { user: any }) => {
             </label>
 
             <div className='flex flex-wrap gap-2 mb-3'>
-              {selectedParticipants.map((name) => (
+              {selectedParticipants.map((p, idx) => (
                 <div
-                  key={name}
+                  key={`${p.name}-${p.fellowship_id}-${idx}`}
                   className='flex items-center gap-2 px-4 py-2 bg-[#CCA856] text-white rounded-lg text-xs font-black uppercase tracking-widest'
                 >
-                  {name}
+                  {p.name}
                   <button
                     onClick={() =>
-                      setSelectedParticipants(
-                        selectedParticipants.filter((p) => p !== name)
-                      )
+                      setSelectedParticipants((prev) => prev.filter((_, i) => i !== idx))
                     }
                     className='hover:text-red-200'
                   >
@@ -1454,54 +1614,58 @@ const PrayerModule = ({ user }: { user: any }) => {
                 className='w-full pl-14 pr-6 py-5 bg-white border border-slate-100 rounded-2xl outline-none text-sm font-bold shadow-sm focus:shadow-md focus:border-[#CCA856] transition-all'
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && participantSearch.trim()) {
-                    addParticipantFromSearch(participantSearch);
+                    addParticipantFromSearch(participantSearch.trim());
                   }
                 }}
               />
 
               {showSuggestions && (
                 <div className='absolute top-full left-0 right-0 mt-3 bg-white border border-slate-100 rounded-2xl shadow-2xl z-[110] max-h-64 overflow-y-auto custom-scrollbar animate-in slide-in-from-top-2 p-2'>
-                  {suggestedMembers.length > 0 ? (
-                    suggestedMembers.map((member) => (
-                      <button
-                        key={member.name}
-                        onClick={() => addParticipantFromSearch(member.name)}
-                        className='w-full text-left px-5 py-3.5 hover:bg-slate-50 transition-all rounded-lg flex items-center justify-between group'
-                      >
-                        <div>
-                          <p className='text-sm font-black text-[#1A1C1E] group-hover:text-[#CCA856]'>
-                            {member.name}
-                          </p>
-                          <p className='text-[9px] font-bold text-slate-400 uppercase tracking-widest'>
-                            {member.fellowship} • {member.cell}
-                          </p>
-                        </div>
-                        {selectedParticipants.includes(member.name) && (
-                          <Check size={16} className='text-green-500' />
-                        )}
-                      </button>
-                    ))
+                  {isLoadingAddParticipantPeople ? (
+                    <div className='px-5 py-8 text-center text-slate-400 text-sm'>Loading members and workers...</div>
+                  ) : filteredParticipantSuggestions.length > 0 ? (
+                    filteredParticipantSuggestions.map((person: any, idx: number) => {
+                      const isSelected = selectedParticipants.some(p => p.name === person.name && p.fellowship_id === person.fellowship_id);
+                      return (
+                        <button
+                          key={person.id ?? person.name ?? idx}
+                          onClick={() => addParticipantFromSearch(person)}
+                          className='w-full text-left px-5 py-3.5 hover:bg-slate-50 transition-all rounded-lg flex items-center justify-between group'
+                        >
+                          <div>
+                            <p className='text-sm font-black text-[#1A1C1E] group-hover:text-[#CCA856]'>
+                              {person.name}
+                            </p>
+                            <p className='text-[9px] font-bold text-slate-400 uppercase tracking-widest'>
+                              {person.fellowship} {person.cell ? `• ${person.cell}` : ''}
+                            </p>
+                          </div>
+                          {isSelected && (
+                            <Check size={16} className='text-green-500' />
+                          )}
+                        </button>
+                      );
+                    })
                   ) : (
                     <div className='px-5 py-8 text-center'>
                       <p className='text-xs font-bold text-slate-400 uppercase'>
-                        No members found matching filters
+                        No members or workers match the filters
                       </p>
-                      <button
-                        onClick={() =>
-                          addParticipantFromSearch(participantSearch)
-                        }
-                        className='mt-2 text-[10px] font-black text-[#E74C3C] uppercase tracking-widest hover:underline'
-                      >
-                        Click to add "{participantSearch}" as custom entry
-                      </button>
+                      {participantSearch.trim() && (
+                        <button
+                          onClick={() => addParticipantFromSearch(participantSearch.trim())}
+                          className='mt-2 text-[10px] font-black text-[#E74C3C] uppercase tracking-widest hover:underline'
+                        >
+                          Click to add &quot;{participantSearch}&quot; as custom entry
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
               )}
             </div>
             <p className='text-[10px] text-slate-300 font-medium italic'>
-              Auto-filtered based on selected Fellowships and Cells. You can
-              also type custom names.
+              Search by name or type a custom name to add.
             </p>
           </div>
 
@@ -1516,12 +1680,10 @@ const PrayerModule = ({ user }: { user: any }) => {
               Cancel
             </button>
             <button
-              onClick={() => {
-                setIsAddParticipantOpen(false);
-                setShowSuggestions(false);
-                // In a real app, logic to save these selectedParticipants would go here
-              }}
-              className='flex-1 py-5 bg-[#1A1C1E] text-white rounded-xl text-xs font-black uppercase tracking-[0.2em] shadow-2xl shadow-black/20 hover:bg-[#CCA856] transition-all'
+              onClick={handleAddParticipantsSubmit}
+              disabled={selectedParticipants.length === 0 || !effectiveInstanceId}
+              title={!effectiveInstanceId ? 'Generate code first to add participants' : undefined}
+              className='flex-1 py-5 bg-[#1A1C1E] text-white rounded-xl text-xs font-black uppercase tracking-[0.2em] shadow-2xl shadow-black/20 hover:bg-[#CCA856] transition-all disabled:opacity-50 disabled:cursor-not-allowed'
             >
               Add {selectedParticipants.length} Participants
             </button>
@@ -1574,7 +1736,7 @@ const PrayerModule = ({ user }: { user: any }) => {
 
             <div className='grid grid-cols-2 gap-6'>
               <StatCard
-                title='Submitted By'
+                title={detailsSubmission.submittedByRole ? `Submitted by ${detailsSubmission.submittedByRole}` : 'Submitted By'}
                 value={detailsSubmission.submittedBy}
                 icon={<User size={18} />}
                 variant='default'
@@ -1587,43 +1749,77 @@ const PrayerModule = ({ user }: { user: any }) => {
               />
             </div>
 
+            {detailsSubmission.instanceId &&
+              (detailsSubmission.isExpired === false ||
+                (detailsSubmission.isExpired !== true && !isInstanceCodeExpired(detailsSubmission.instanceDate, detailsSubmission.instanceEndTime))) && (
+              <div className='flex justify-start'>
+                <button
+                  type='button'
+                  onClick={() => {
+                    setAddParticipantForInstanceId(detailsSubmission.instanceId);
+                    setSelectedParticipants([]);
+                    setParticipantSearch('');
+                    setIsAddParticipantOpen(true);
+                  }}
+                  className='flex items-center gap-2 px-8 py-4 bg-[#1A1C1E] text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all'
+                >
+                  <Plus size={18} /> Add Participant
+                </button>
+              </div>
+            )}
+
             <div className='space-y-6'>
               <h5 className='text-sm font-black uppercase tracking-widest text-[#1A1C1E]'>
-                Attendance Breakdown By Unit
+                Attendance Breakdown
               </h5>
               <div className='space-y-4'>
                 {Object.entries(
                   detailsSubmission.participants.reduce((acc: any, p: any) => {
-                    const cell = p.cell || 'Unknown Cell';
+                    const raw = p.cell || '';
+                    const isUnknown = /^unknown\s+(fellowship|cell|unit)$/i.test(raw.trim()) || raw.trim() === '';
+                    const cell = isUnknown ? '__no_unit__' : (raw || 'Other');
                     if (!acc[cell]) acc[cell] = [];
                     acc[cell].push(p);
                     return acc;
                   }, {})
-                ).map(([cellName, parts]: [string, any]) => (
-                  <div
-                    key={cellName}
-                    className='p-8 bg-white border border-slate-100 rounded-2xl shadow-sm'
-                  >
-                    <div className='flex justify-between items-center mb-6'>
-                      <span className='text-base font-black text-[#1A1C1E]'>
-                        {cellName}
-                      </span>
-                      <span className='text-xs font-black text-[#CCA856] uppercase tracking-widest'>
-                        Participants: {parts.length}
-                      </span>
-                    </div>
-                    <div className='grid grid-cols-2 gap-4'>
-                      {parts.map((p: any, idx: number) => (
-                        <div key={idx} className='flex items-center gap-3'>
-                          <div className='w-2 h-2 rounded-full bg-green-500'></div>
-                          <span className='text-sm font-bold text-slate-600'>
-                            {p.name}
-                          </span>
+                )
+                  .map(([cellName, parts]: [string, any]) => {
+                    const isUnknownUnit = cellName === '__no_unit__';
+                    const displayName = isUnknownUnit ? '' : cellName;
+                    return (
+                      <div
+                        key={cellName}
+                        className='p-8 bg-white border border-slate-100 rounded-2xl shadow-sm'
+                      >
+                        {displayName ? (
+                          <div className='flex justify-between items-center mb-6'>
+                            <span className='text-base font-black text-[#1A1C1E]'>
+                              {displayName}
+                            </span>
+                            <span className='text-xs font-black text-[#CCA856] uppercase tracking-widest'>
+                              Participants: {parts.length}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className='flex justify-end items-center mb-6'>
+                            <span className='text-xs font-black text-[#CCA856] uppercase tracking-widest'>
+                              Participants: {parts.length}
+                            </span>
+                          </div>
+                        )}
+                        <div className='grid grid-cols-2 gap-4'>
+                          {parts.map((p: any, idx: number) => (
+                            <div key={idx} className='flex items-center gap-3'>
+                              <div className='w-2 h-2 rounded-full bg-green-500'></div>
+                              <span className='text-sm font-bold text-slate-600'>
+                                {p.name}
+                              </span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           </div>
@@ -1706,7 +1902,7 @@ const ReviewSubmissionContent = ({ submission, onClose, onApprove, onReject }: a
         </div>
         <div className='text-right'>
           <p className='text-[10px] font-black uppercase text-slate-400'>
-            Submitted By
+            {submission.submittedByRole ? `Submitted by ${submission.submittedByRole}` : 'Submitted By'}
           </p>
           <p className='text-sm font-bold text-[#1A1C1E]'>
             {submission.submittedBy}
