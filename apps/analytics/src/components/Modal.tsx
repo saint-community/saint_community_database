@@ -7,9 +7,11 @@ interface ModalProps {
     title: string;
     children: React.ReactNode;
     size?: 'md' | 'lg' | 'xl' | 'full';
+    /** Renders above other modals (e.g. Add Participant over Details) */
+    stackAbove?: boolean;
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 'lg' }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 'lg', stackAbove = false }) => {
     if (!isOpen) return null;
     const sizeClasses = {
         md: 'max-w-md',
@@ -18,7 +20,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
         full: 'max-w-[95vw]',
     };
     return (
-        <div className='fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#1A1C1E]/60 backdrop-blur-sm animate-in fade-in duration-200'>
+        <div className={`fixed inset-0 flex items-center justify-center p-6 bg-[#1A1C1E]/60 backdrop-blur-sm animate-in fade-in duration-200 ${stackAbove ? 'z-[150]' : 'z-[100]'}`}>
             <div
                 className={`bg-white rounded-lg w-full ${sizeClasses[size]} max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-200`}
             >

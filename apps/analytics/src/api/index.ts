@@ -439,9 +439,8 @@ export const prayerGroupAPI = {
         try {
             const query = churchId ? `?church_id=${churchId}` : '';
             const response = await api.get(`/admin/prayer-group/meeting/all${query}`);
-            console.log('getAllMeetings RAW response:', response);
-            console.log('getAllMeetings data.data:', response.data?.data);
-            return response.data || [];
+            const body = response.data;
+            return body?.data ?? body ?? [];
         } catch (error: any) {
             console.error('getAllMeetings error:', error);
             if (error.response && error.response.status === 404) {
@@ -482,11 +481,12 @@ export const prayerGroupAPI = {
         return response.data || [];
     },
 
-    // Admin: Get ALL records for church (History/Past Tab)
-    getAllRecords: async (churchId?: number): Promise<any[]> => {
+    // Admin: Get ALL records for church (History/Past Tab). Backend: { data: { records, instancesWithoutRecords } }
+    getAllRecords: async (churchId?: number): Promise<{ records?: any[]; instancesWithoutRecords?: any[] } | any[]> => {
         const query = churchId ? `?church_id=${churchId}` : '';
         const response = await api.get(`/admin/prayer-group/records/all${query}`);
-        return response.data || [];
+        const body = response.data ?? response;
+        return body?.data ?? body ?? [];
     },
 
     updateRecordStatus: async (ids: string[], status: string): Promise<any> => {
@@ -553,8 +553,15 @@ export const prayerGroupAPI = {
         await api.put(`/admin/prayer-group/mark-one-absent?prayergroup_id=${prayerGroupId}&attendee_id=${attendeeId}`, null);
     },
 
-    // Admin: Add member to prayer group record
-    addMember: async (data: { prayergroup_id: string; name: string; fellowship: string; fellowship_id: number }): Promise<void> => {
+    // Admin: Add member(s) — single fields or bulk `attendees[]` (member ObjectId or worker numeric id as string)
+    addMember: async (data: {
+        prayergroup_id: string;
+        name?: string;
+        fellowship?: string;
+        fellowship_id?: number;
+        attendee_id?: string;
+        attendees?: Array<{ name?: string; fellowship?: string; fellowship_id?: number; attendee_id?: string }>;
+    }): Promise<void> => {
         await api.post('/admin/prayer-group/add-member', data);
     },
 
