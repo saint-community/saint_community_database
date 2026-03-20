@@ -7,7 +7,7 @@ interface ModalProps {
     title: string;
     children: React.ReactNode;
     size?: 'md' | 'lg' | 'xl' | 'full';
-    /** When true, use higher z-index so this modal appears above other modals (e.g. Add Participant over Details) */
+    /** Renders above other modals (e.g. Add Participant over Details) */
     stackAbove?: boolean;
 }
 

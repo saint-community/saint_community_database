@@ -89,7 +89,7 @@ interface ParticipationSubmission {
   id: string;
   title: string;
   submittedBy: string;
-  submittedByRole?: string; // When provided by API, e.g. "Pastor", "Worker"
+  submittedByRole?: string;
   count: number;
   date: string;
   status: 'Pending' | 'Approved' | 'Rejected';
@@ -100,13 +100,23 @@ interface ParticipationSubmission {
     status: string;
     id: string;
   }[];
-  ids?: string[]; // For grouped actions
-  sortAt?: number; // For sorting (newest first)
-  instanceId?: string; // PrayerGroup instance _id for Add Participant
-  instanceDate?: string; // Instance date (dd-MM-yyyy) for expiry
-  instanceEndTime?: string; // Instance end_time (HH:MM) for expiry
-  isExpired?: boolean; // Backend is_expired flag; when false, Add Participant is allowed
+  ids?: string[];
+  sortAt?: number;
+  instanceId?: string;
+  instanceDate?: string;
+  instanceEndTime?: string;
+  isExpired?: boolean;
 }
+
+type ParticipantEntry = {
+  name: string;
+  fellowship: string;
+  fellowship_id: number;
+  cell?: string;
+  cell_id?: any;
+  id?: any;
+  type?: string;
+};
 
 import { Logo, COLORS } from '../../constants';
 import {
@@ -162,18 +172,13 @@ const PrayerModule = ({ user }: { user: any }) => {
   // Modal States
   const [isAddParticipantOpen, setIsAddParticipantOpen] = useState(false);
   const [viewingMeeting, setViewingMeeting] = useState<any>(null);
-  const [meetingParticipantsList, setMeetingParticipantsList] = useState<any[]>([]);
-  const [loadingMeetingParticipants, setLoadingMeetingParticipants] = useState(false);
   const [reviewingSubmission, setReviewingSubmission] = useState<any>(null);
   const [detailsSubmission, setDetailsSubmission] = useState<any>(null);
-  // When opening Add Participant from the Attendance Record Details modal (Past tab), we don't have viewingMeeting
   const [addParticipantForInstanceId, setAddParticipantForInstanceId] = useState<string | null>(null);
+  const [meetingParticipantsList, setMeetingParticipantsList] = useState<any[]>([]);
+  const [loadingMeetingParticipants, setLoadingMeetingParticipants] = useState(false);
 
-  // Multi-select and Search States for Add Participant
-  const [selectedFellowships, setSelectedFellowships] = useState<string[]>([]);
-  const [selectedCells, setSelectedCells] = useState<string[]>([]);
   const [participantSearch, setParticipantSearch] = useState('');
-  type ParticipantEntry = { name: string; fellowship: string; fellowship_id: number; cell?: string; cell_id?: any; id?: any; type?: string };
   const [selectedParticipants, setSelectedParticipants] = useState<ParticipantEntry[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -192,25 +197,20 @@ const PrayerModule = ({ user }: { user: any }) => {
 
   const fetchAnalytics = async () => {
     try {
-      // Use getStats for overview metrics
-      const statsData = await prayerGroupAPI.getStats();
-
-      // Map backend stats to analytics data
-      setAnalyticsData({
-        totalParticipants: statsData.totalParticipants || 0,
-        activeCells: statsData.activeCells || 0,
-        avgAttendance: statsData.avgAttendance || 0,
-        monthlyTarget: statsData.monthlyTarget || 'On Track',
-        graphData: statsData.graphData || [
+      const data = await prayerGroupAPI.getAnalytics(user?.church_id);
+      // Ensure graph data has at least empty structure if missing
+      if (!data.graphData || data.graphData.length === 0) {
+        data.graphData = [
           { name: 'W1', value: 0 },
           { name: 'W2', value: 0 },
           { name: 'W3', value: 0 },
           { name: 'W4', value: 0 },
           { name: 'W5', value: 0 },
-        ]
-      });
+        ];
+      }
+      setAnalyticsData(data);
     } catch (error) {
-      console.error("Failed to fetch prayer group stats", error);
+      console.error("Failed to fetch analytics", error);
     }
   };
 
@@ -285,14 +285,12 @@ const PrayerModule = ({ user }: { user: any }) => {
     'December 2024',
   ];
 
-  // Data Lists State (fellowships/cells are objects with id, name, church_id)
   const [fellowshipsList, setFellowshipsList] = useState<any[]>([]);
   const [cellsList, setCellsList] = useState<any[]>([]);
   const [churchName, setChurchName] = useState<string>('');
   const [addParticipantPeople, setAddParticipantPeople] = useState<any[]>([]);
   const [isLoadingAddParticipantPeople, setIsLoadingAddParticipantPeople] = useState(false);
 
-  // Fetch Structure Data (Fellowships & Cells) scoped to user's church
   useEffect(() => {
     const fetchStructure = async () => {
       try {
@@ -325,7 +323,6 @@ const PrayerModule = ({ user }: { user: any }) => {
     fetchStructure();
   }, [user?.church_id, user?.churches]);
 
-  // Load members + workers when Add Participant modal opens (client-side filter, no search API)
   useEffect(() => {
     if (!isAddParticipantOpen) return;
     const loadPeople = async () => {
@@ -337,26 +334,26 @@ const PrayerModule = ({ user }: { user: any }) => {
         ]);
         const members = Array.isArray(membersRes) ? membersRes : [];
         const workers = Array.isArray(workersRes) ? workersRes : [];
-        const getFellowshipName = (id: any) => fellowshipsList.find((f: any) => String(f.id ?? f._id) === String(id))?.name || 'Unknown Fellowship';
+        const getFellowshipName = (id: any) => fellowshipsList.find((f: any) => String(f.id ?? f._id) === String(id))?.name || '';
         const getCellName = (id: any) => cellsList.find((c: any) => String(c.id ?? c._id) === String(id))?.name;
         const memberEntries: ParticipantEntry[] = members.map((m: any) => ({
           name: m.full_name || m.name || 'Unknown',
-          fellowship: m.fellowship_name || m.fellowship || getFellowshipName(m.fellowship_id),
-          fellowship_id: m.fellowship_id ?? 0,
+          fellowship: m.fellowship_name || m.fellowship || getFellowshipName(m.fellowship_id) || 'Church',
+          fellowship_id: Number(m.fellowship_id),
           cell: m.cell_name || m.cell || getCellName(m.cell_id),
           cell_id: m.cell_id,
           id: m._id || m.id,
           type: 'member'
-        }));
+        })).filter((p: ParticipantEntry) => Number.isFinite(p.fellowship_id));
         const workerEntries: ParticipantEntry[] = workers.map((w: any) => ({
           name: w.name || w.full_name || `${w.first_name || ''} ${w.last_name || ''}`.trim() || 'Unknown',
-          fellowship: w.fellowship_name || w.fellowship || getFellowshipName(w.fellowship_id),
-          fellowship_id: w.fellowship_id ?? 0,
+          fellowship: w.fellowship_name || w.fellowship || getFellowshipName(w.fellowship_id) || 'Church',
+          fellowship_id: Number(w.fellowship_id),
           cell: w.cell_name || w.cell || getCellName(w.cell_id),
           cell_id: w.cell_id,
           id: w.worker_id ?? w.id ?? w._id,
           type: 'worker'
-        }));
+        })).filter((p: ParticipantEntry) => Number.isFinite(p.fellowship_id));
         setAddParticipantPeople([...memberEntries, ...workerEntries]);
       } catch (e) {
         console.error("Failed to load members/workers for Add Participant", e);
@@ -367,28 +364,6 @@ const PrayerModule = ({ user }: { user: any }) => {
     };
     loadPeople();
   }, [isAddParticipantOpen, fellowshipsList, cellsList]);
-
-  // Already-added participant ids for this session (avoid duplicates)
-  const existingAttendeeIds = useMemo(
-    () => new Set(
-      meetingParticipantsList
-        .map((p: any) => String(p.attendee_id ?? p._id ?? ''))
-        .filter(Boolean)
-    ),
-    [meetingParticipantsList]
-  );
-
-  // Church-wide: no fellowship/cell filter; only filter by name search; exclude already-added
-  const filteredParticipantSuggestions = useMemo(() => {
-    let list = addParticipantPeople.filter(
-      (p: any) => !existingAttendeeIds.has(String(p.id ?? ''))
-    );
-    const q = (participantSearch || '').trim().toLowerCase();
-    if (q) {
-      list = list.filter((p: any) => (p.name || '').toLowerCase().includes(q));
-    }
-    return list.slice(0, 50);
-  }, [addParticipantPeople, participantSearch, existingAttendeeIds]);
 
   // Mock Prayer Meetings Data
   // Prayer Meetings Data
@@ -447,19 +422,20 @@ const PrayerModule = ({ user }: { user: any }) => {
     // So it supports non-Ongoing styles.
 
     // Revised logic:
-    // Ongoing = today, and current time is within [start, end + 2h] (2-hour wiggle after end).
-    // Else = "Scheduled".
+    // Active Now = "Ongoing"
+    // Else = "Scheduled" (or maintain 'Ongoing' if it just means 'Active Configuration')
+    // But the user plainly thinks "Always Ongoing" is a bug. They likely expect to see:
+    // - "Ongoing" ONLY when it is actually happening right now.
+    // - "Scheduled" or "Upcoming" otherwise.
 
-    const WIGGLE_MINUTES = 2 * 60; // 2 hours after end time still counts as Ongoing
+    const WIGGLE_MINUTES = 2 * 60;
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
     const startMinutes = startHour * 60 + startMin;
     let endMinutes = endHour * 60 + endMin;
 
-    // Handle midnight (00:00) as end of day (24:00)
     if (endMinutes === 0) {
       endMinutes = 24 * 60;
     }
-    // Handle overnight meetings (e.g. 23:00 to 01:00)
     if (endMinutes < startMinutes) {
       endMinutes += 24 * 60;
     }
@@ -468,12 +444,6 @@ const PrayerModule = ({ user }: { user: any }) => {
     if (currentDayIndex === targetDayIndex) {
       if (nowMinutes >= startMinutes && nowMinutes < endWithWiggle) {
         return 'Ongoing';
-      }
-      if (nowMinutes >= endWithWiggle) {
-        return 'Scheduled';
-        // Actually, if it's Tuesday and meeting finished at 7 AM, and now is 10 PM, it's NOT "Scheduled" for today anymore?
-        // But it IS "Scheduled" for next week.
-        // Let's keep it simple: "Ongoing" if active, everything else "Scheduled" (Upcoming)
       }
     }
     return 'Scheduled';
@@ -525,6 +495,8 @@ const PrayerModule = ({ user }: { user: any }) => {
         id: m._id || m.id || m.prayergroup_id || m.prayer_meeting_id || Math.random(),
         day: m.prayergroup_day || m.day || 'Unknown Day',
         period: m.period || 'Evening',
+        start_time: m.start_time,
+        end_time: m.end_time,
         time:
           m.start_time && m.end_time
             ? `${m.start_time} - ${m.end_time}`
@@ -533,9 +505,8 @@ const PrayerModule = ({ user }: { user: any }) => {
         participants: m.attendees?.length || m.participants || 0,
         status: calculateMeetingStatus(m.prayergroup_day, m.start_time, m.end_time),
         code: m.prayer_code || m.code || '------',
-        // instance_id from meeting/list API, or _id when list is instances (e.g. getMyGroups returns PrayerGroup docs)
-        instanceId: m.instance_id ?? m.instanceId ?? m._id ?? m.id ?? null,
         expiresAt: m.expiresAt || Date.now() + 2 * 3600000,
+        instanceId: m.instance_id ?? m.instanceId ?? m._id ?? m.id ?? null,
       }));
       console.log('fetchMeetings mapped:', mapped);
       setPrayerMeetings(mapped);
@@ -550,7 +521,7 @@ const PrayerModule = ({ user }: { user: any }) => {
     if (activeTab === 'Prayer Meetings') {
       fetchMeetings();
     }
-  }, [activeTab]);
+  }, [activeTab, user?.church_id, churchName]);
 
   // Mock Submissions Data - Moved to State
   // Submissions Data
@@ -600,7 +571,6 @@ const PrayerModule = ({ user }: { user: any }) => {
     }
   };
 
-  // Helper to group records by code/meeting
   const groupSubmissions = (records: any[]): ParticipationSubmission[] => {
     const groups: Record<string, ParticipationSubmission> = {};
 
@@ -639,25 +609,16 @@ const PrayerModule = ({ user }: { user: any }) => {
         groups[key].sortAt = sortAt;
       }
 
-      // Aggregate
       groups[key].participants.push({
         name: record.name || 'Unknown',
-        cell: record.fellowship || 'Unknown Unit',
+        cell: record.fellowship || '',
         status: record.status || 'Pending',
         id: record._id
       });
       groups[key].count += 1;
       groups[key].ids?.push(record._id);
-
-      // Status Logic: Strict. All must be Approved to be 'Approved'.
-      // We calculate this after collecting all, or update incrementally?
-      // Incremental is hard for "All". 
-      // Let's do a second pass OR simple check.
-      // Actually, we can't do simple check in loop easily without knowing total.
-      // So we iterate values at the end.
     });
 
-    // Final pass to determine group status
     Object.values(groups).forEach(group => {
       const hasPending = group.participants.some(p => !p.status || p.status === 'Pending' || p.status === 'pending');
       const allRejected = group.participants.every(p => p.status === 'Rejected');
@@ -785,35 +746,29 @@ const PrayerModule = ({ user }: { user: any }) => {
       // It maps `time`. It does NOT map start_time/end_time to the final object.
       // We need to ensure start_time and end_time are preserved in the prayerMeetings state.
 
-      if (!meeting.time) {
-        console.error('Meeting time is undefined:', meeting);
-        return;
-      }
-      const [startTime, endTime] = meeting.time.split(' - ');
+      const startTime = meeting.start_time || (meeting.time ? meeting.time.split(' - ')[0] : '18:00');
+      const endTime = meeting.end_time || (meeting.time ? meeting.time.split(' - ')[1] : '20:00');
 
       const meetingData = {
         prayergroup_day: meeting.day,
-        start_time: startTime || '18:00', // Extract from "22:00 - 00:00"
+        start_time: startTime || '18:00',
         end_time: endTime || '20:00',
         period: meeting.period,
-        prayergroup_leader: ['Current User'], // Default or fetch if available
+        prayergroup_leader: ['Current User'],
         prayer_meeting_id: meeting.id,
         church: meeting.church
       };
 
-      // Call the INSTANCE creation endpoint (which generates code)
       const response = await prayerGroupAPI.generateInstance(meetingData);
-      // API may return prayer_group at top level or nested in .data; instance id may be prayergroup_id or _id
+
       const newCode = response?.prayer_code ?? response?.data?.prayer_code;
       const instanceId = response?.prayergroup_id ?? response?.data?.prayergroup_id ?? response?._id ?? response?.id;
 
       if (newCode) {
-        // Update the list state with code, status, and instanceId so row has it for next open
         setPrayerMeetings(prev => prev.map(m =>
           m.id === meeting.id ? { ...m, code: newCode, status: 'Ongoing', instanceId: instanceId ?? m.instanceId } : m
         ));
 
-        // Update modal state so Add Participant is enabled immediately
         if (viewingMeeting && (viewingMeeting.id === meeting.id || viewingMeeting.id === meeting.prayer_meeting_id)) {
           setViewingMeeting(prev => ({ ...prev, code: newCode, status: 'Ongoing', instanceId: instanceId ?? prev?.instanceId }));
         }
@@ -837,34 +792,6 @@ const PrayerModule = ({ user }: { user: any }) => {
     return `${hours}h ${mins}m`;
   };
 
-  const toggleSelection = (
-    list: string[],
-    setList: React.Dispatch<React.SetStateAction<string[]>>,
-    item: string
-  ) => {
-    if (list.includes(item)) {
-      setList(list.filter((i) => i !== item));
-    } else {
-      setList([...list, item]);
-    }
-  };
-
-  const addParticipantFromSearch = (entry: ParticipantEntry | string) => {
-    const defaultFellowship = fellowshipsList[0];
-    const toAdd: ParticipantEntry = typeof entry === 'string'
-      ? { name: entry.trim(), fellowship: defaultFellowship?.name ?? 'Church', fellowship_id: Number(defaultFellowship?.id ?? defaultFellowship?._id ?? 0) }
-      : entry;
-    if (!toAdd.name) return;
-    const alreadyInSelection = selectedParticipants.some(p => p.name === toAdd.name && p.fellowship_id === toAdd.fellowship_id);
-    const alreadyInSession = toAdd.id != null && existingAttendeeIds.has(String(toAdd.id));
-    if (!alreadyInSelection && !alreadyInSession) {
-      setSelectedParticipants(prev => [...prev, toAdd]);
-      setParticipantSearch('');
-      setShowSuggestions(false);
-    }
-  };
-
-  // Instance id for Add Participant: from details modal, from Meeting Logistics modal, or from list
   const effectiveInstanceId =
     addParticipantForInstanceId ??
     viewingMeeting?.instanceId ??
@@ -872,24 +799,24 @@ const PrayerModule = ({ user }: { user: any }) => {
       ? prayerMeetings.find((m: any) => m.id === viewingMeeting.id)?.instanceId
       : undefined);
 
-  // Code is past the add window (instance date + end_time + 2h wiggle)
   const isInstanceCodeExpired = (instanceDate?: string, instanceEndTime?: string): boolean => {
     if (!instanceDate || !instanceEndTime) return false;
     const WIGGLE_MS = 2 * 60 * 60 * 1000;
     try {
-      // instanceDate may be "dd-MM-yyyy" or locale string; try dd-MM-yyyy first
-      const [d, m, y] = instanceDate.split(/[-/]/);
-      const year = parseInt(y || '', 10);
-      const month = parseInt(m || '', 10) - 1;
-      const day = parseInt(d || '', 10);
-      if (isNaN(year) || isNaN(month) || isNaN(day)) return false;
-      const [eh, em] = instanceEndTime.split(':').map(Number);
-      const endMs = (eh * 60 + (em || 0)) * 60 * 1000;
-      const expiry = new Date(year, month, day).getTime() + endMs + WIGGLE_MS;
-      return Date.now() > expiry;
+      const parts = instanceDate.split(/[-/]/);
+      const d = parseInt(parts[0] || '', 10);
+      const m = parseInt(parts[1] || '', 10) - 1;
+      const y = parseInt(parts[2] || '', 10);
+      if (parts.length === 3 && !isNaN(y) && !isNaN(m) && !isNaN(d)) {
+        const [eh, em] = instanceEndTime.split(':').map(Number);
+        const endMs = (eh * 60 + (em || 0)) * 60 * 1000;
+        const expiry = new Date(y, m, d).getTime() + endMs + WIGGLE_MS;
+        return Date.now() > expiry;
+      }
     } catch {
       return false;
     }
+    return false;
   };
 
   const loadMeetingParticipants = async (instanceId: string) => {
@@ -914,6 +841,45 @@ const PrayerModule = ({ user }: { user: any }) => {
     loadMeetingParticipants(String(effectiveInstanceId));
   }, [effectiveInstanceId]);
 
+  const existingAttendeeIds = useMemo(
+    () => new Set(
+      meetingParticipantsList
+        .map((p: any) => String(p.attendee_id ?? p._id ?? ''))
+        .filter(Boolean)
+    ),
+    [meetingParticipantsList]
+  );
+
+  const filteredParticipantSuggestions = useMemo(() => {
+    let list = addParticipantPeople.filter(
+      (p: any) => !existingAttendeeIds.has(String(p.id ?? ''))
+    );
+    const q = (participantSearch || '').trim().toLowerCase();
+    if (q) {
+      list = list.filter((p: any) => (p.name || '').toLowerCase().includes(q));
+    }
+    return list.slice(0, 50);
+  }, [addParticipantPeople, participantSearch, existingAttendeeIds]);
+
+  const addParticipantFromSearch = (entry: ParticipantEntry | string) => {
+    const defaultFellowship = fellowshipsList[0];
+    const toAdd: ParticipantEntry = typeof entry === 'string'
+      ? { name: entry.trim(), fellowship: defaultFellowship?.name ?? 'Church', fellowship_id: Number(defaultFellowship?.id ?? defaultFellowship?._id ?? NaN) }
+      : entry;
+    if (!toAdd.name) return;
+    if (!Number.isFinite(toAdd.fellowship_id)) {
+      console.warn('Participant missing valid fellowship_id', toAdd);
+      return;
+    }
+    const alreadyInSelection = selectedParticipants.some(p => p.name === toAdd.name && p.fellowship_id === toAdd.fellowship_id);
+    const alreadyInSession = toAdd.id != null && existingAttendeeIds.has(String(toAdd.id));
+    if (!alreadyInSelection && !alreadyInSession) {
+      setSelectedParticipants(prev => [...prev, toAdd]);
+      setParticipantSearch('');
+      setShowSuggestions(false);
+    }
+  };
+
   const handleAddParticipantsSubmit = async () => {
     const instanceId = effectiveInstanceId;
     if (!instanceId) {
@@ -923,15 +889,22 @@ const PrayerModule = ({ user }: { user: any }) => {
     if (selectedParticipants.length === 0) return;
     const openedFromDetails = !!addParticipantForInstanceId;
     try {
-      for (const p of selectedParticipants) {
-        await prayerGroupAPI.addMember({
-          prayergroup_id: String(instanceId),
+      const attendeesPayload = selectedParticipants.map((p) => {
+        const fid = Number(p.fellowship_id);
+        if (!Number.isFinite(fid)) {
+          throw new Error(`Invalid fellowship_id for ${p.name}`);
+        }
+        return {
           name: p.name,
           fellowship: p.fellowship,
-          fellowship_id: Number(p.fellowship_id) || 0,
+          fellowship_id: fid,
           attendee_id: p.id != null && p.id !== '' ? String(p.id) : undefined,
-        });
-      }
+        };
+      });
+      await prayerGroupAPI.addMember({
+        prayergroup_id: String(instanceId),
+        attendees: attendeesPayload,
+      });
       setSelectedParticipants([]);
       setParticipantSearch('');
       setIsAddParticipantOpen(false);
@@ -1214,7 +1187,7 @@ const PrayerModule = ({ user }: { user: any }) => {
                         {submission.date}
                       </td>
                       <td className='px-8 py-6 text-sm font-medium text-slate-400 italic'>
-                        Isolo Church
+                        {churchName || 'Church'}
                       </td>
                       <td className='px-8 py-6 text-sm font-black text-[#CCA856]'>
                         {submission.count}
@@ -1466,9 +1439,8 @@ const PrayerModule = ({ user }: { user: any }) => {
                 )}
                 <button
                   onClick={() => {
-                    setSelectedFellowships([]);
-                    setSelectedCells([]);
                     setSelectedParticipants([]);
+                    setAddParticipantForInstanceId(null);
                     setIsAddParticipantOpen(true);
                   }}
                   className='flex items-center gap-2 px-8 py-4 bg-[#1A1C1E] text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all'
@@ -1550,7 +1522,7 @@ const PrayerModule = ({ user }: { user: any }) => {
         </Modal>
       )}
 
-      {/* Add Participant Modal - stackAbove so it appears on top of Details/Meeting modals */}
+      {/* Add Participant Modal */}
       <Modal
         isOpen={isAddParticipantOpen}
         onClose={() => {
@@ -1562,7 +1534,6 @@ const PrayerModule = ({ user }: { user: any }) => {
         stackAbove
       >
         <div className='p-10 space-y-8'>
-          {/* Church (church-wide meeting; no fellowship/cell filter) */}
           <div className='space-y-2'>
             <label className='text-[10px] font-black uppercase tracking-widest text-slate-400'>
               Church
@@ -1572,7 +1543,6 @@ const PrayerModule = ({ user }: { user: any }) => {
             </div>
           </div>
 
-          {/* Searchable Multi-select Participants */}
           <div className='space-y-4 relative'>
             <label className='text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-2'>
               Participant Name *
@@ -1586,6 +1556,7 @@ const PrayerModule = ({ user }: { user: any }) => {
                 >
                   {p.name}
                   <button
+                    type='button'
                     onClick={() =>
                       setSelectedParticipants((prev) => prev.filter((_, i) => i !== idx))
                     }
@@ -1628,6 +1599,7 @@ const PrayerModule = ({ user }: { user: any }) => {
                       const isSelected = selectedParticipants.some(p => p.name === person.name && p.fellowship_id === person.fellowship_id);
                       return (
                         <button
+                          type='button'
                           key={person.id ?? person.name ?? idx}
                           onClick={() => addParticipantFromSearch(person)}
                           className='w-full text-left px-5 py-3.5 hover:bg-slate-50 transition-all rounded-lg flex items-center justify-between group'
@@ -1649,10 +1621,11 @@ const PrayerModule = ({ user }: { user: any }) => {
                   ) : (
                     <div className='px-5 py-8 text-center'>
                       <p className='text-xs font-bold text-slate-400 uppercase'>
-                        No members or workers match the filters
+                        No members or workers match
                       </p>
                       {participantSearch.trim() && (
                         <button
+                          type='button'
                           onClick={() => addParticipantFromSearch(participantSearch.trim())}
                           className='mt-2 text-[10px] font-black text-[#E74C3C] uppercase tracking-widest hover:underline'
                         >
@@ -1671,8 +1644,10 @@ const PrayerModule = ({ user }: { user: any }) => {
 
           <div className='flex gap-4 pt-4'>
             <button
+              type='button'
               onClick={() => {
                 setIsAddParticipantOpen(false);
+                setAddParticipantForInstanceId(null);
                 setShowSuggestions(false);
               }}
               className='flex-1 py-5 border border-slate-100 rounded-xl text-xs font-black uppercase tracking-[0.2em] text-slate-400 hover:bg-slate-50 transition-all'
@@ -1680,6 +1655,7 @@ const PrayerModule = ({ user }: { user: any }) => {
               Cancel
             </button>
             <button
+              type='button'
               onClick={handleAddParticipantsSubmit}
               disabled={selectedParticipants.length === 0 || !effectiveInstanceId}
               title={!effectiveInstanceId ? 'Generate code first to add participants' : undefined}

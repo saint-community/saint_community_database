@@ -30,12 +30,6 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}, isSanctum
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    // Add selected church ID from localStorage to override token's church_id
-    const selectedChurchId = localStorage.getItem('selected_church_id');
-    if (selectedChurchId) {
-        headers['x-church-id'] = selectedChurchId;
-    }
-
     // For Sanctum requests, we need to use the SC repo URL.
     // Assuming API_BASE_URL (localhost:4000) is for NestJS services (JWT).
     // The SC repo URL (auth login URL base) needs to be extracted or configured.
@@ -66,8 +60,7 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}, isSanctum
         // Handle 401 without auto-reloading to allow fallback logic
         if (response.status === 401) {
             console.warn(`Unauthorized access to ${endpoint} (Sanctum: ${isSanctum})`);
-            // Dispatch event for App.tsx to handle logout
-            window.dispatchEvent(new Event('auth:unauthorized'));
+            // We do NOT reload here. We allow the error to bubble up.
         }
 
         const errorBody = await response.json().catch(() => ({ message: 'Request failed' }));
@@ -160,7 +153,7 @@ const transformEvangelismToBackend = (session: EvangelismSession) => {
         session_date: session.date,
         start_time: session.time,
         location_area: session.location,
-        participants: session.participants.map(name => ({
+        team_members: session.participants.map(name => ({
             id: '0',  // Using placeholder ID
             type: 'worker',
             name,
@@ -168,14 +161,13 @@ const transformEvangelismToBackend = (session: EvangelismSession) => {
         saved_count: session.records.filter(r => r.isSaved).length,
         filled_count: session.records.filter(r => r.isFilled).length,
         healed_count: session.records.filter(r => r.isHealed).length,
-        records: session.records.map(record => ({
+        souls: session.records.map(record => ({
             name: record.personReached,
             gender: record.gender,
             age: record.age,
             phone: record.phone,
             address: record.address,
             status: primaryStatus(record),
-            // impact_types: impactTypes(record), // Backend DTO might strict check? No, DTO usually whitelist but let's pass it.
             impact_types: impactTypes(record),
             note: record.comments,
             healed_condition_before: record.healedConditionBefore || '',
@@ -188,12 +180,12 @@ const transformEvangelismToBackend = (session: EvangelismSession) => {
 const transformEvangelismFromBackend = (data: any): EvangelismSession => {
     return {
         id: data._id || data.id,
-        // Ensure date is yyyy-MM-dd for HTML input compatibility. Prefer data.date (DB) over generated fallback.
-        date: data.date ? data.date.toString().substring(0, 10) : (data.session_date ? data.session_date.toString().substring(0, 10) : new Date().toISOString().substring(0, 10)),
-        time: data.date && new Date(data.date).toISOString().includes('T') ? new Date(data.date).toISOString().split('T')[1].substring(0, 5) : (data.start_time || ''),
-        location: data.location_area || '',
-        participants: data.participants?.map((tm: any) => tm.name) || [],
-        records: data.records?.map((soul: any, idx: number) => ({
+        // Ensure date is yyyy-MM-dd for HTML input compatibility
+        date: data.session_date ? data.session_date.toString().substring(0, 10) : new Date().toISOString().substring(0, 10),
+        time: data.start_time,
+        location: data.location_area,
+        participants: data.team_members?.map((tm: any) => tm.name) || [],
+        records: data.souls?.map((soul: any, idx: number) => ({
             id: `${data._id || data.id}-soul-${idx}`,
             personReached: soul.name,
             gender: soul.gender,
@@ -261,39 +253,22 @@ const transformFollowUpToBackend = (session: FollowUpSession) => {
 };
 
 const transformFollowUpFromBackend = (data: any): FollowUpSession => {
-    // Backend returns grouped "Session" with "records" array
-    // Map backend records to frontend records
-    const mappedRecords = data.records?.map((rec: any, index: number) => ({
-        id: rec._id || `${data._id || data.id}-record-${index}`,
-        personFollowedUp: rec.members_taught?.map((m: any) => m.name).join(', ') || '',
-        subjectTaught: rec.subject || 'General',
-        materialSource: rec.material_used || '', // Mapped from backend
-        duration: String(rec.duration_minutes || 0),
-        comments: rec.comments || '',
-    })) || [];
-
-    // Fallback if records array is empty or structurally different (legacy safety)
-    if (mappedRecords.length === 0) {
-        const singleRecord: FollowUpRecord = {
-            id: `${data._id || data.id}-record-0`,
-            personFollowedUp: data.members_taught?.map((m: any) => m.name).join(', ') || data.participants?.map((m: any) => m.name).join(', ') || 'Unknown Search',
-            subjectTaught: data.subject || 'General',
-            materialSource: data.material_used || '',
-            duration: String(data.duration_minutes || 0),
-            comments: data.comments || '',
-        };
-        mappedRecords.push(singleRecord);
-    }
-
     return {
-        id: data.id || data._id,
-        date: data.date ? data.date.toString().substring(0, 10) : new Date().toISOString().substring(0, 10),
-        time: data.date && new Date(data.date).toISOString().includes('T') ? new Date(data.date).toISOString().split('T')[1].substring(0, 5) : '',
-        worker: 'Worker',
-        location: data.location_area || '',
-        summary: data.session_summary || '',
+        id: data._id || data.id,
+        date: data.session_date ? data.session_date.toString().substring(0, 10) : new Date().toISOString().substring(0, 10),
+        time: data.start_time,
+        worker: data.participants?.[0]?.name || 'Unknown',
+        location: data.location_area,
+        summary: data.summary || '',
         participants: data.participants?.map((p: any) => p.name) || [],
-        records: mappedRecords,
+        records: data.records?.map((record: any, idx: number) => ({
+            id: `${data._id || data.id}-record-${idx}`,
+            personFollowedUp: record.members_taught?.map((m: any) => m.name).join(', ') || '',
+            subjectTaught: record.topic,
+            materialSource: record.material,
+            duration: String(record.duration_minutes || 0),
+            comments: record.comments || '',
+        })) || [],
         createdAt: data.createdAt || new Date().toISOString(),
     };
 };
@@ -369,9 +344,8 @@ export const followUpAPI = {
 // ============================================================================
 
 export const attendanceAPI = {
-    getMeetings: async (churchId?: number): Promise<any[]> => {
-        const query = churchId ? `?church_id=${churchId}` : '';
-        const response = await api.get(`/attendance/admin/meetings${query}`);
+    getMeetings: async (): Promise<any[]> => {
+        const response = await api.get('/attendance/admin/meetings');
         const data = response.data || [];
         return data.map((meeting: any) => {
             // Handle Dates
@@ -410,10 +384,6 @@ export const attendanceAPI = {
         return await api.post('/attendance/admin/meeting', meeting);
     },
 
-    updateMeeting: async (id: string, meeting: any): Promise<any> => {
-        return await api.patch(`/attendance/admin/meeting/${id}`, meeting);
-    },
-
     markAttendance: async (data: any): Promise<any> => {
         return await api.post('/attendance/mark', data);
     },
@@ -426,46 +396,18 @@ export const attendanceAPI = {
         await api.delete(`/attendance/admin/meeting/${id}`);
     },
 
-    getHistory: async (churchId?: number): Promise<any[]> => {
-        const query = churchId ? `?church_id=${churchId}` : '';
-        const response = await api.get(`/attendance/history${query}`);
+    getHistory: async (): Promise<any[]> => {
+        const response = await api.get('/attendance/history');
         return response.data || [];
     },
 
-    getAdminSubmissions: async (churchId?: number): Promise<any[]> => {
-        const query = churchId ? `?church_id=${churchId}` : '';
-        const response = await api.get(`/attendance/admin/submissions${query}`);
+    getAdminSubmissions: async (): Promise<any[]> => {
+        const response = await api.get('/attendance/admin/submissions');
         return response.data || [];
     },
-    getStats: async (churchId?: number): Promise<any> => {
-        const query = churchId ? `?church_id=${churchId}` : '';
-        const response = await api.get(`/attendance/admin/stats${query}`);
+    getStats: async (): Promise<any> => {
+        const response = await api.get('/attendance/admin/stats');
         return response.data || {};
-    },
-
-    // --- Templates ---
-    createTemplate: async (data: any): Promise<any> => {
-        return await api.post('/attendance/admin/template', data);
-    },
-
-    getTemplates: async (churchId?: number): Promise<any[]> => {
-        const query = churchId ? `?church_id=${churchId}` : '';
-        const response = await api.get(`/attendance/admin/templates${query}`);
-        const body = response.data;
-        let data = [];
-        if (Array.isArray(body)) data = body;
-        else data = body.data || [];
-
-        return data.map((t: any) => ({ ...t, id: t._id || t.id }));
-    },
-
-    generateMeetingFromTemplate: async (templateId: string, date: string): Promise<any> => {
-        return await api.post(`/attendance/admin/template/${templateId}/generate`, { date });
-    },
-
-    getTemplateHistory: async (templateId: string): Promise<any[]> => {
-        const response = await api.get(`/attendance/admin/template/${templateId}/history`);
-        return response.data || [];
     },
 };
 
@@ -475,9 +417,10 @@ export const attendanceAPI = {
 
 export const prayerGroupAPI = {
     getStats: async (): Promise<any> => {
-        // Backend route: GET /api/prayer-group/admin/stats
-        const response = await api.get('/prayer-group/admin/stats');
-        return response.data?.data || {};
+        // Assuming stats endpoint is also under admin/prayer-group/stats or similar
+        // Based on pattern: /api/admin/prayer-group/stats
+        const response = await api.get('/admin/prayer-group/stats');
+        return response.data || {};
     },
 
     // Admin/Leader: Create a new prayer meeting day/slot
@@ -496,9 +439,8 @@ export const prayerGroupAPI = {
         try {
             const query = churchId ? `?church_id=${churchId}` : '';
             const response = await api.get(`/admin/prayer-group/meeting/all${query}`);
-            console.log('getAllMeetings RAW response:', response);
-            console.log('getAllMeetings data.data:', response.data?.data);
-            return response.data || [];
+            const body = response.data;
+            return body?.data ?? body ?? [];
         } catch (error: any) {
             console.error('getAllMeetings error:', error);
             if (error.response && error.response.status === 404) {
@@ -539,11 +481,10 @@ export const prayerGroupAPI = {
         return response.data || [];
     },
 
-    // Admin: Get ALL records for church (History/Past Tab). Returns { records, instancesWithoutRecords }.
+    // Admin: Get ALL records for church (History/Past Tab). Backend: { data: { records, instancesWithoutRecords } }
     getAllRecords: async (churchId?: number): Promise<{ records?: any[]; instancesWithoutRecords?: any[] } | any[]> => {
         const query = churchId ? `?church_id=${churchId}` : '';
         const response = await api.get(`/admin/prayer-group/records/all${query}`);
-        // Backend returns { responseCode, status, message, data: { records, instancesWithoutRecords } }; unwrap to payload
         const body = response.data ?? response;
         return body?.data ?? body ?? [];
     },
@@ -612,8 +553,15 @@ export const prayerGroupAPI = {
         await api.put(`/admin/prayer-group/mark-one-absent?prayergroup_id=${prayerGroupId}&attendee_id=${attendeeId}`, null);
     },
 
-    // Admin: Add member to prayer group record (attendee_id for dedupe and correct identity)
-    addMember: async (data: { prayergroup_id: string; name: string; fellowship: string; fellowship_id: number; attendee_id?: string }): Promise<void> => {
+    // Admin: Add member(s) — single fields or bulk `attendees[]` (member ObjectId or worker numeric id as string)
+    addMember: async (data: {
+        prayergroup_id: string;
+        name?: string;
+        fellowship?: string;
+        fellowship_id?: number;
+        attendee_id?: string;
+        attendees?: Array<{ name?: string; fellowship?: string; fellowship_id?: number; attendee_id?: string }>;
+    }): Promise<void> => {
         await api.post('/admin/prayer-group/add-member', data);
     },
 
@@ -635,47 +583,27 @@ export const studyGroupAPI = {
 
     // Get all study groups/assignments
     getAllAssignments: async (churchId?: number): Promise<any[]> => {
-        let endpoint = '/study-groups';
+        let endpoint = '/admin/study-group';
         if (churchId) {
             endpoint += `?church_id=${churchId}`;
         }
-        try {
-            console.log('DEBUG: Fetching all assignments from', endpoint);
-            const response = await api.get(endpoint);
-            console.log('DEBUG: getAllAssignments response:', response);
-            return Array.isArray(response) ? response : (response.data || []);
-        } catch (error: any) {
-            console.error('DEBUG: getAllAssignments error:', error);
-            if (error.response && error.response.status === 404) {
-                return [];
-            }
-            throw error;
-        }
+        const response = await api.get(endpoint);
+        return Array.isArray(response) ? response : (response.data || []);
     },
 
     // Get current week's assignment
     getCurrentAssignment: async (churchId?: number): Promise<any> => {
-        let endpoint = '/study-groups/current-week';
+        let endpoint = '/admin/study-group/current-week';
         if (churchId) {
             endpoint += `?church_id=${churchId}`;
         }
-        try {
-            console.log('DEBUG: Fetching current assignment from', endpoint);
-            const response = await api.get(endpoint);
-            console.log('DEBUG: getCurrentAssignment response:', response);
-            return response;
-        } catch (error: any) {
-            console.error('DEBUG: getCurrentAssignment error:', error);
-            if (error.response && error.response.status === 404) {
-                return null;
-            }
-            throw error;
-        }
+        const response = await api.get(endpoint);
+        return response;
     },
 
     // Get weekly assignments for a specific year
     getWeeklyAssignments: async (year: string, churchId?: string): Promise<any> => {
-        let endpoint = `/study-groups/weekly/${year}`;
+        let endpoint = `/admin/study-group/weekly/${year}`;
         if (churchId) {
             endpoint += `?church_id=${churchId}`;
         }
@@ -685,7 +613,7 @@ export const studyGroupAPI = {
 
     // Get details of a single study group
     getAssignment: async (id: string): Promise<any> => {
-        const response = await api.get(`/study-groups/${id}`);
+        const response = await api.get(`/admin/study-group/${id}`);
         return response;
     },
 
@@ -700,18 +628,10 @@ export const studyGroupAPI = {
     },
 
     // Submissions: Get all submissions
-    // Submissions: Get all submissions
-    getSubmissions: async (churchId?: number): Promise<any[]> => {
-        try {
-            // Use admin endpoint to ensure we get all submissions including graded/history
-            const endpoint = churchId ? `/admin/submissions?church_id=${churchId}` : '/admin/submissions';
-            const response = await api.get(endpoint);
-            return Array.isArray(response) ? response : (response.data || response || []);
-        } catch (error: any) {
-            console.error('DEBUG: getSubmissions error:', error);
-            // Return empty array on error to prevent breaking the whole study group page
-            return [];
-        }
+    getSubmissions: async (): Promise<any[]> => {
+        // Use admin endpoint to ensure we get all submissions including graded/history
+        const response = await api.get('/admin/submissions');
+        return Array.isArray(response) ? response : (response.data || []);
     },
 
     getStats: async (): Promise<any> => {
@@ -845,43 +765,24 @@ export const structureAPI = {
 
 export const memberAPI = {
     getAllMembers: async (): Promise<any[]> => {
-        // Check for Admin Context
-        const token = getAuthToken();
-        let isAdmin = false;
-        if (token) {
-            const decoded: any = parseJwt(token);
-            // Check for admin_meta or specific role strings
-            if (decoded?.admin_meta || ['admin', 'super_admin', 'church_pastor'].includes(decoded?.role)) {
-                isAdmin = true;
-            }
-        }
+        const response = await api.get('/member/all');
+        console.log('DEBUG: getAllMembers raw response:', response);
+        let data = [];
+        if (Array.isArray(response)) data = response;
+        else if (response.data && Array.isArray(response.data)) data = response.data;
+        else if (response.data && response.data.data && Array.isArray(response.data.data)) data = response.data.data;
 
-        const endpoint = isAdmin ? '/member/admin/all' : '/member/all';
-        try {
-            const response = await api.get(endpoint);
-            console.log(`DEBUG: getAllMembers (${isAdmin ? 'Admin' : 'Worker'}) raw response:`, response);
-            let data = [];
-            if (Array.isArray(response)) data = response;
-            else if (response.data && Array.isArray(response.data)) data = response.data;
-            else if (response.data && response.data.data && Array.isArray(response.data.data)) data = response.data.data;
-
-            if (data.length > 0) {
-                // Map/Transform if needed (similar to worker mapping)
-                // For now, return as is or map _id to id
-                return data.map((m: any) => ({
-                    ...m,
-                    id: m._id || m.id
-                }));
-            }
-            return data;
-        } catch (error: any) {
-            if (error.response && error.response.status === 404) {
-                console.warn('getAllMembers: No members found (404), returning empty array.');
-                return [];
-            }
-            throw error;
-        }
-
+        const mapped = data.map((m: any) => {
+            const resolvedName = m.name || m.full_name || 'Unknown Member';
+            if (resolvedName === 'Unknown Member') console.warn('DEBUG: Member missing name/full_name:', m);
+            return {
+                ...m,
+                id: m.id || m._id,
+                name: resolvedName
+            };
+        });
+        if (mapped.length > 0) console.log('DEBUG: First mapped member:', mapped[0]);
+        return mapped;
     },
 
     getRecords: async (filters: any): Promise<any[]> => {
