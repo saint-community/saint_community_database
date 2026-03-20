@@ -39,6 +39,11 @@ export interface EvangelismSession {
   time: string;
   location: string;
   participants: string[];
+  preacher?: {
+    name: string;
+    user_type: 'worker' | 'member';
+    teacher_id: string | number;
+  };
   records: EvangelismRecord[];
   createdAt: string;
 }
@@ -60,6 +65,11 @@ export interface FollowUpSession {
   location?: string;
   summary?: string;
   participants: string[];
+  teacher?: {
+    name: string;
+    user_type: 'worker' | 'member';
+    teacher_id: string | number;
+  };
   records: FollowUpRecord[];
   createdAt: string;
 }

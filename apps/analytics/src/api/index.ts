@@ -103,6 +103,11 @@ export interface EvangelismSession {
     time: string;
     location: string;
     participants: string[];
+    preacher?: {
+        name: string;
+        user_type: 'worker' | 'member';
+        teacher_id: string | number;
+    };
     records: EvangelismRecord[];
     createdAt: string;
 }
@@ -123,6 +128,13 @@ export interface EvangelismRecord {
 }
 
 const transformEvangelismToBackend = (session: EvangelismSession) => {
+    const fallbackName = session.participants?.[0] || '';
+    const selectedPreacher = session.preacher || {
+        name: fallbackName,
+        user_type: (fallbackName.endsWith('(w)') ? 'worker' : 'member') as 'worker' | 'member',
+        teacher_id: '0',
+    };
+
     const impactTypes = (record: EvangelismRecord) => {
         const types: string[] = [];
         if (record.isSaved) types.push('saved');
@@ -153,11 +165,19 @@ const transformEvangelismToBackend = (session: EvangelismSession) => {
         session_date: session.date,
         start_time: session.time,
         location_area: session.location,
-        team_members: session.participants.map(name => ({
-            id: '0',  // Using placeholder ID
-            type: 'worker',
-            name,
-        })),
+        participants: [
+            {
+                id: String(selectedPreacher.teacher_id),
+                type: selectedPreacher.user_type,
+                name: selectedPreacher.name,
+                user_type: selectedPreacher.user_type,
+                teacher_id: selectedPreacher.teacher_id,
+                member_id:
+                    selectedPreacher.user_type === 'member'
+                        ? String(selectedPreacher.teacher_id)
+                        : null,
+            },
+        ],
         saved_count: session.records.filter(r => r.isSaved).length,
         filled_count: session.records.filter(r => r.isFilled).length,
         healed_count: session.records.filter(r => r.isHealed).length,
@@ -178,13 +198,34 @@ const transformEvangelismToBackend = (session: EvangelismSession) => {
 };
 
 const transformEvangelismFromBackend = (data: any): EvangelismSession => {
+    const participantsList = data.participants || data.team_members || [];
+    const firstPreacher = participantsList[0];
+    const inferredType: 'worker' | 'member' =
+        firstPreacher?.user_type === 'member' ||
+            firstPreacher?.type === 'member' ||
+            (typeof firstPreacher?.member_id === 'string' && /^[0-9a-fA-F]{24}$/.test(firstPreacher?.member_id))
+            ? 'member'
+            : 'worker';
+    const inferredTeacherId =
+        firstPreacher?.teacher_id ??
+        firstPreacher?.member_id ??
+        firstPreacher?.id ??
+        (inferredType === 'worker' ? data.worker_id : '');
+
     return {
         id: data._id || data.id,
         // Ensure date is yyyy-MM-dd for HTML input compatibility
         date: data.session_date ? data.session_date.toString().substring(0, 10) : new Date().toISOString().substring(0, 10),
         time: data.start_time,
         location: data.location_area,
-        participants: data.team_members?.map((tm: any) => tm.name) || [],
+        participants: participantsList?.map((p: any) => p.name) || [],
+        preacher: firstPreacher
+            ? {
+                name: firstPreacher.name || '',
+                user_type: inferredType,
+                teacher_id: inferredTeacherId,
+            }
+            : undefined,
         records: data.souls?.map((soul: any, idx: number) => ({
             id: `${data._id || data.id}-soul-${idx}`,
             personReached: soul.name,
@@ -215,6 +256,11 @@ interface FollowUpSession {
     location?: string;
     summary?: string;
     participants: string[];
+    teacher?: {
+        name: string;
+        user_type: 'worker' | 'member';
+        teacher_id: string | number;
+    };
     records: FollowUpRecord[];
     createdAt: string;
 }
@@ -229,16 +275,32 @@ interface FollowUpRecord {
 }
 
 const transformFollowUpToBackend = (session: FollowUpSession) => {
+    const fallbackName = session.participants?.[0] || session.worker || '';
+    const selectedTeacher = session.teacher || {
+        name: fallbackName,
+        user_type: (fallbackName.endsWith('(w)') ? 'worker' : 'member') as 'worker' | 'member',
+        teacher_id: '0',
+    };
+
     return {
         session_date: session.date,
         start_time: session.time || '19:20',
         location_area: session.location || 'Church Hall',
         summary: session.summary || '',
-        participants: session.participants.map(name => ({
-            id: '0',
-            type: 'worker',
-            name,
-        })),
+        participants: [
+            {
+                id: String(selectedTeacher.teacher_id),
+                type: selectedTeacher.user_type,
+                name: selectedTeacher.name,
+                user_type: selectedTeacher.user_type,
+                teacher_id: selectedTeacher.teacher_id,
+                // Backward-compatible field expected by some existing backend paths.
+                member_id:
+                    selectedTeacher.user_type === 'member'
+                        ? String(selectedTeacher.teacher_id)
+                        : null,
+            },
+        ],
         records: session.records.map(record => ({
             members_taught: record.personFollowedUp.split(', ').filter(Boolean).map(name => ({
                 id: '0',
@@ -253,6 +315,17 @@ const transformFollowUpToBackend = (session: FollowUpSession) => {
 };
 
 const transformFollowUpFromBackend = (data: any): FollowUpSession => {
+    const firstParticipant = data.participants?.[0];
+    const inferredType: 'worker' | 'member' =
+        firstParticipant?.user_type === 'member' || (typeof firstParticipant?.member_id === 'string' && /^[0-9a-fA-F]{24}$/.test(firstParticipant?.member_id))
+            ? 'member'
+            : 'worker';
+    const inferredTeacherId =
+        firstParticipant?.teacher_id ??
+        firstParticipant?.member_id ??
+        firstParticipant?.id ??
+        (inferredType === 'worker' ? data.worker_id : '');
+
     return {
         id: data._id || data.id,
         date: data.session_date ? data.session_date.toString().substring(0, 10) : new Date().toISOString().substring(0, 10),
@@ -261,6 +334,13 @@ const transformFollowUpFromBackend = (data: any): FollowUpSession => {
         location: data.location_area,
         summary: data.summary || '',
         participants: data.participants?.map((p: any) => p.name) || [],
+        teacher: firstParticipant
+            ? {
+                name: firstParticipant.name || '',
+                user_type: inferredType,
+                teacher_id: inferredTeacherId,
+            }
+            : undefined,
         records: data.records?.map((record: any, idx: number) => ({
             id: `${data._id || data.id}-record-${idx}`,
             personFollowedUp: record.members_taught?.map((m: any) => m.name).join(', ') || '',
@@ -765,8 +845,8 @@ export const structureAPI = {
 
 export const memberAPI = {
     getAllMembers: async (): Promise<any[]> => {
-        const response = await api.get('/member/all');
-        console.log('DEBUG: getAllMembers raw response:', response);
+        // Admin-scoped list (church-wide) rather than worker-scoped
+        const response = await api.get('/member/admin/all');
         let data = [];
         if (Array.isArray(response)) data = response;
         else if (response.data && Array.isArray(response.data)) data = response.data;
@@ -774,14 +854,12 @@ export const memberAPI = {
 
         const mapped = data.map((m: any) => {
             const resolvedName = m.name || m.full_name || 'Unknown Member';
-            if (resolvedName === 'Unknown Member') console.warn('DEBUG: Member missing name/full_name:', m);
             return {
                 ...m,
                 id: m.id || m._id,
                 name: resolvedName
             };
         });
-        if (mapped.length > 0) console.log('DEBUG: First mapped member:', mapped[0]);
         return mapped;
     },
 

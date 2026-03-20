@@ -118,6 +118,12 @@ import {
 import { getMemberGroup } from '../../utils/helpers';
 import RecordBlock from '../../components/RecordBlock';
 const EvangelismModule = () => {
+  type PreacherOption = {
+    label: string;
+    name: string;
+    user_type: 'worker' | 'member';
+    teacher_id: string | number;
+  };
   const [activeTab, setActiveTab] = useState('Overview');
   const [sessions, setSessions] = useState<EvangelismSession[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -138,6 +144,11 @@ const EvangelismModule = () => {
   );
   const [sessionTime, setSessionTime] = useState('19:20');
   const [sessionParticipants, setSessionParticipants] = useState<string[]>([]);
+  const [sessionPreacher, setSessionPreacher] = useState<{
+    name: string;
+    user_type: 'worker' | 'member';
+    teacher_id: string | number;
+  } | null>(null);
   const [participantSearch, setParticipantSearch] = useState('');
   const [sessionLocation, setSessionLocation] = useState('');
   const [formRecords, setFormRecords] = useState<EvangelismRecord[]>([
@@ -270,6 +281,7 @@ const EvangelismModule = () => {
   }, [sessions, search]);
 
   const [allParticipants, setAllParticipants] = useState<string[]>([]);
+  const [preacherOptions, setPreacherOptions] = useState<PreacherOption[]>([]);
 
   // Load participants (Members + Workers)
   useEffect(() => {
@@ -288,20 +300,46 @@ const EvangelismModule = () => {
         console.log('Members Data Raw:', membersData);
         console.log('Workers Data Raw:', workersData);
 
-        const memberNames = Array.isArray(membersData)
-          ? membersData.map((m: any) => m.name || m.full_name || 'Unknown Member')
+        const memberOptions: PreacherOption[] = Array.isArray(membersData)
+          ? membersData
+            .map((m: any) => {
+              const name =
+                m.name ||
+                m.full_name ||
+                `${m.first_name || ''} ${m.last_name || ''}`.trim() ||
+                'Unknown Member';
+              return {
+                label: name,
+                name,
+                user_type: 'member' as const,
+                teacher_id: String(m._id || m.id || ''),
+              };
+            })
+            .filter((o: PreacherOption) => !!o.teacher_id)
           : [];
 
-        const workerNames = Array.isArray(workersData)
-          ? workersData.map((w: any) =>
-            `${w.name || w.full_name || w.first_name || 'Unknown Worker'} (w)`
-          )
+        const workerOptions: PreacherOption[] = Array.isArray(workersData)
+          ? workersData
+            .map((w: any) => {
+              const name = w.name || w.full_name || w.first_name || 'Unknown Worker';
+              const workerId = w.worker_id ?? w.id ?? w._id;
+              return {
+                label: `${name} (w)`,
+                name: `${name} (w)`,
+                user_type: 'worker' as const,
+                teacher_id: Number(workerId),
+              };
+            })
+            .filter((o: PreacherOption) => Number.isFinite(Number(o.teacher_id)))
           : [];
 
+        const memberNames = memberOptions.map((o) => o.name);
+        const workerNames = workerOptions.map((o) => o.name);
         const uniqueNames = Array.from(
           new Set([...memberNames, ...workerNames])
         ).sort();
         setAllParticipants(uniqueNames);
+        setPreacherOptions([...workerOptions, ...memberOptions]);
       } catch (error) {
         console.error('Failed to load participants:', error);
         setAllParticipants([]);
@@ -311,18 +349,33 @@ const EvangelismModule = () => {
   }, []);
 
   const filteredMembersForSelection = (searchVal: string) => {
-    return allParticipants.filter((m) =>
-      m.toLowerCase().includes(searchVal.toLowerCase())
+    return preacherOptions.filter((m) =>
+      m.label.toLowerCase().includes(searchVal.toLowerCase())
     );
   };
 
+  const selectSinglePreacher = (option: PreacherOption) => {
+    setSessionParticipants([option.name]);
+    setSessionPreacher({
+      name: option.name,
+      user_type: option.user_type,
+      teacher_id: option.teacher_id,
+    });
+  };
+
   const handleSaveSession = async () => {
+    if (!sessionPreacher || sessionParticipants.length !== 1) {
+      alert('Please select exactly one preacher (worker or member).');
+      return;
+    }
+
     const newSession: EvangelismSession = {
       id: `session - ${Date.now()} `,
       date: sessionDate,
       time: sessionTime,
       location: sessionLocation,
       participants: sessionParticipants,
+      preacher: sessionPreacher,
       records: formRecords,
       createdAt: new Date().toISOString(),
     };
@@ -352,6 +405,7 @@ const EvangelismModule = () => {
       ]);
       setSessionLocation('');
       setSessionParticipants([]);
+      setSessionPreacher(null);
       setParticipantSearch('');
       setError(null);
       alert('Evangelism session created successfully!');
@@ -764,11 +818,10 @@ const EvangelismModule = () => {
                     {p}
                     <button
                       onClick={() =>
-                        toggleParticipant(
-                          p,
-                          sessionParticipants,
-                          setSessionParticipants
-                        )
+                        {
+                          setSessionParticipants([]);
+                          setSessionPreacher(null);
+                        }
                       }
                       className='hover:text-[#CCA856]'
                     >
@@ -781,23 +834,18 @@ const EvangelismModule = () => {
                 {filteredMembersForSelection(participantSearch).map(
                   (member) => (
                     <label
-                      key={member}
+                      key={`${member.user_type}-${member.teacher_id}`}
                       className='flex items-center gap-2 cursor-pointer group'
                     >
                       <input
-                        type='checkbox'
-                        checked={sessionParticipants.includes(member)}
-                        onChange={() =>
-                          toggleParticipant(
-                            member,
-                            sessionParticipants,
-                            setSessionParticipants
-                          )
-                        }
+                        type='radio'
+                        name='evangelism-preacher'
+                        checked={sessionParticipants.includes(member.name)}
+                        onChange={() => selectSinglePreacher(member)}
                         className='w-3.5 h-3.5 rounded border-slate-300 text-[#CCA856] focus:ring-[#CCA856]'
                       />
                       <span className='text-[11px] font-bold text-slate-500 group-hover:text-[#1A1C1E] line-clamp-1'>
-                        {member}
+                        {member.label}
                       </span>
                     </label>
                   )
@@ -1156,38 +1204,30 @@ const EvangelismModule = () => {
                       {filteredMembersForSelection(participantSearch).map(
                         (member) => (
                           <label
-                            key={member}
+                            key={`${member.user_type}-${member.teacher_id}`}
                             className='flex items-center gap-2 cursor-pointer group'
                           >
                             <input
-                              type='checkbox'
+                              type='radio'
+                              name='evangelism-preacher-edit'
                               checked={viewingSession.participants.includes(
-                                member
+                                member.name
                               )}
-                              onChange={() => {
-                                if (
-                                  viewingSession.participants.includes(member)
-                                )
-                                  setViewingSession({
-                                    ...viewingSession,
-                                    participants:
-                                      viewingSession.participants.filter(
-                                        (x) => x !== member
-                                      ),
-                                  });
-                                else
-                                  setViewingSession({
-                                    ...viewingSession,
-                                    participants: [
-                                      ...viewingSession.participants,
-                                      member,
-                                    ],
-                                  });
-                              }}
+                              onChange={() =>
+                                setViewingSession({
+                                  ...viewingSession,
+                                  participants: [member.name],
+                                  preacher: {
+                                    name: member.name,
+                                    user_type: member.user_type,
+                                    teacher_id: member.teacher_id,
+                                  },
+                                })
+                              }
                               className='w-3.5 h-3.5 rounded border-slate-300 text-[#CCA856]'
                             />
                             <span className='text-[11px] font-bold text-slate-500 group-hover:text-[#1A1C1E] line-clamp-1'>
-                              {member}
+                              {member.label}
                             </span>
                           </label>
                         )
