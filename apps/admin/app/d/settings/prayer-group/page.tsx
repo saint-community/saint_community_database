@@ -40,7 +40,10 @@ export default function PrayerGroupSettingsPage() {
   const queryClient = useQueryClient();
   const openAlertModal = useModalStore(({ openAlertModal }) => openAlertModal);
 
-  const isSuperAdmin = user?.role === ROLES.ADMIN;
+  const isPrayerGroupAllowed =
+    user?.role === ROLES.ADMIN ||
+    user?.role === ROLES.PASTOR ||
+    user?.role === ROLES.CHURCH_PASTOR;
 
   const deleteMutation = useMutation({
     mutationFn: (_id: string) => deleteAdminPrayerGroupMeeting(_id),
@@ -65,7 +68,7 @@ export default function PrayerGroupSettingsPage() {
     });
   };
 
-  if (user && !isSuperAdmin) {
+  if (user && !isPrayerGroupAllowed) {
     redirect('/d/cells');
   }
 

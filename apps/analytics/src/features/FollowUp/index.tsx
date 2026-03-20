@@ -118,6 +118,12 @@ import {
 import { getMemberGroup } from '../../utils/helpers';
 import RecordBlock from '../../components/RecordBlock';
 const FollowUpModule = () => {
+  type TeacherOption = {
+    label: string;
+    name: string;
+    user_type: 'worker' | 'member';
+    teacher_id: string | number;
+  };
   const [activeTab, setActiveTab] = useState('Overview');
   const [sessions, setSessions] = useState<FollowUpSession[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -132,6 +138,7 @@ const FollowUpModule = () => {
   // Combined searchable people list
   const [allParticipants, setAllParticipants] = useState<string[]>([]);
   const [membersOnly, setMembersOnly] = useState<string[]>([]);
+  const [teacherOptions, setTeacherOptions] = useState<TeacherOption[]>([]);
 
   // Load participants (Members + Workers)
   useEffect(() => {
@@ -142,21 +149,39 @@ const FollowUpModule = () => {
           structureAPI.getWorkers(),
         ]);
 
-        const memberNames = Array.isArray(membersData)
-          ? membersData.map((m: any) => m.name || m.full_name || 'Unknown Member')
+        const memberOptions: TeacherOption[] = Array.isArray(membersData)
+          ? membersData.map((m: any) => {
+            const name = m.name || m.full_name || `${m.first_name || ''} ${m.last_name || ''}`.trim() || 'Unknown Member';
+            return {
+              label: name,
+              name,
+              user_type: 'member' as const,
+              teacher_id: String(m._id || m.id || ''),
+            };
+          }).filter((o: TeacherOption) => !!o.teacher_id)
           : [];
 
-        const workerNames = Array.isArray(workersData)
-          ? workersData.map((w: any) =>
-            `${w.name || w.full_name || w.first_name || 'Unknown Worker'} (w)`
-          )
+        const workerOptions: TeacherOption[] = Array.isArray(workersData)
+          ? workersData.map((w: any) => {
+            const name = w.name || w.full_name || w.first_name || 'Unknown Worker';
+            const workerId = w.worker_id ?? w.id ?? w._id;
+            return {
+              label: `${name} (w)`,
+              name: `${name} (w)`,
+              user_type: 'worker' as const,
+              teacher_id: Number(workerId),
+            };
+          }).filter((o: TeacherOption) => Number.isFinite(Number(o.teacher_id)))
           : [];
 
+        const memberNames = memberOptions.map((o) => o.name);
+        const workerNames = workerOptions.map((o) => o.name);
         const uniqueNames = Array.from(
           new Set([...memberNames, ...workerNames])
         ).sort();
         setAllParticipants(uniqueNames);
         setMembersOnly(memberNames.sort());
+        setTeacherOptions([...workerOptions, ...memberOptions]);
       } catch (error) {
         console.error('Failed to load participants:', error);
       }
@@ -311,6 +336,11 @@ const FollowUpModule = () => {
   const [fuTime, setFuTime] = useState('19:20');
   const [fuLocation, setFuLocation] = useState('');
   const [fuParticipants, setFuParticipants] = useState<string[]>([]);
+  const [fuTeacher, setFuTeacher] = useState<{
+    name: string;
+    user_type: 'worker' | 'member';
+    teacher_id: string | number;
+  } | null>(null);
   const [participantSearch, setParticipantSearch] = useState('');
   const [fuSummary, setFuSummary] = useState('');
   const [fuRecords, setFuRecords] = useState<FollowUpRecord[]>([
@@ -335,6 +365,15 @@ const FollowUpModule = () => {
   ) => {
     if (list.includes(item)) setter(list.filter((p) => p !== item));
     else setter([...list, item]);
+  };
+
+  const selectSingleTeacher = (option: TeacherOption) => {
+    setFuParticipants([option.name]);
+    setFuTeacher({
+      name: option.name,
+      user_type: option.user_type,
+      teacher_id: option.teacher_id,
+    });
   };
 
   const addFuRecord = () => {
@@ -363,6 +402,11 @@ const FollowUpModule = () => {
   };
 
   const handleSaveSession = async () => {
+    if (!fuTeacher || fuParticipants.length !== 1) {
+      alert('Please select exactly one teacher for this follow-up session.');
+      return;
+    }
+
     // Validation: Ensure location is provided
     if (!fuLocation || fuLocation.trim() === '') {
       alert('Location Area is required.');
@@ -387,6 +431,7 @@ const FollowUpModule = () => {
       location: fuLocation,
       summary: fuSummary,
       participants: fuParticipants,
+      teacher: fuTeacher,
       records: fuRecords,
       createdAt: new Date().toISOString(),
     };
@@ -409,6 +454,8 @@ const FollowUpModule = () => {
       ]);
       setFuSummary('');
       setFuLocation('');
+      setFuParticipants([]);
+      setFuTeacher(null);
       setError(null);
       alert('Follow-up session created successfully!');
     } catch (err: any) {
@@ -806,9 +853,10 @@ const FollowUpModule = () => {
                   >
                     {p}
                     <button
-                      onClick={() =>
-                        toggleSelection(p, fuParticipants, setFuParticipants)
-                      }
+                      onClick={() => {
+                        setFuParticipants([]);
+                        setFuTeacher(null);
+                      }}
                     >
                       <X size={10} />
                     </button>
@@ -816,31 +864,26 @@ const FollowUpModule = () => {
                 ))}
               </div>
               <div className='grid grid-cols-2 md:grid-cols-4 gap-2 max-h-[120px] overflow-y-auto custom-scrollbar p-3 bg-[#F8F9FA] border border-slate-200 rounded'>
-                {allParticipants
-                  .filter((p) =>
-                    p.toLowerCase().includes(participantSearch.toLowerCase())
+                {teacherOptions
+                  .filter((o) =>
+                    o.label.toLowerCase().includes(participantSearch.toLowerCase())
                   )
-                  .map((person) => (
+                  .map((option) => (
                     <label
-                      key={person}
+                      key={`${option.user_type}-${option.teacher_id}`}
                       className='flex items-center gap-2 cursor-pointer group'
                     >
                       <input
-                        type='checkbox'
-                        checked={fuParticipants.includes(person)}
-                        onChange={() =>
-                          toggleSelection(
-                            person,
-                            fuParticipants,
-                            setFuParticipants
-                          )
-                        }
+                        type='radio'
+                        name='followup-teacher'
+                        checked={fuParticipants.includes(option.name)}
+                        onChange={() => selectSingleTeacher(option)}
                         className='w-3.5 h-3.5 rounded border-slate-300 text-[#CCA856] focus:ring-[#CCA856]'
                       />
                       <span
-                        className={`text-[11px] font-bold ${fuParticipants.includes(person) ? 'text-[#1A1C1E]' : 'text-slate-500'} group-hover:text-[#1A1C1E] transition-colors line-clamp-1`}
+                        className={`text-[11px] font-bold ${fuParticipants.includes(option.name) ? 'text-[#1A1C1E]' : 'text-slate-500'} group-hover:text-[#1A1C1E] transition-colors line-clamp-1`}
                       >
-                        {person}
+                        {option.label}
                       </span>
                     </label>
                   ))}
@@ -1021,33 +1064,34 @@ const FollowUpModule = () => {
                       ))}
                     </div>
                     <div className='grid grid-cols-2 md:grid-cols-4 gap-2 max-h-[120px] overflow-y-auto custom-scrollbar p-3 bg-[#F8F9FA] border border-slate-200 rounded'>
-                      {allParticipants.map((person) => (
+                      {teacherOptions.map((option) => (
                         <label
-                          key={person}
+                          key={`${option.user_type}-${option.teacher_id}`}
                           className='flex items-center gap-2 cursor-pointer group'
                         >
                           <input
-                            type='checkbox'
+                            type='radio'
+                            name='followup-teacher-edit'
                             checked={viewingSession.participants.includes(
-                              person
+                              option.name
                             )}
                             onChange={() =>
-                              toggleSelection(
-                                person,
-                                viewingSession.participants,
-                                (val) =>
-                                  setViewingSession({
-                                    ...viewingSession,
-                                    participants: val,
-                                  })
-                              )
+                              setViewingSession({
+                                ...viewingSession,
+                                participants: [option.name],
+                                teacher: {
+                                  name: option.name,
+                                  user_type: option.user_type,
+                                  teacher_id: option.teacher_id,
+                                },
+                              })
                             }
                             className='w-3.5 h-3.5 rounded border-slate-300 text-[#CCA856] focus:ring-[#CCA856]'
                           />
                           <span
-                            className={`text-[11px] font-bold ${viewingSession.participants.includes(person) ? 'text-[#1A1C1E]' : 'text-slate-500'} group-hover:text-[#1A1C1E] transition-colors line-clamp-1`}
+                            className={`text-[11px] font-bold ${viewingSession.participants.includes(option.name) ? 'text-[#1A1C1E]' : 'text-slate-500'} group-hover:text-[#1A1C1E] transition-colors line-clamp-1`}
                           >
-                            {person}
+                            {option.label}
                           </span>
                         </label>
                       ))}

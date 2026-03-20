@@ -193,6 +193,7 @@ const StudyGroupModule = ({ user, selectedChurch }: { user: any; selectedChurch:
   const [showMemberModalSuggestions, setShowMemberModalSuggestions] =
     useState(false);
   const [members, setMembers] = useState<any[]>([]);
+  const [workers, setWorkers] = useState<any[]>([]);
   const [churches, setChurches] = useState<any[]>([]);
   const [fellowships, setFellowships] = useState<any[]>([]);
   const [cells, setCells] = useState<any[]>([]);
@@ -204,6 +205,16 @@ const StudyGroupModule = ({ user, selectedChurch }: { user: any; selectedChurch:
       setMembers(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch members', error);
+    }
+  };
+
+  const fetchWorkers = async () => {
+    try {
+      const data = await structureAPI.getWorkers();
+      setWorkers(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Failed to fetch workers', error);
+      setWorkers([]);
     }
   };
 
@@ -225,6 +236,7 @@ const StudyGroupModule = ({ user, selectedChurch }: { user: any; selectedChurch:
 
   useEffect(() => {
     fetchMembers();
+    fetchWorkers();
     fetchStructureData();
   }, [user]);
 
@@ -448,6 +460,13 @@ const StudyGroupModule = ({ user, selectedChurch }: { user: any; selectedChurch:
         member_church_id: 1, // Default or derive from form
       };
 
+      // Store student's notes in the submission `feedback` field.
+      // Backend overwrites this field later when a grader submits their feedback.
+      const studentNotes = submissionForm.notes?.trim();
+      if (studentNotes) {
+        payload.feedback = studentNotes;
+      }
+
       if (selectedMember) {
         // Registered Member Submission
         payload.member_id = selectedMember._id || selectedMember.id;
@@ -561,15 +580,21 @@ const StudyGroupModule = ({ user, selectedChurch }: { user: any; selectedChurch:
           id: s._id || s.id, // Handle MongoDB _id
           studyGroupId: s.study_group_id,
           memberId: s.member_id,
+          workerId: s.worker_id,
           assignmentTitle: s.study_group_title || s.assignment_title || derivedTitle,
-          submittedBy: s.member_name || 'Unknown Member', // Will enrich this in render if still unknown
+          submitterRole: s.submitter_role,
+          assignmentLink: s.assignment_link || '',
+          // If member_name is missing for registered members, we resolve using memberId/workerId in the UI.
+          submittedBy: s.member_name || 'Unknown Member',
           phone: s.member_phone || '',
           email: s.member_email || '',
           date: s.created_at || new Date().toISOString(),
           status: s.status || 'Pending',
           week: s.week_number ? `Week ${s.week_number}` : (s.week ? `Week ${s.week}` : 'Week --'),
           member: s.member_name || 'Unknown Member',
-          studentNotes: s.content || '',
+          // Backend stores notes+redo+grader feedback in `feedback` for this feature.
+          // We treat it as "Student Notes" on pending submissions and "Reviewer Feedback" on History.
+          studentNotes: s.feedback || '',
           isLate: s.is_late,
           type: s.submission_method,
         };
@@ -611,6 +636,39 @@ const StudyGroupModule = ({ user, selectedChurch }: { user: any; selectedChurch:
   // ];
 
   // History Data - Derived from Submissions
+  const resolveSubmissionMemberName = (sub: any) => {
+    if (sub?.member && sub.member !== 'Unknown Member') return sub.member;
+
+    // Registered member submission: resolve from members list using memberId.
+    if (sub?.memberId) {
+      const foundMember = members.find((m: any) => (m._id === sub.memberId || m.id === sub.memberId));
+      if (foundMember) {
+        const resolved =
+          foundMember.first_name || foundMember.last_name
+            ? `${foundMember.first_name || ''} ${foundMember.last_name || ''}`.trim()
+            : (foundMember.name || foundMember.email || '');
+        if (resolved) return resolved;
+      }
+    }
+
+    // Worker submissions: resolve from workers list using workerId.
+    if (sub?.workerId != null) {
+      const workerMatch = workers.find((w: any) => {
+        const wId = w.id ?? w._id;
+        const wWorkerId = w.worker_id ?? w.workerId;
+        return (
+          (wId != null && String(wId) === String(sub.workerId)) ||
+          (wWorkerId != null && String(wWorkerId) === String(sub.workerId))
+        );
+      });
+      if (workerMatch?.name && workerMatch.name !== 'Unknown Worker') {
+        return workerMatch.name;
+      }
+    }
+
+    return sub?.member || 'Unknown Member';
+  };
+
   const history = submissions
     .filter((s) => {
       const status = (s.status || '').toLowerCase();
@@ -618,16 +676,10 @@ const StudyGroupModule = ({ user, selectedChurch }: { user: any; selectedChurch:
       return ['graded', 'approved'].includes(status);
     })
     .map((s) => {
-      // Enrich member name if unknown
-      let memberName = s.member;
-      if (memberName === 'Unknown Member' && s.memberId) {
-        const foundMember = members.find((m: any) => (m._id === s.memberId || m.id === s.memberId));
-        if (foundMember) {
-          memberName = foundMember.first_name || foundMember.last_name
-            ? `${foundMember.first_name || ''} ${foundMember.last_name || ''}`.trim()
-            : foundMember.email;
-        }
-      }
+      const memberName = resolveSubmissionMemberName(s);
+      const feedbackText = (s.studentNotes || '').trim();
+      const statusLabel =
+        s.status === 'graded' ? 'Graded' : s.status === 'approved' ? 'Approved' : s.status;
 
       return {
         id: s.id,
@@ -639,10 +691,10 @@ const StudyGroupModule = ({ user, selectedChurch }: { user: any; selectedChurch:
         email: s.email,
         submitted: new Date(s.date).toLocaleString(),
         type: 'Online By Member',
-        status: s.status,
-        feedback: 'No feedback provided.',
+        status: statusLabel,
+        feedback: feedbackText || 'No feedback provided.',
         gradedBy: 'Admin',
-        link: '#',
+        link: s.assignmentLink || '#',
       };
     });
 
@@ -1114,18 +1166,18 @@ const StudyGroupModule = ({ user, selectedChurch }: { user: any; selectedChurch:
 
                     <div className='flex items-center gap-8 py-6 bg-slate-50/50 rounded-xl px-8 border border-slate-50'>
                       <div className='w-20 h-20 rounded-lg bg-white border-4 border-white shadow-lg flex items-center justify-center text-[#1A1C1E] font-black text-2xl'>
-                        {sub.member.substring(0, 2).toUpperCase()}
+                        {resolveSubmissionMemberName(sub).substring(0, 2).toUpperCase()}
                       </div>
                       <div className='flex-1'>
                         <div className='flex items-center gap-4'>
                           <h4 className='text-xl font-black text-[#1A1C1E] tracking-tight'>
-                            {sub.member}{' '}
-                            <span className='text-slate-400 font-bold'>
-                              (worker)
-                            </span>
+                            {resolveSubmissionMemberName(sub)}
                           </h4>
                           <span className='px-4 py-1.5 bg-[#2563EB]/10 text-[#2563EB] rounded-full text-[9px] font-black uppercase tracking-[0.1em]'>
-                            Worker in Training
+                            Submitted by{' '}
+                            {sub.submitterRole === 'leader'
+                              ? 'Leader'
+                              : 'Worker in Training'}
                           </span>
                         </div>
                         <div className='flex items-center gap-6 mt-3'>
@@ -1172,9 +1224,9 @@ const StudyGroupModule = ({ user, selectedChurch }: { user: any; selectedChurch:
                             Student Notes:
                           </h5>
                           <div className='p-8 bg-slate-50 rounded-xl border border-slate-100 text-sm font-bold text-slate-600 leading-relaxed min-h-[100px]'>
-                            "The study session was insightful. I focused on the
-                            application of loyalty in everyday service within the
-                            ushering department."
+                            {sub.studentNotes?.trim()
+                              ? `"${sub.studentNotes}"`
+                              : '"No student notes provided."'}
                           </div>
                         </div>
 
