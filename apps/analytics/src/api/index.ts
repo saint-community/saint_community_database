@@ -423,41 +423,50 @@ export const followUpAPI = {
 // ATTENDANCE API FUNCTIONS
 // ============================================================================
 
+const attendanceChurchQuery = (churchId?: number): string =>
+    churchId != null && !Number.isNaN(Number(churchId))
+        ? `?church_id=${encodeURIComponent(String(churchId))}`
+        : '';
+
+const mapAttendanceAdminMeetingRow = (meeting: any) => {
+    let dateStr = '';
+    let timeStr = '';
+
+    const rawDate = typeof meeting.date === 'object' && meeting.date.$date ? meeting.date.$date : meeting.date;
+
+    if (rawDate) {
+        const dateObj = new Date(rawDate);
+        if (!isNaN(dateObj.getTime())) {
+            dateStr = dateObj.toISOString().split('T')[0];
+            timeStr = typeof rawDate === 'string' && rawDate.includes('T') ? rawDate.split('T')[1].substring(0, 5) : '';
+        } else {
+            dateStr = rawDate;
+        }
+    }
+
+    return {
+        ...meeting,
+        id: meeting.id || meeting._id,
+        date: dateStr,
+        time: meeting.time || timeStr,
+        scope:
+            meeting.scope ||
+            (meeting.assignedEntities && meeting.assignedEntities.length > 0
+                ? meeting.assignedEntities[0]
+                : meeting.scope_type) ||
+            'Global',
+        code_expires_at:
+            typeof meeting.code_expires_at === 'object' && meeting.code_expires_at.$date
+                ? meeting.code_expires_at.$date
+                : meeting.code_expires_at,
+    };
+};
+
 export const attendanceAPI = {
-    getMeetings: async (): Promise<any[]> => {
+    getMeetings: async (_churchId?: number): Promise<any[]> => {
         const response = await api.get('/attendance/admin/meetings');
         const data = response.data || [];
-        return data.map((meeting: any) => {
-            // Handle Dates
-            let dateStr = '';
-            let timeStr = '';
-
-            const rawDate = typeof meeting.date === 'object' && meeting.date.$date ? meeting.date.$date : meeting.date;
-
-            if (rawDate) {
-                // Assuming ISO format YYYY-MM-DDTHH:mm:ss.sssZ
-                const dateObj = new Date(rawDate);
-                if (!isNaN(dateObj.getTime())) {
-                    dateStr = dateObj.toISOString().split('T')[0];
-                    // If time is missing in backend, we might get 00:00. Extract if meaningful or use existing time field
-                    // But if backend stripped time, we rely on meeting.time if it existed?
-                    // DB doc showed NO time field. So we extract from date if non-zero?
-                    // For now, let's just use what we have.
-                    timeStr = rawDate.includes('T') ? rawDate.split('T')[1].substring(0, 5) : '';
-                } else {
-                    dateStr = rawDate; // Fallback
-                }
-            }
-
-            return {
-                ...meeting,
-                id: meeting.id || meeting._id,
-                date: dateStr,
-                time: meeting.time || timeStr, // Prefer explicit time field, else extract
-                scope: meeting.scope || (meeting.assignedEntities && meeting.assignedEntities.length > 0 ? meeting.assignedEntities[0] : meeting.scope_type) || 'Global', // Fallback for display
-                code_expires_at: typeof meeting.code_expires_at === 'object' && meeting.code_expires_at.$date ? meeting.code_expires_at.$date : meeting.code_expires_at
-            };
-        });
+        return data.map(mapAttendanceAdminMeetingRow);
     },
 
     createMeeting: async (meeting: any): Promise<any> => {
@@ -476,17 +485,49 @@ export const attendanceAPI = {
         await api.delete(`/attendance/admin/meeting/${id}`);
     },
 
+    updateMeeting: async (id: string, payload: any): Promise<any> => {
+        return await api.patch(`/attendance/admin/meeting/${encodeURIComponent(id)}`, payload);
+    },
+
+    createTemplate: async (payload: any): Promise<any> => {
+        return await api.post('/attendance/admin/template', payload);
+    },
+
+    getTemplates: async (churchId?: number): Promise<any[]> => {
+        const response = await api.get(`/attendance/admin/templates${attendanceChurchQuery(churchId)}`);
+        const data = response.data || [];
+        return data.map((t: any) => ({
+            ...t,
+            id: t.id || t._id,
+        }));
+    },
+
+    generateMeetingFromTemplate: async (templateId: string, date: string): Promise<any> => {
+        return await api.post(
+            `/attendance/admin/template/${encodeURIComponent(templateId)}/generate`,
+            { date },
+        );
+    },
+
+    getTemplateHistory: async (templateId: string): Promise<any[]> => {
+        const response = await api.get(
+            `/attendance/admin/template/${encodeURIComponent(templateId)}/history`,
+        );
+        const data = response.data || [];
+        return data.map(mapAttendanceAdminMeetingRow);
+    },
+
     getHistory: async (): Promise<any[]> => {
         const response = await api.get('/attendance/history');
         return response.data || [];
     },
 
-    getAdminSubmissions: async (): Promise<any[]> => {
-        const response = await api.get('/attendance/admin/submissions');
+    getAdminSubmissions: async (churchId?: number): Promise<any[]> => {
+        const response = await api.get(`/attendance/admin/submissions${attendanceChurchQuery(churchId)}`);
         return response.data || [];
     },
-    getStats: async (): Promise<any> => {
-        const response = await api.get('/attendance/admin/stats');
+    getStats: async (churchId?: number): Promise<any> => {
+        const response = await api.get(`/attendance/admin/stats${attendanceChurchQuery(churchId)}`);
         return response.data || {};
     },
 };
