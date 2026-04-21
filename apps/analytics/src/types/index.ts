@@ -111,7 +111,16 @@ export interface AttendanceSubmission {
   id: string;
   meetingId: string;
   meetingTitle: string;
+  /** Display label; may be resolved from worker_id via directory */
   submittedBy: string;
+  /** Submitter worker id when row comes from API (numeric) */
+  worker_id?: number;
+  /** Submitter admin id for pure-admin bulk rows */
+  admin_id?: number;
+  /** Denormalized label from API (preferred for submittedBy) */
+  submitter_display_name?: string;
+  /** Admin who approved this attendance row, when recorded */
+  approved_by_admin_id?: number;
   date: string;
   participants: string[]; // List of member names
   firstTimers: string[]; // List of first timer names
