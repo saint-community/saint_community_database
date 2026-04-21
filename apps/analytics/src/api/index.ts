@@ -181,7 +181,7 @@ const transformEvangelismToBackend = (session: EvangelismSession) => {
         saved_count: session.records.filter(r => r.isSaved).length,
         filled_count: session.records.filter(r => r.isFilled).length,
         healed_count: session.records.filter(r => r.isHealed).length,
-        souls: session.records.map(record => ({
+        records: session.records.map(record => ({
             name: record.personReached,
             gender: record.gender,
             age: record.age,
@@ -200,6 +200,11 @@ const transformEvangelismToBackend = (session: EvangelismSession) => {
 const transformEvangelismFromBackend = (data: any): EvangelismSession => {
     const participantsList = data.participants || data.team_members || [];
     const firstPreacher = participantsList[0];
+    const sourceRecords = Array.isArray(data.records)
+        ? data.records
+        : Array.isArray(data.souls)
+            ? data.souls
+            : [];
     const inferredType: 'worker' | 'member' =
         firstPreacher?.user_type === 'member' ||
             firstPreacher?.type === 'member' ||
@@ -211,12 +216,24 @@ const transformEvangelismFromBackend = (data: any): EvangelismSession => {
         firstPreacher?.member_id ??
         firstPreacher?.id ??
         (inferredType === 'worker' ? data.worker_id : '');
+    const parsedDate = data.session_date || data.date;
+    const normalizedDate = parsedDate
+        ? new Date(parsedDate).toISOString().substring(0, 10)
+        : new Date().toISOString().substring(0, 10);
+    const normalizedTime =
+        data.start_time ||
+        (data.date
+            ? new Date(data.date).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+            })
+            : '');
 
     return {
         id: data._id || data.id,
         // Ensure date is yyyy-MM-dd for HTML input compatibility
-        date: data.session_date ? data.session_date.toString().substring(0, 10) : new Date().toISOString().substring(0, 10),
-        time: data.start_time,
+        date: normalizedDate,
+        time: normalizedTime,
         location: data.location_area,
         participants: participantsList?.map((p: any) => p.name) || [],
         preacher: firstPreacher
@@ -226,19 +243,19 @@ const transformEvangelismFromBackend = (data: any): EvangelismSession => {
                 teacher_id: inferredTeacherId,
             }
             : undefined,
-        records: data.souls?.map((soul: any, idx: number) => ({
-            id: `${data._id || data.id}-soul-${idx}`,
-            personReached: soul.name,
-            gender: soul.gender,
-            age: soul.age,
-            phone: soul.phone,
-            address: soul.address,
-            isSaved: soul.impact_types?.includes('saved') || soul.status === 'saved',
-            isFilled: soul.impact_types?.includes('filled') || soul.status === 'filled',
-            isHealed: soul.impact_types?.includes('healed') || soul.status === 'healed',
-            healedConditionBefore: soul.healed_condition_before || soul.healedConditionBefore || '',
-            healedConditionAfter: soul.healed_condition_after || soul.healedConditionAfter || '',
-            comments: soul.note || '',
+        records: sourceRecords.map((record: any, idx: number) => ({
+            id: `${data._id || data.id}-record-${idx}`,
+            personReached: record.name,
+            gender: record.gender,
+            age: record.age,
+            phone: record.phone,
+            address: record.address,
+            isSaved: record.impact_types?.includes('saved') || record.status === 'saved',
+            isFilled: record.impact_types?.includes('filled') || record.status === 'filled',
+            isHealed: record.impact_types?.includes('healed') || record.status === 'healed',
+            healedConditionBefore: record.healed_condition_before || record.healedConditionBefore || '',
+            healedConditionAfter: record.healed_condition_after || record.healedConditionAfter || '',
+            comments: record.note || '',
         })) || [],
         createdAt: data.createdAt || new Date().toISOString(),
     };
@@ -326,13 +343,26 @@ const transformFollowUpFromBackend = (data: any): FollowUpSession => {
         firstParticipant?.id ??
         (inferredType === 'worker' ? data.worker_id : '');
 
+    const parsedSessionDate = data.session_date || data.date;
+    const normalizedDate = parsedSessionDate
+        ? new Date(parsedSessionDate).toISOString().substring(0, 10)
+        : new Date().toISOString().substring(0, 10);
+    const normalizedTime =
+        data.start_time ||
+        (data.date
+            ? new Date(data.date).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+            })
+            : '');
+
     return {
         id: data._id || data.id,
-        date: data.session_date ? data.session_date.toString().substring(0, 10) : new Date().toISOString().substring(0, 10),
-        time: data.start_time,
+        date: normalizedDate,
+        time: normalizedTime,
         worker: data.participants?.[0]?.name || 'Unknown',
         location: data.location_area,
-        summary: data.summary || '',
+        summary: data.session_summary ?? data.summary ?? '',
         participants: data.participants?.map((p: any) => p.name) || [],
         teacher: firstParticipant
             ? {
@@ -344,8 +374,8 @@ const transformFollowUpFromBackend = (data: any): FollowUpSession => {
         records: data.records?.map((record: any, idx: number) => ({
             id: `${data._id || data.id}-record-${idx}`,
             personFollowedUp: record.members_taught?.map((m: any) => m.name).join(', ') || '',
-            subjectTaught: record.topic,
-            materialSource: record.material,
+            subjectTaught: record.subject ?? record.topic ?? '',
+            materialSource: record.material_used ?? record.material ?? '',
             duration: String(record.duration_minutes || 0),
             comments: record.comments || '',
         })) || [],
@@ -479,6 +509,13 @@ export const attendanceAPI = {
 
     bulkMarkAttendance: async (data: any): Promise<any> => {
         return await api.post('/attendance/admin/bulk-mark', data);
+    },
+
+    approveAttendance: async (attendanceId: string): Promise<any> => {
+        return await api.patch(
+            `/attendance/admin/attendance/${encodeURIComponent(attendanceId)}/approve`,
+            {},
+        );
     },
 
     deleteMeeting: async (id: string): Promise<void> => {

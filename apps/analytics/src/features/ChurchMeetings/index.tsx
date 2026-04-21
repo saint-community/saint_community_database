@@ -117,7 +117,66 @@ import {
   ROLES,
   FIRST_TIMERS_EXAMPLES,
 } from '../../data/lists';
-import { getMemberGroup } from '../../utils/helpers';
+import {
+  findMemberById,
+  findWorkerByWorkerId,
+  formatMemberDisplayName,
+  resolveMemberFellowshipLabel,
+} from '../../utils/helpers';
+
+function mapAdminHistoryRow(h: any): AttendanceSubmission {
+  const wid = h.worker_id;
+  const aid = h.admin_id;
+  const sdn =
+    typeof h.submitter_display_name === 'string'
+      ? h.submitter_display_name.trim()
+      : '';
+  let submittedBy: string;
+  if (sdn) {
+    submittedBy = sdn;
+  } else if (wid !== undefined && wid !== null && wid !== '') {
+    submittedBy = `Worker ${wid}`;
+  } else if (aid !== undefined && aid !== null && aid !== '') {
+    submittedBy = `Admin (${aid})`;
+  } else if (typeof h.submittedBy === 'string') {
+    submittedBy = h.submittedBy;
+  } else {
+    submittedBy = 'Unknown';
+  }
+  return {
+    ...h,
+    id: h._id || h.id,
+    meetingId: String(
+      h.meeting_id?._id ?? h.meeting_id?.id ?? h.meeting_id ?? ''
+    ),
+    meetingTitle: h.meeting_id?.title || 'Unknown Meeting',
+    date: h.meeting_id?.date
+      ? new Date(h.meeting_id.date).toLocaleDateString()
+      : new Date(h.submitted_at).toLocaleDateString(),
+    submittedBy,
+    worker_id: wid,
+    admin_id: aid,
+    submitter_display_name: sdn || undefined,
+    approved_by_admin_id: h.approved_by_admin_id,
+    participants: h.manual_participants || [],
+    firstTimers:
+      h.first_timers_details?.map((ft: any) => ft.name || 'Unknown') || [],
+    returning_first_timers:
+      h.returning_first_timers_details?.map(
+        (ft: any) => ft.name || 'Unknown'
+      ) || [],
+    adult_count: h.adult_count || 0,
+    children_count: h.children_count || 0,
+    returning_first_timers_count: h.returning_first_timers_count || 0,
+    status: h.is_approved
+      ? 'Approved'
+      : h.rejection_reason
+        ? 'Rejected'
+        : 'Pending',
+    code: h.code || '',
+    createdAt: h.submitted_at || h.createdAt || '',
+  } as AttendanceSubmission;
+}
 
 interface ChurchMeetingsModuleProps {
   user?: any;
@@ -243,30 +302,8 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
             attendanceAPI.getAdminSubmissions(targetChurchId),
             attendanceAPI.getStats(targetChurchId),
           ]);
-          const mappedHistory = historyData.map((h: any) => ({
-            ...h,
-            id: h._id || h.id,
-            meetingTitle: h.meeting_id?.title || 'Unknown Meeting',
-            date: h.meeting_id?.date
-              ? new Date(h.meeting_id.date).toLocaleDateString()
-              : new Date(h.submitted_at).toLocaleDateString(),
-            submittedBy: `Worker ${h.worker_id}`, // Ideally fetch worker name map
-            // Map Backend Arrays to Frontend Expected Keys
-            // Map Backend Arrays to Frontend Expected Keys
-            participants: h.manual_participants || [],
-            firstTimers: h.first_timers_details?.map((ft: any) => ft.name || 'Unknown') || [],
-            returning_first_timers: h.returning_first_timers_details?.map((ft: any) => ft.name || 'Unknown') || [],
-            adult_count: h.adult_count || 0,
-            children_count: h.children_count || 0,
-            returning_first_timers_count: h.returning_first_timers_count || 0,
-            // Derive UI Status from Backend Flags
-            status: h.is_approved
-              ? 'Approved'
-              : h.rejection_reason
-                ? 'Rejected'
-                : 'Pending',
-          }));
-          setSubmissions(mappedHistory);
+          const mappedSubs = historyData.map(mapAdminHistoryRow);
+          setSubmissions(mappedSubs);
           setAttStats(statsData);
         } catch (e) {
           console.error('Failed to fetch history/stats', e);
@@ -297,6 +334,23 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
     };
     loadData();
   }, [user?.church_id, selectedChurchContext]); // React to user church switch or local context switch
+
+  useEffect(() => {
+    if (allWorkers.length === 0) return;
+    setSubmissions((prev) =>
+      prev.map((s) => {
+        const wid = s.worker_id;
+        if (wid === undefined || wid === null) return s;
+        if ((s as any).submitter_display_name?.trim()) return s;
+        if (s.submittedBy !== `Worker ${wid}`) return s;
+        const worker = allWorkers.find(
+          (w) => String(w.worker_id ?? w.id) === String(wid)
+        );
+        if (!worker?.name) return s;
+        return { ...s, submittedBy: worker.name };
+      })
+    );
+  }, [allWorkers]);
 
   // Manual Attendance Form State
   const [attendanceFellowship, setAttendanceFellowship] = useState<string>('');
@@ -353,8 +407,22 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
     setViewingSubmission(null);
   };
 
-  const handleApproveSelected = () => {
+  const handleApproveSelected = async () => {
     if (!viewingSubmission) return;
+
+    const resolveApproverId = (doc?: any): number | undefined => {
+      const fromDoc = doc?.approved_by_admin_id;
+      if (fromDoc != null && fromDoc !== '') return Number(fromDoc);
+      const token = getAuthToken();
+      if (token) {
+        const d = parseJwt(token) as any;
+        const id = d?.admin_meta?.id ?? d?.id;
+        if (id != null && id !== '') return Number(id);
+      }
+      const u = user?.admin_meta?.id ?? user?.id;
+      if (u != null && u !== '') return Number(u);
+      return undefined;
+    };
 
     const remainingParticipants = viewingSubmission.participants.filter(
       (p) => !selectedParticipants.includes(p)
@@ -367,12 +435,54 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
       remainingParticipants.length === 0 && remainingFirstTimers.length === 0;
 
     if (isFullApproval) {
-      setSubmissions(
-        submissions.map((s) =>
-          s.id === viewingSubmission.id ? { ...s, status: 'Approved' } : s
-        )
-      );
+      try {
+        setIsLoading(true);
+        setError(null);
+        const res = await attendanceAPI.approveAttendance(
+          String(viewingSubmission.id)
+        );
+        if (!res || res.status !== true) {
+          throw new Error(res?.message || 'Could not approve attendance');
+        }
+        const approverId = resolveApproverId(res.data);
+        setSubmissions(
+          submissions.map((s) =>
+            s.id === viewingSubmission.id
+              ? { ...s, status: 'Approved', approved_by_admin_id: approverId }
+              : s
+          )
+        );
+      } catch (e: any) {
+        const msg =
+          (typeof e?.response?.data === 'object' && e.response.data?.message) ||
+          e?.message ||
+          'Could not approve attendance';
+        if (
+          e?.status === 400 &&
+          String(msg).toLowerCase().includes('already approved')
+        ) {
+          const approverId =
+            resolveApproverId() ?? viewingSubmission.approved_by_admin_id;
+          setSubmissions(
+            submissions.map((s) =>
+              s.id === viewingSubmission.id
+                ? {
+                    ...s,
+                    status: 'Approved',
+                    approved_by_admin_id: approverId,
+                  }
+                : s
+            )
+          );
+        } else {
+          setError(msg);
+          return;
+        }
+      } finally {
+        setIsLoading(false);
+      }
     } else {
+      const approverId = resolveApproverId();
       const approvedSub: AttendanceSubmission = {
         ...viewingSubmission,
         id: `sub-appr-${Date.now()}`,
@@ -380,6 +490,7 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
         firstTimers: [...selectedFirstTimers],
         status: 'Approved',
         createdAt: new Date().toISOString(),
+        ...(approverId != null ? { approved_by_admin_id: approverId } : {}),
       };
 
       const updatedPendingSub: AttendanceSubmission = {
@@ -1165,8 +1276,11 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
     try {
       setIsLoading(true);
       await attendanceAPI.bulkMarkAttendance(data);
-      const updatedHistory = await attendanceAPI.getAdminSubmissions();
-      setSubmissions(updatedHistory);
+      const churchId = selectedChurchContext
+        ? Number(selectedChurchContext)
+        : user?.church_id;
+      const updatedHistory = await attendanceAPI.getAdminSubmissions(churchId);
+      setSubmissions(updatedHistory.map(mapAdminHistoryRow));
       setIsAttendanceModalOpen(false);
       setSelectedMeetingForAttendance(null);
       setAttendanceFellowship('');
@@ -1225,12 +1339,6 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
       viewingSubmission.meetingTitle.replace(/ Service| Meeting/i, '') ||
       'General';
 
-    // Process Workers
-    const workers = viewingSubmission.submittedBy
-      .split(',')
-      .map((w: string) => w.trim())
-      .filter((w: string) => w !== 'Admin');
-
     if (!fellowships[primaryGroup]) {
       fellowships[primaryGroup] = {
         workers: [],
@@ -1240,14 +1348,51 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
       };
     }
 
-    workers.forEach((w: string) => {
-      fellowships[primaryGroup].workers.push(w);
+    const bucket = fellowships[primaryGroup];
+    const vs = viewingSubmission as AttendanceSubmission & { admin_id?: number };
+    const adminIdOnRow = vs.admin_id;
+    const workerIdOnRow = vs.worker_id;
+    const pureAdminSubmit =
+      adminIdOnRow != null &&
+      adminIdOnRow !== undefined &&
+      (workerIdOnRow === undefined || workerIdOnRow === null);
+
+    const workerKeys = new Set<string>();
+
+    if (workerIdOnRow != null && workerIdOnRow !== undefined) {
+      workerKeys.add(String(workerIdOnRow));
+    }
+
+    // Legacy: comma-separated worker names/ids in submittedBy (not used for pure admin rows)
+    if (!pureAdminSubmit && vs.submittedBy) {
+      const tokens = vs.submittedBy
+        .split(',')
+        .map((t: string) => t.trim())
+        .filter((t: string) => t && t !== 'Admin');
+      for (const token of tokens) {
+        const match = allWorkers.find((w) => String(w.name || '').trim() === token);
+        if (match) {
+          workerKeys.add(String(match.worker_id ?? match.id));
+        } else if (/^\d+$/.test(token)) {
+          workerKeys.add(token);
+        } else {
+          workerKeys.add(token);
+        }
+      }
+    }
+
+    // manual_participants mixes worker ids and member ObjectIds — split by directory
+    viewingSubmission.participants.forEach((pid: string) => {
+      const id = String(pid).trim();
+      if (!id) return;
+      if (findWorkerByWorkerId(allWorkers, id)) {
+        workerKeys.add(id);
+      } else {
+        bucket.members.push(id);
+      }
     });
 
-    // Process Members
-    viewingSubmission.participants.forEach((m: string) => {
-      fellowships[primaryGroup].members.push(m);
-    });
+    [...workerKeys].sort().forEach((k) => bucket.workers.push(k));
 
     // Process First Timers
     viewingSubmission.firstTimers.forEach((ft: string) => {
@@ -1262,7 +1407,7 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
     }
 
     return fellowships;
-  }, [viewingSubmission]);
+  }, [viewingSubmission, allWorkers]);
 
   const statsChartData = useMemo(() => {
     if (!attStats || Object.keys(attStats).length === 0)
@@ -2195,6 +2340,18 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                 <div className='bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden divide-y divide-slate-50 max-h-[400px] overflow-y-auto custom-scrollbar'>
                   {viewingSubmission.participants.map((name) => {
                     const isSelected = selectedParticipants.includes(name);
+                    const memberRec = findMemberById(allMembers, name);
+                    const workerRec = memberRec
+                      ? undefined
+                      : findWorkerByWorkerId(allWorkers, name);
+                    const displayName = memberRec
+                      ? formatMemberDisplayName(memberRec, name)
+                      : workerRec?.name || name;
+                    const fellowshipLabel = resolveMemberFellowshipLabel(
+                      memberRec ?? workerRec,
+                      availableFellowships,
+                      name
+                    );
                     return (
                       <div
                         key={name}
@@ -2225,11 +2382,11 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                           <span
                             className={`text-sm font-bold ${viewingSubmission.status !== 'Pending' ? 'text-[#1A1C1E]' : isSelected ? 'text-[#1A1C1E]' : 'text-slate-500'}`}
                           >
-                            {name}
+                            {displayName}
                           </span>
                         </div>
                         <span className='text-[9px] font-black text-slate-300 uppercase tracking-widest'>
-                          {getMemberGroup(name)}
+                          {fellowshipLabel}
                         </span>
                       </div>
                     );
@@ -2343,6 +2500,21 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                         <Clock size={14} /> 08:00 AM
                       </div>
                     </div>
+                    <div className='flex flex-wrap items-center gap-4 mt-3'>
+                      <p className='text-[11px] text-[#CCA856] font-black uppercase flex items-center gap-2 tracking-[0.15em]'>
+                        <User size={12} /> Submitted By:{' '}
+                        {(viewingSubmission.submitter_display_name || '').trim() ||
+                          viewingSubmission.submittedBy}
+                      </p>
+                      <p className='text-[11px] text-slate-300 font-black uppercase flex items-center gap-2 tracking-[0.15em]'>
+                        <ShieldCheck size={12} className='text-emerald-400' />{' '}
+                        Approved By:{' '}
+                        {viewingSubmission.approved_by_admin_id != null &&
+                        viewingSubmission.approved_by_admin_id !== undefined
+                          ? `Admin (${viewingSubmission.approved_by_admin_id})`
+                          : 'Not recorded'}
+                      </p>
+                    </div>
                   </div>
                   <div className='grid grid-cols-2 lg:grid-cols-5 gap-4 w-full lg:w-auto'>
                     <div className='text-center p-3 bg-white/5 rounded border border-white/10 min-w-[100px]'>
@@ -2446,8 +2618,8 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                             {data.workers.map((wId) => {
                               const worker = allWorkers.find(
                                 (wk) =>
-                                  wk.id?.toString() === wId.toString() ||
-                                  wk.name === wId
+                                  String(wk.worker_id ?? wk.id ?? '') ===
+                                    String(wId) || wk.name === wId
                               );
                               const displayName = worker
                                 ? worker.name
@@ -2479,19 +2651,14 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                           </p>
                           <div className='space-y-2'>
                             {data.members.map((mId) => {
-                              const member = allMembers.find(
-                                (m) =>
-                                  m.id?.toString() === mId.toString() ||
-                                  m.name === mId
-                              );
+                              const mid = String(mId);
+                              const member = findMemberById(allMembers, mid);
+                              const worker = member
+                                ? undefined
+                                : findWorkerByWorkerId(allWorkers, mid);
                               const displayName = member
-                                ? member.firstname && member.lastname
-                                  ? `${member.firstname} ${member.lastname}`
-                                  : member.name ||
-                                  member.email ||
-                                  member.phone ||
-                                  'Unnamed Member'
-                                : mId; // Fallback to ID if not found
+                                ? formatMemberDisplayName(member, mid)
+                                : worker?.name || mid;
                               return (
                                 <div
                                   key={mId}
