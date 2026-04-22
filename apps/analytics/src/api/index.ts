@@ -742,11 +742,13 @@ export const studyGroupAPI = {
     // Get all study groups/assignments
     getAllAssignments: async (churchId?: number): Promise<any[]> => {
         let endpoint = '/admin/study-group';
-        if (churchId) {
+        if (churchId != null && Number.isFinite(Number(churchId))) {
             endpoint += `?church_id=${churchId}`;
         }
         const response = await api.get(endpoint);
-        return Array.isArray(response) ? response : (response.data || []);
+        if (Array.isArray(response)) return response;
+        if (response?.status === true && Array.isArray(response.data)) return response.data;
+        return response.data || [];
     },
 
     // Get current week's assignment
@@ -786,10 +788,15 @@ export const studyGroupAPI = {
     },
 
     // Submissions: Get all submissions
-    getSubmissions: async (): Promise<any[]> => {
-        // Use admin endpoint to ensure we get all submissions including graded/history
-        const response = await api.get('/admin/submissions');
-        return Array.isArray(response) ? response : (response.data || []);
+    getSubmissions: async (churchId?: number): Promise<any[]> => {
+        let endpoint = '/admin/submissions';
+        if (churchId != null && Number.isFinite(Number(churchId))) {
+            endpoint += `?church_id=${churchId}`;
+        }
+        const response = await api.get(endpoint);
+        if (Array.isArray(response)) return response;
+        if (response?.status === true && Array.isArray(response.data)) return response.data;
+        return response.data || [];
     },
 
     getStats: async (): Promise<any> => {

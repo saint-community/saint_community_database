@@ -348,6 +348,14 @@ const StudyGroupModule = ({ user, selectedChurch }: { user: any; selectedChurch:
 
   const handleCreateOrUpdateAssignment = async () => {
     try {
+      const churchId = resolveTargetChurchId();
+      if (churchId === undefined) {
+        alert(
+          'Select a church in the header (or ensure your profile has a church) before saving an assignment.'
+        );
+        return;
+      }
+
       const questionsArray = assignmentForm.questions
         .split('\n')
         .filter((q) => q.trim() !== '');
@@ -365,7 +373,7 @@ const StudyGroupModule = ({ user, selectedChurch }: { user: any; selectedChurch:
         week_end_date: assignmentForm.weekEndDate
           ? new Date(assignmentForm.weekEndDate).toISOString()
           : undefined,
-        church_id: 1, // Defaulting to 1 as per admin context usually
+        church_id: churchId,
         is_current_week: assignmentForm.status === 'Active', // Infer is_current_week from status
         questions: questionsArray,
       };
@@ -520,6 +528,17 @@ const StudyGroupModule = ({ user, selectedChurch }: { user: any; selectedChurch:
   const [activeAssignment, setActiveAssignment] = useState<any>(null); // For "Current Week"
   const [isLoadingStudyGroup, setIsLoadingStudyGroup] = useState(false);
 
+  const resolveTargetChurchId = (): number | undefined => {
+    if (selectedChurch != null && selectedChurch !== '') {
+      const n = Number(selectedChurch);
+      if (Number.isFinite(n)) return n;
+    }
+    const fromUser = user?.church_id ?? user?.admin_meta?.church_id;
+    if (fromUser == null || fromUser === '') return undefined;
+    const n = Number(fromUser);
+    return Number.isFinite(n) ? n : undefined;
+  };
+
   // Fetch Study Group Data
   /* 
    * FIX: Pass selectedChurch to usage of API so we fetch data for the intended church, 
@@ -528,12 +547,9 @@ const StudyGroupModule = ({ user, selectedChurch }: { user: any; selectedChurch:
   const fetchStudyGroupData = async () => {
     try {
       setIsLoadingStudyGroup(true);
-      // Use selectedChurch if available, or fall back to user's church
-      const targetChurchId = selectedChurch ? Number(selectedChurch) : (user?.church_id || user?.admin_meta?.church_id);
+      const targetChurchId = resolveTargetChurchId();
 
-      console.log('DEBUG: Fetching StudyGroup data for church:', targetChurchId);
-
-      const [assignments, current, subs] = await Promise.all([
+      const settled = await Promise.allSettled([
         studyGroupAPI.getAllAssignments(targetChurchId),
         studyGroupAPI.getCurrentAssignment(targetChurchId).catch((err) => {
           console.warn('No current assignment found, continuing...', err);
@@ -542,8 +558,27 @@ const StudyGroupModule = ({ user, selectedChurch }: { user: any; selectedChurch:
         studyGroupAPI.getSubmissions(targetChurchId),
       ]);
 
-      const mappedAssignments = assignments.map((a: any) => ({
-        id: a.id,
+      const assignments =
+        settled[0].status === 'fulfilled' ? settled[0].value : [];
+      if (settled[0].status === 'rejected') {
+        console.error('Study group assignments fetch failed:', settled[0].reason);
+      }
+
+      const current =
+        settled[1].status === 'fulfilled' ? settled[1].value : null;
+      if (settled[1].status === 'rejected') {
+        console.warn('Current week assignment fetch failed:', settled[1].reason);
+      }
+
+      const subs = settled[2].status === 'fulfilled' ? settled[2].value : [];
+      if (settled[2].status === 'rejected') {
+        console.error('Study group submissions fetch failed:', settled[2].reason);
+      }
+
+      const assignmentList = Array.isArray(assignments) ? assignments : [];
+
+      const mappedAssignments = assignmentList.map((a: any) => ({
+        id: a.id ?? a._id,
         title: a.title,
         week: a.week_start_date
           ? `Week of ${new Date(a.week_start_date).toLocaleDateString()}`
@@ -573,7 +608,9 @@ const StudyGroupModule = ({ user, selectedChurch }: { user: any; selectedChurch:
       // Map Submissions
       const mappedSubmissions = subs.map((s: any) => {
         // Try to find assignment title from the just-fetched assignments list
-        const relatedAssignment = assignments.find((a: any) => a.id === s.study_group_id);
+        const relatedAssignment = assignmentList.find(
+          (a: any) => a.id === s.study_group_id || a._id === s.study_group_id
+        );
         const derivedTitle = relatedAssignment ? relatedAssignment.title : 'Unknown Assignment';
 
         return {
