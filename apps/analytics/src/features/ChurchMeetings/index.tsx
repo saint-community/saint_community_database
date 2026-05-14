@@ -373,6 +373,8 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
     []
   );
   const [selectedFirstTimers, setSelectedFirstTimers] = useState<string[]>([]);
+  const [selectedReturningFirstTimers, setSelectedReturningFirstTimers] =
+    useState<string[]>([]);
 
   const filteredWorkers = useMemo(() => {
     return WORKERS_LIST.filter((w) =>
@@ -430,9 +432,15 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
     const remainingFirstTimers = viewingSubmission.firstTimers.filter(
       (ft) => !selectedFirstTimers.includes(ft)
     );
+    const returningList = viewingSubmission.returning_first_timers || [];
+    const remainingReturning = returningList.filter(
+      (r) => !selectedReturningFirstTimers.includes(r)
+    );
 
     const isFullApproval =
-      remainingParticipants.length === 0 && remainingFirstTimers.length === 0;
+      remainingParticipants.length === 0 &&
+      remainingFirstTimers.length === 0 &&
+      remainingReturning.length === 0;
 
     if (isFullApproval) {
       try {
@@ -488,6 +496,8 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
         id: `sub-appr-${Date.now()}`,
         participants: [...selectedParticipants],
         firstTimers: [...selectedFirstTimers],
+        returning_first_timers: [...selectedReturningFirstTimers],
+        returning_first_timers_count: selectedReturningFirstTimers.length,
         status: 'Approved',
         createdAt: new Date().toISOString(),
         ...(approverId != null ? { approved_by_admin_id: approverId } : {}),
@@ -497,6 +507,8 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
         ...viewingSubmission,
         participants: remainingParticipants,
         firstTimers: remainingFirstTimers,
+        returning_first_timers: remainingReturning,
+        returning_first_timers_count: remainingReturning.length,
         status: 'Pending',
       };
 
@@ -1304,16 +1316,20 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
   };
 
   const toggleAllInSubmission = (submission: AttendanceSubmission) => {
+    const returning = submission.returning_first_timers || [];
     const isAllSelected =
       selectedParticipants.length === submission.participants.length &&
-      selectedFirstTimers.length === submission.firstTimers.length;
+      selectedFirstTimers.length === submission.firstTimers.length &&
+      selectedReturningFirstTimers.length === returning.length;
 
     if (isAllSelected) {
       setSelectedParticipants([]);
       setSelectedFirstTimers([]);
+      setSelectedReturningFirstTimers([]);
     } else {
       setSelectedParticipants([...submission.participants]);
       setSelectedFirstTimers([...submission.firstTimers]);
+      setSelectedReturningFirstTimers([...returning]);
     }
   };
 
@@ -1935,7 +1951,9 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                           <span
                             className={`px-2.5 py-1 text-[11px] font-black rounded border ${submissionSubTab === 'Pending' ? 'bg-[#CCA856]/10 text-[#CCA856] border-[#CCA856]/20' : submissionSubTab === 'Approved' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-red-50 text-red-600 border-red-100'}`}
                           >
-                            {sub.participants.length + sub.firstTimers.length}{' '}
+                            {sub.participants.length +
+                              sub.firstTimers.length +
+                              (sub.returning_first_timers?.length || 0)}{' '}
                             People
                           </span>
                         </td>
@@ -1948,6 +1966,9 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                               setViewingSubmission(sub);
                               setSelectedParticipants([...sub.participants]);
                               setSelectedFirstTimers([...sub.firstTimers]);
+                              setSelectedReturningFirstTimers([
+                                ...(sub.returning_first_timers || []),
+                              ]);
                             }}
                             className={`px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ml-auto ${submissionSubTab === 'Pending' ? 'bg-[#1A1C1E] text-white hover:bg-slate-800' : 'bg-white border border-slate-200 text-[#1A1C1E] hover:border-[#CCA856]'}`}
                           >
@@ -2313,7 +2334,9 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                   {selectedParticipants.length ===
                     viewingSubmission.participants.length &&
                     selectedFirstTimers.length ===
-                    viewingSubmission.firstTimers.length ? (
+                      viewingSubmission.firstTimers.length &&
+                    selectedReturningFirstTimers.length ===
+                      (viewingSubmission.returning_first_timers || []).length ? (
                     <CheckSquare size={14} className='text-[#CCA856]' />
                   ) : (
                     <Square size={14} />
@@ -2394,63 +2417,132 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                 </div>
               </div>
 
-              {/* First Timers Section */}
-              <div className='space-y-4'>
-                <div className='flex items-center justify-between border-b border-slate-100 pb-3'>
-                  <h5 className='text-[11px] font-black text-[#1A1C1E] uppercase tracking-widest flex items-center gap-2'>
-                    <Sparkles size={16} className='text-gold' /> First Timers
-                  </h5>
-                  {viewingSubmission.status === 'Pending' && (
-                    <span className='text-[10px] font-black text-slate-400'>
-                      {selectedFirstTimers.length} Selected
-                    </span>
-                  )}
-                </div>
-                <div className='bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden divide-y divide-slate-50 max-h-[400px] overflow-y-auto custom-scrollbar'>
-                  {viewingSubmission.firstTimers.length > 0 ? (
-                    viewingSubmission.firstTimers.map((name) => {
-                      const isSelected = selectedFirstTimers.includes(name);
-                      return (
-                        <div
-                          key={name}
-                          onClick={() => {
-                            if (viewingSubmission.status === 'Pending') {
-                              setSelectedFirstTimers((prev) =>
-                                isSelected
-                                  ? prev.filter((n) => n !== name)
-                                  : [...prev, name]
-                              );
-                            }
-                          }}
-                          className={`flex items-center justify-between p-4 transition-all ${viewingSubmission.status === 'Pending' ? 'cursor-pointer hover:bg-slate-50' : ''} ${isSelected && viewingSubmission.status === 'Pending' ? 'bg-gold/5' : ''}`}
-                        >
-                          <div className='flex items-center gap-3'>
-                            {viewingSubmission.status === 'Pending' ? (
-                              isSelected ? (
-                                <CheckCircle2 size={18} className='text-gold' />
+              {/* First Timers + Returning First Timers (right column) */}
+              <div className='space-y-8'>
+                <div className='space-y-4'>
+                  <div className='flex items-center justify-between border-b border-slate-100 pb-3'>
+                    <h5 className='text-[11px] font-black text-[#1A1C1E] uppercase tracking-widest flex items-center gap-2'>
+                      <Sparkles size={16} className='text-gold' /> First Timers
+                    </h5>
+                    {viewingSubmission.status === 'Pending' && (
+                      <span className='text-[10px] font-black text-slate-400'>
+                        {selectedFirstTimers.length} Selected
+                      </span>
+                    )}
+                  </div>
+                  <div className='bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden divide-y divide-slate-50 max-h-[400px] overflow-y-auto custom-scrollbar'>
+                    {viewingSubmission.firstTimers.length > 0 ? (
+                      viewingSubmission.firstTimers.map((name) => {
+                        const isSelected = selectedFirstTimers.includes(name);
+                        return (
+                          <div
+                            key={`ft-${name}`}
+                            onClick={() => {
+                              if (viewingSubmission.status === 'Pending') {
+                                setSelectedFirstTimers((prev) =>
+                                  isSelected
+                                    ? prev.filter((n) => n !== name)
+                                    : [...prev, name]
+                                );
+                              }
+                            }}
+                            className={`flex items-center justify-between p-4 transition-all ${viewingSubmission.status === 'Pending' ? 'cursor-pointer hover:bg-slate-50' : ''} ${isSelected && viewingSubmission.status === 'Pending' ? 'bg-gold/5' : ''}`}
+                          >
+                            <div className='flex items-center gap-3'>
+                              {viewingSubmission.status === 'Pending' ? (
+                                isSelected ? (
+                                  <CheckCircle2 size={18} className='text-gold' />
+                                ) : (
+                                  <Square size={18} className='text-slate-300' />
+                                )
                               ) : (
-                                <Square size={18} className='text-slate-300' />
-                              )
-                            ) : (
-                              <div className='w-1.5 h-1.5 rounded-full bg-slate-400'></div>
-                            )}
-                            <span
-                              className={`text-sm font-bold ${viewingSubmission.status !== 'Pending' ? 'text-[#1A1C1E]' : isSelected ? 'text-[#1A1C1E]' : 'text-slate-500'}`}
-                            >
-                              {name}
+                                <div className='w-1.5 h-1.5 rounded-full bg-slate-400'></div>
+                              )}
+                              <span
+                                className={`text-sm font-bold ${viewingSubmission.status !== 'Pending' ? 'text-[#1A1C1E]' : isSelected ? 'text-[#1A1C1E]' : 'text-slate-500'}`}
+                              >
+                                {name}
+                              </span>
+                            </div>
+                            <span className='text-[9px] font-black text-slate-300 uppercase tracking-widest'>
+                              New Soul
                             </span>
                           </div>
-                          <span className='text-[9px] font-black text-slate-300 uppercase tracking-widest'>
-                            New Soul
-                          </span>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className='p-8 text-center text-slate-300 italic text-[10px] uppercase tracking-widest'>
-                      No first timers in this batch
-                    </div>
-                  )}
+                        );
+                      })
+                    ) : (
+                      <div className='p-8 text-center text-slate-300 italic text-[10px] uppercase tracking-widest'>
+                        No first timers in this batch
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className='space-y-4'>
+                  <div className='flex items-center justify-between border-b border-slate-100 pb-3'>
+                    <h5 className='text-[11px] font-black text-[#1A1C1E] uppercase tracking-widest flex items-center gap-2'>
+                      <Sparkles size={16} className='text-emerald-500' />{' '}
+                      Returning First Timers
+                    </h5>
+                    {viewingSubmission.status === 'Pending' && (
+                      <span className='text-[10px] font-black text-slate-400'>
+                        {selectedReturningFirstTimers.length} Selected
+                      </span>
+                    )}
+                  </div>
+                  <div className='bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden divide-y divide-slate-50 max-h-[400px] overflow-y-auto custom-scrollbar'>
+                    {(viewingSubmission.returning_first_timers || []).length >
+                    0 ? (
+                      (viewingSubmission.returning_first_timers || []).map(
+                        (name, idx) => {
+                          const isSelected =
+                            selectedReturningFirstTimers.includes(name);
+                          return (
+                            <div
+                              key={`rft-${idx}-${name}`}
+                              onClick={() => {
+                                if (viewingSubmission.status === 'Pending') {
+                                  setSelectedReturningFirstTimers((prev) =>
+                                    isSelected
+                                      ? prev.filter((n) => n !== name)
+                                      : [...prev, name]
+                                  );
+                                }
+                              }}
+                              className={`flex items-center justify-between p-4 transition-all ${viewingSubmission.status === 'Pending' ? 'cursor-pointer hover:bg-slate-50' : ''} ${isSelected && viewingSubmission.status === 'Pending' ? 'bg-emerald-50' : ''}`}
+                            >
+                              <div className='flex items-center gap-3'>
+                                {viewingSubmission.status === 'Pending' ? (
+                                  isSelected ? (
+                                    <CheckCircle2
+                                      size={18}
+                                      className='text-emerald-600'
+                                    />
+                                  ) : (
+                                    <Square size={18} className='text-slate-300' />
+                                  )
+                                ) : (
+                                  <div className='w-1.5 h-1.5 rounded-full bg-slate-400'></div>
+                                )}
+                                <span
+                                  className={`text-sm font-bold ${viewingSubmission.status !== 'Pending' ? 'text-[#1A1C1E]' : isSelected ? 'text-[#1A1C1E]' : 'text-slate-500'}`}
+                                >
+                                  {name}
+                                </span>
+                              </div>
+                              <span className='text-[9px] font-black text-slate-300 uppercase tracking-widest'>
+                                Returning
+                              </span>
+                            </div>
+                          );
+                        }
+                      )
+                    ) : (
+                      <div className='p-8 text-center text-slate-300 italic text-[10px] uppercase tracking-widest'>
+                        No returning first timers in this batch
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -2467,12 +2559,15 @@ const ChurchMeetingsModule: React.FC<ChurchMeetingsModuleProps> = ({ user }) => 
                   onClick={handleApproveSelected}
                   disabled={
                     selectedParticipants.length === 0 &&
-                    selectedFirstTimers.length === 0
+                    selectedFirstTimers.length === 0 &&
+                    selectedReturningFirstTimers.length === 0
                   }
                   className={`flex-[2] py-4 bg-[#1A1C1E] text-white rounded-lg font-black text-[10px] uppercase tracking-[0.2em] shadow-xl hover:bg-[#CCA856] transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-200`}
                 >
                   Approve{' '}
-                  {selectedParticipants.length + selectedFirstTimers.length}{' '}
+                  {selectedParticipants.length +
+                    selectedFirstTimers.length +
+                    selectedReturningFirstTimers.length}{' '}
                   Selected Entries
                 </button>
               </div>
