@@ -3,11 +3,11 @@ import { Card } from '@workspace/ui/components/card';
 import { Input } from '@workspace/ui/components/input';
 import React, { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { generateWorkerForm } from '@/services/workers';
+import { generateWorkerForm, invalidateWorkerForm } from '@/services/workers';
 import { getPrayerGroupsByChurchId } from '@/services/prayer_groups';
 import { toast } from '@workspace/ui/lib/sonner';
 import { useMe } from '@/hooks/useMe';
-import { CheckIcon, Copy, Loader2, PartyPopper } from 'lucide-react';
+import { CheckIcon, Copy, Loader2, PartyPopper, XCircle } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/storage';
 
 interface IList {
@@ -21,10 +21,14 @@ const baseUrl = `${window.location.protocol}//${window.location.host}`;
 export const ListLinkSection = ({ list }: { list: IList[] }) => {
   const { data } = useMe();
   const [copied, setCopied] = useState(false);
+  const [expiryHours, setExpiryHours] = useState(24);
   const [generatedLink, setGeneratedLink] = useLocalStorage(
     'generatedLink',
     true
   );
+  const generatedToken = generatedLink
+    ? new URL(generatedLink).searchParams.get('token')
+    : null;
 
   const mutation = useMutation({
     mutationFn: generateWorkerForm,
@@ -37,6 +41,18 @@ export const ListLinkSection = ({ list }: { list: IList[] }) => {
     onError: (error) => {
       console.error('Failed to generate link:', error);
       toast.error('Failed to generate link');
+    },
+  });
+
+  const invalidateMutation = useMutation({
+    mutationFn: invalidateWorkerForm,
+    onSuccess: () => {
+      setGeneratedLink('', new Date());
+      toast.success('Registration link invalidated');
+    },
+    onError: (error) => {
+      console.error('Failed to invalidate link:', error);
+      toast.error('Failed to invalidate link');
     },
   });
 
@@ -57,6 +73,26 @@ export const ListLinkSection = ({ list }: { list: IList[] }) => {
       </Card>
       <Card className='bg-white px-5 py-4'>
         <p>Generate Registration Link</p>
+        <div className='mt-3 space-y-1'>
+          <label
+            htmlFor='registration-link-hours'
+            className='text-xs text-gray-500'
+          >
+            Link validity in hours
+          </label>
+          <Input
+            id='registration-link-hours'
+            type='number'
+            min={1}
+            max={720}
+            value={expiryHours}
+            onChange={(event) =>
+              setExpiryHours(Math.max(1, Number(event.target.value) || 1))
+            }
+            className='h-[42px]'
+            disabled={!!generatedLink}
+          />
+        </div>
         <div className='mt-2 h-[42px] relative flex items-center gap-1'>
           <Input
             value={generatedLink || ''}
@@ -89,6 +125,7 @@ export const ListLinkSection = ({ list }: { list: IList[] }) => {
                     church_id: data?.church_id || 1,
                     fellowship_id: data?.fellowship_id,
                     cell_id: data?.cell_id,
+                    expires_in_hours: expiryHours,
                   });
                 } catch (error) {
                   console.error('Failed to check prayer groups:', error);
@@ -112,6 +149,21 @@ export const ListLinkSection = ({ list }: { list: IList[] }) => {
               <PartyPopper />
             )}
           </Button>
+          {generatedLink && generatedToken ? (
+            <Button
+              type='button'
+              variant='outline'
+              className='h-[42px] border-red-500 text-red-500 bg-white'
+              onClick={() => invalidateMutation.mutate(generatedToken)}
+              disabled={invalidateMutation.isPending}
+            >
+              {invalidateMutation.isPending ? (
+                <Loader2 className='animate-spin' />
+              ) : (
+                <XCircle />
+              )}
+            </Button>
+          ) : null}
         </div>
       </Card>
     </div>

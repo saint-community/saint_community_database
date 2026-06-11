@@ -25,8 +25,12 @@ import { createCell } from '@/services/cell';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMe } from '@/hooks/useMe';
 import { QUERY_PATHS, ROLES } from '@/utils/constants';
-import { LeaderSelector } from './WorkerSelector';
-import { optionalTextInput } from '@/utils/helper';
+import { useChurchAccountOptions } from '@/hooks/auth';
+import countries from '@/utils/countries.json';
+
+const uniqueCountries = Array.from(
+  new Map((countries as any[]).map((country) => [country.name, country])).values()
+);
 
 const formSchema = z.object({
   church_id: z.string().min(1, {
@@ -38,13 +42,15 @@ const formSchema = z.object({
   cellName: z.string().min(2, {
     message: 'Cell name must be at least 2 characters.',
   }),
-  location: z.string().min(2, {
-    message: 'Location must be at least 2 characters.',
+  country: z.string().optional(),
+  state: z.string().optional(),
+  area: z.string().optional(),
+  address: z.string().optional(),
+  meeting_days: z.string().min(1, {
+    message: 'Please select a meeting day.',
   }),
-  address: z.string().min(5, {
-    message: 'Address must be at least 5 characters.',
-  }),
-  leader_id: optionalTextInput(z.string()),
+  active: z.enum(['yes', 'no']),
+  leader_id: z.string().optional(),
   dateStarted: z.date().refine(
     (date) => {
       const parsedDate = new Date(date);
@@ -59,14 +65,20 @@ const formSchema = z.object({
 export function AddNewCellSheet() {
   const [open, setOpen] = useState(false);
   const { data: user, isAdmin } = useMe();
+  const { data: leaderOptions, isLoading: leadersLoading } =
+    useChurchAccountOptions(user?.church_id);
 
   const form = useForm({
     defaultValues: {
       church_id: user?.church_id?.toString() || '',
       fellowship_id: user?.fellowship_id?.toString() || '',
       cellName: '',
-      location: '',
+      country: '',
+      state: '',
+      area: '',
       address: '',
+      meeting_days: '4',
+      active: 'yes',
       dateStarted: new Date(),
       leader_id: '',
     } as any,
@@ -82,9 +94,15 @@ export function AddNewCellSheet() {
         fellowship_id: Number(value.fellowship_id),
         name: value.cellName,
         address: value.address,
-        leader_id: Number(value.leader_id),
-        active: true,
-        meeting_days: 1,
+        leader_id:
+          value.leader_id && value.leader_id !== 'none'
+            ? Number(value.leader_id)
+            : null,
+        country: value.country || null,
+        state: value.state || null,
+        area: value.area || null,
+        active: value.active,
+        meeting_days: Number(value.meeting_days),
         start_date: startDate || '',
       });
     },
@@ -97,6 +115,8 @@ export function AddNewCellSheet() {
     !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
   const { data: churches } = useChurchesOption(!lockChurchSelect);
   const churchId = useStore(form.store, (state) => state.values.church_id);
+  const selectedCountry = useStore(form.store, (state) => state.values.country);
+  const selectedState = useStore(form.store, (state) => state.values.state);
   const { data: fellowships } = useFellowshipsOption(churchId);
   const fellowshipId = useStore(
     form.store,
@@ -131,6 +151,50 @@ export function AddNewCellSheet() {
     }
     return fellowships;
   }, [user, fellowships, lockFellowshipSelect]);
+
+  const countryOptions = useMemo(
+    () =>
+      uniqueCountries.map((country) => ({
+        value: country.name,
+        label: country.name,
+      })),
+    []
+  );
+
+  const stateOptions = useMemo(() => {
+    const country = uniqueCountries.find(
+      (item) => item.name === selectedCountry
+    );
+    return (country?.states || []).map((state: any) => ({
+      value: state.name,
+      label: state.name,
+    }));
+  }, [selectedCountry]);
+
+  const areaOptions = useMemo(() => {
+    const country = uniqueCountries.find(
+      (item) => item.name === selectedCountry
+    );
+    const state = country?.states?.find(
+      (item: any) => item.name === selectedState
+    );
+    return (state?.subdivisions || state?.subdivision || []).map(
+      (area: string) => ({
+        value: area,
+        label: area,
+      })
+    );
+  }, [selectedCountry, selectedState]);
+
+  const meetingDayOptions = [
+    { value: '1', label: 'Monday' },
+    { value: '2', label: 'Tuesday' },
+    { value: '3', label: 'Wednesday' },
+    { value: '4', label: 'Thursday' },
+    { value: '5', label: 'Friday' },
+    { value: '6', label: 'Saturday' },
+    { value: '7', label: 'Sunday' },
+  ];
 
   const { mutate, isPending } = useMutation({
     mutationFn: createCell,
@@ -273,24 +337,6 @@ export function AddNewCellSheet() {
         </div>
 
         <div className='space-y-2'>
-          <Label htmlFor='location'>Location</Label>
-          <form.Field
-            name='location'
-            children={(field) => (
-              <>
-                <Input
-                  id='location'
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder='Enter location'
-                />
-                <FieldInfo field={field} />
-              </>
-            )}
-          />
-        </div>
-
-        <div className='space-y-2'>
           <Label htmlFor='address'>Cell Address</Label>
           <form.Field
             name='address'
@@ -309,20 +355,177 @@ export function AddNewCellSheet() {
         </div>
 
         <div className='space-y-2'>
+          <Label htmlFor='country'>Country</Label>
+          <form.Field
+            name='country'
+            children={(field) => (
+              <>
+                <Select
+                  value={field.state.value}
+                  onValueChange={(value) => {
+                    field.handleChange(value);
+                    form.setFieldValue('state', '');
+                    form.setFieldValue('area', '');
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder='Select country' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {countryOptions.map((country) => (
+                      <SelectItem key={country.value} value={country.value}>
+                        {country.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldInfo field={field} />
+              </>
+            )}
+          />
+        </div>
+
+        <div className='space-y-2'>
+          <Label htmlFor='state'>State</Label>
+          <form.Field
+            name='state'
+            children={(field) => (
+              <>
+                <Select
+                  value={field.state.value}
+                  onValueChange={(value) => {
+                    field.handleChange(value);
+                    form.setFieldValue('area', '');
+                  }}
+                  disabled={!selectedCountry}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder='Select state' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stateOptions.map((state: { value: string; label: string }) => (
+                      <SelectItem key={state.value} value={state.value}>
+                        {state.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldInfo field={field} />
+              </>
+            )}
+          />
+        </div>
+
+        <div className='space-y-2'>
+          <Label htmlFor='area'>Area</Label>
+          <form.Field
+            name='area'
+            children={(field) => (
+              <>
+                <Select
+                  value={field.state.value}
+                  onValueChange={field.handleChange}
+                  disabled={!selectedState || areaOptions.length === 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder='Select area' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {areaOptions.map((area: { value: string; label: string }) => (
+                      <SelectItem key={area.value} value={area.value}>
+                        {area.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldInfo field={field} />
+              </>
+            )}
+          />
+        </div>
+
+        <div className='space-y-2'>
+          <Label htmlFor='meeting_days'>Meeting Day</Label>
+          <form.Field
+            name='meeting_days'
+            children={(field) => (
+              <>
+                <Select
+                  value={field.state.value}
+                  onValueChange={field.handleChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder='Select meeting day' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {meetingDayOptions.map((day) => (
+                      <SelectItem key={day.value} value={day.value}>
+                        {day.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldInfo field={field} />
+              </>
+            )}
+          />
+        </div>
+
+        <div className='space-y-2'>
+          <Label htmlFor='active'>Active</Label>
+          <form.Field
+            name='active'
+            children={(field) => (
+              <>
+                <Select
+                  value={field.state.value}
+                  onValueChange={field.handleChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder='Select status' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='yes'>Yes</SelectItem>
+                    <SelectItem value='no'>No</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FieldInfo field={field} />
+              </>
+            )}
+          />
+        </div>
+
+        <div className='space-y-2'>
           <Label htmlFor='leaderName'>Name of Leader</Label>
           <form.Field
             name='leader_id'
             children={(field) => (
               <>
-                <LeaderSelector
-                  selectedWorker={field.state.value}
-                  setSelectedWorker={(worker) => {
-                    field.handleChange(`${worker}`);
-                  }}
-                  churchId={churchId}
-                  fellowshipId={fellowshipId || 'nan'}
-                />
-
+                <Select
+                  value={field.state.value}
+                  onValueChange={field.handleChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        leadersLoading ? 'Loading leaders...' : 'Select leader'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='none'>No leader assigned</SelectItem>
+                    {leaderOptions?.map(
+                      (leader: { value: number; label: string }) => (
+                        <SelectItem
+                          key={leader.value}
+                          value={String(leader.value)}
+                        >
+                          {leader.label}
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
                 <FieldInfo field={field} />
               </>
             )}

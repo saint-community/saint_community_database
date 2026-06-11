@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { cn } from '@workspace/ui/lib/utils';
 import { ScrollArea } from '@workspace/ui/components/scroll-area';
-import { Settings, IdCard, LineChart, ChevronRight } from 'lucide-react';
+import { Settings, IdCard, LineChart, ChevronRight, Building2, Send, Network } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useMe } from '@/hooks/useMe';
 import { ROLES } from '@/utils/constants';
@@ -22,6 +22,7 @@ export default function SettingsLayout({
   const hideUsers =
     !!user &&
     ![ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_PASTOR].includes(user?.role);
+  const showOnboarding = user?.role === ROLES.ADMIN;
 
   // const hidePrayerGroup = !!user && user?.role !== ROLES.ADMIN;
 
@@ -46,6 +47,25 @@ export default function SettingsLayout({
             title: 'Prayer Group',
             href: '/d/settings/prayer-group',
             icon: LineChart,
+          },
+          {
+            title: 'Departments',
+            href: '/d/settings/departments',
+            icon: Building2,
+          },
+        ]
+      : []),
+    ...(showOnboarding
+      ? [
+          {
+            title: 'Onboarding',
+            href: '/d/settings/onboarding',
+            icon: Send,
+          },
+          {
+            title: 'Ownership Settings',
+            href: '/d/settings/ownership',
+            icon: Network,
           },
         ]
       : []),

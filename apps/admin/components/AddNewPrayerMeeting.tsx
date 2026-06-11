@@ -19,7 +19,7 @@ import { Loader2, SquarePlus } from 'lucide-react';
 import { ReactNode, useMemo, useState } from 'react';
 import { z } from 'zod';
 
-import { useWorkerOption } from '@/hooks/workers';
+import { useChurchAccountOptions } from '@/hooks/auth';
 import { useMe } from '@/hooks/useMe';
 import {
   createAdminPrayerGroupMeeting,
@@ -31,13 +31,12 @@ import {
   PRAYER_GROUP_PERIODS,
   QUERY_PATHS,
 } from '@/utils/constants';
-import { formatTimeTo12Hr } from '@/utils/helper';
 
 const formSchema = z.object({
   prayergroupDay: z
     .string()
     .min(1, { message: 'Please select a day of the week.' }),
-  period: z.string().min(1, { message: 'Please select a period.' }),
+  schedule: z.string().min(1, { message: 'Please select a schedule.' }),
   startTime: z.string().min(1, { message: 'Start time is required.' }),
   endTime: z.string().min(1, { message: 'End time is required.' }),
   prayergroupLeader: z.string().optional().default(''),
@@ -62,15 +61,16 @@ export function AddNewPrayerMeeting({
 }: AddNewPrayerMeetingProps) {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
-  const { data: workerOptions, isLoading: workersLoading } = useWorkerOption();
   const { data: user } = useMe();
+  const { data: leaderOptions, isLoading: leadersLoading } =
+    useChurchAccountOptions(user?.church_id);
 
   const isEdit = mode === 'edit';
 
   const defaultValues = useMemo(
     () => ({
       prayergroupDay: prayerGroup?.day || '',
-      period: prayerGroup?.period || '',
+      schedule: prayerGroup?.schedule || '',
       startTime: prayerGroup?.start_time || '',
       endTime: prayerGroup?.end_time || '',
       prayergroupLeader: prayerGroup?.leader_id
@@ -122,21 +122,20 @@ export function AddNewPrayerMeeting({
     validators: {
       // @ts-ignore
       onChange: formSchema,
-        // @ts-ignore
+      // @ts-ignore
       onSubmit: formSchema,
     },
     onSubmit: async ({ value }) => {
-      // Format schedule as "10am to 2pm"
-      const schedule = `${formatTimeTo12Hr(value.startTime)} to ${formatTimeTo12Hr(value.endTime)}`;
-
       const payload: AdminPrayerGroupMeetingPayload = {
         church_id: user?.church_id || 0,
-        leader_id: Number(value.prayergroupLeader) || 0,
+        leader_id:
+          value.prayergroupLeader && value.prayergroupLeader !== 'none'
+            ? Number(value.prayergroupLeader)
+            : null,
         start_time: value.startTime,
         end_time: value.endTime,
-        period: value.period,
         day: value.prayergroupDay,
-        schedule,
+        schedule: value.schedule,
       };
 
       if (isEdit && prayerGroup?.id) {
@@ -210,9 +209,9 @@ export function AddNewPrayerMeeting({
         </div>
 
         <div className='space-y-2'>
-          <Label htmlFor='period'>Period</Label>
+          <Label htmlFor='schedule'>Schedule</Label>
           <form.Field
-            name='period'
+            name='schedule'
             children={(field) => (
               <>
                 <Select
@@ -220,12 +219,12 @@ export function AddNewPrayerMeeting({
                   onValueChange={(value) => field.handleChange(value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder='Select period' />
+                    <SelectValue placeholder='Select schedule' />
                   </SelectTrigger>
                   <SelectContent>
-                    {PRAYER_GROUP_PERIODS.map((period) => (
-                      <SelectItem key={period.value} value={period.value}>
-                        {period.label}
+                    {PRAYER_GROUP_PERIODS.map((schedule) => (
+                      <SelectItem key={schedule.value} value={schedule.value}>
+                        {schedule.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -283,18 +282,19 @@ export function AddNewPrayerMeeting({
                   <SelectTrigger>
                     <SelectValue
                       placeholder={
-                        workersLoading ? 'Loading leaders...' : 'Select leader'
+                        leadersLoading ? 'Loading leaders...' : 'Select leader'
                       }
                     />
                   </SelectTrigger>
                   <SelectContent>
-                    {workerOptions?.map(
-                      (worker: { value: number; label: string }) => (
+                    <SelectItem value='none'>No leader assigned</SelectItem>
+                    {leaderOptions?.map(
+                      (leader: { value: number; label: string }) => (
                         <SelectItem
-                          key={worker.value}
-                          value={String(worker.value)}
+                          key={leader.value}
+                          value={String(leader.value)}
                         >
-                          {worker.label}
+                          {leader.label}
                         </SelectItem>
                       )
                     )}

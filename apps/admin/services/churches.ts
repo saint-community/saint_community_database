@@ -48,11 +48,13 @@ export const getChurchesOptions = async () => {
 
 export const createChurch = async (body: {
   name: string;
-  country: string;
-  state: string;
-  address: string;
+  pastor_id?: number | null;
+  country?: string | null;
+  state?: string | null;
+  area?: string | null;
+  address?: string | null;
   active: boolean;
-  start_date: string;
+  start_date?: string | null;
 }) => {
   const { data } = await ApiCaller.post(QUERY_PATHS.CHURCH_CREATE, {
     ...body,
@@ -71,10 +73,13 @@ export const updateChurch = async (
   id: string,
   body: {
     name: string;
-    // country: string;
-    state: string;
-    address: string;
+    pastor_id?: number | null;
+    country?: string | null;
+    state?: string | null;
+    area?: string | null;
+    address?: string | null;
     active: boolean;
+    start_date?: string | null;
   }
 ) => {
   const { data } = await ApiCaller.put(

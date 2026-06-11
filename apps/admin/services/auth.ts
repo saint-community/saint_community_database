@@ -79,10 +79,14 @@ export const logoutUser = async () => {
   localStorage.removeItem(STORAGE_KEYS.TOKEN);
 };
 
-export const getAccounts = async (page: number) => {
+export const getAccounts = async (
+  page: number,
+  filters: { church_id?: number | string } = {}
+) => {
   const { data } = await ApiCaller.get(QUERY_PATHS.ACCOUNTS, {
     params: {
       page,
+      ...filters,
     },
   });
   return data?.data;

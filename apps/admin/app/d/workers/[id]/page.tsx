@@ -18,6 +18,8 @@ import { FormSelectField } from '@/components/forms';
 import { usePrayerGroupOption } from '@/hooks/prayer_groups';
 import { useMe } from '@/hooks/useMe';
 import { ROLES } from '@/utils/constants';
+import { Checkbox } from '@workspace/ui/components/checkbox';
+import { Label } from '@workspace/ui/components/label';
 
 export default function WorkerDetailPage() {
   const params = useParams();
@@ -111,6 +113,7 @@ export default function WorkerDetailPage() {
         cell_id: Number(data.cell_id),
         department_id: Number(data.department_id),
         prayer_group_id: Number(data.prayer_group_id),
+        active: Boolean(data.active),
         first_name: data.full_name.split(' ')[0],
         last_name: data.full_name.split(' ')[1],
       }),
@@ -132,7 +135,6 @@ export default function WorkerDetailPage() {
 
     mutation.mutate({
       ...currentData,
-      active: true,
     });
   };
 
@@ -160,6 +162,10 @@ export default function WorkerDetailPage() {
 
   const onSelect = (name: string) => (value: any) => {
     setEditedData((prev: any) => ({ ...prev, [name]: value }));
+  };
+
+  const onChecked = (name: string) => (checked: boolean) => {
+    setEditedData((prev: any) => ({ ...prev, [name]: checked }));
   };
 
   return (
@@ -341,10 +347,6 @@ export default function WorkerDetailPage() {
             onEdit={onSelect('status')}
             options={[
               {
-                value: 'member',
-                label: 'Member',
-              },
-              {
                 value: 'worker',
                 label: 'Worker',
               },
@@ -359,6 +361,14 @@ export default function WorkerDetailPage() {
               {
                 value: 'church_pastor',
                 label: 'Church Pastor',
+              },
+              {
+                value: 'pastor',
+                label: 'Pastor',
+              },
+              {
+                value: 'LMA',
+                label: 'LMA',
               },
             ]}
           />
@@ -385,6 +395,17 @@ export default function WorkerDetailPage() {
             onEdit={onSelect('prayer_group_id')}
             options={prayerGroups}
           />
+
+          <div className='flex items-center gap-3 rounded-md border border-gray-200 p-3'>
+            <Checkbox
+              id='active'
+              checked={Boolean(currentData.active)}
+              onCheckedChange={(checked) => onChecked('active')(checked === true)}
+            />
+            <Label htmlFor='active' className='text-sm font-medium'>
+              Active worker
+            </Label>
+          </div>
 
           <div className='pt-8 flex justify-center gap-6'>
             <Button

@@ -12,17 +12,25 @@ export const formSchema = z.object({
   lastName: z.string().min(2, {
     message: "Surname must be at least 2 characters.",
   }),
-  email: z.string().email({
-    message: "Please enter a valid email address.",
-  }),
-  country: z.string().min(1, { message: "Please select a country" }),
-  state: z.string().min(1, { message: "Please select a state" }),
+  email: z
+    .string()
+    .email({
+      message: "Please enter a valid email address.",
+    })
+    .or(z.literal("")),
+  country: z.string().optional(),
+  state: z.string().optional(),
+  area: z.string().optional(),
   gender: z.string().min(1, {
     message: "Please select a gender.",
   }),
-  phoneNumber: z.string().min(10, {
-    message: "Please enter a valid phone number.",
-  }),
+  status: z.enum(
+    ["worker", "cell_leader", "fellowship_leader", "church_pastor", "pastor", "LMA"],
+    {
+      required_error: "Please select a status.",
+    }
+  ),
+  phoneNumber: z.string().optional(),
   church: z.string(),
   fellowship: z.string(),
   cell: z.string(),
@@ -30,7 +38,6 @@ export const formSchema = z.object({
     message: "Please enter a valid home address.",
   }),
   workAddress: z.string(),
-  schoolAddress: z.string(),
   dateOfBirth: z
     .date({
       required_error: "Please select your date of birth",
@@ -43,7 +50,7 @@ export const formSchema = z.object({
         message: "Oops, you can only select past dates",
       }
     ),
-  department: z.string(),
+  department: z.string().optional(),
   prayerGroup: z.string().min(1, {
     message: "Please select a prayer group.",
   }),
@@ -69,4 +76,10 @@ export const formSchema = z.object({
         message: "Oops, you can only select past dates",
       }
     ),
+  termsAccepted: z.literal(true, {
+    errorMap: () => ({ message: "Please accept the terms and conditions." }),
+  }),
+  privacyAcknowledged: z.literal(true, {
+    errorMap: () => ({ message: "Please acknowledge the privacy policy." }),
+  }),
 });

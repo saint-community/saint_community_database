@@ -27,7 +27,7 @@ export function ChurchFilters({
 
   useEffect(() => {
     import('@/utils/countries.json').then((mod) => {
-      setCountries(mod.default || mod);
+      setCountries((mod.default || mod) as unknown as { code: string; name: string }[]);
     });
   }, []);
 

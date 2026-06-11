@@ -7,6 +7,19 @@ interface FellowshipFilters {
   church?: string;
 }
 
+export interface FellowshipPayload {
+  name: string;
+  church_id: number;
+  cordinator_id?: number | null;
+  country?: string | null;
+  state?: string | null;
+  area?: string | null;
+  meeting_days: number;
+  active: 'yes' | 'no';
+  address?: string | null;
+  start_date: string;
+}
+
 export const getFellowships = async (filters: FellowshipFilters = {}) => {
   // console.log('getFellowships called with filters:', filters);
   const { page = 1, church, ...searchFilters } = filters;
@@ -36,14 +49,7 @@ export const getFellowships = async (filters: FellowshipFilters = {}) => {
   return result;
 };
 
-export const createFellowship = async (body: {
-  name: string;
-  church_id: number;
-  cordinator_id?: number;
-  address: string;
-  active: boolean;
-  start_date: string;
-}) => {
+export const createFellowship = async (body: FellowshipPayload) => {
   const { data } = await ApiCaller.post(QUERY_PATHS.FELLOWSHIP_CREATE, {
     ...body,
   });
@@ -59,13 +65,7 @@ export const getFellowshipById = async (id: string) => {
 
 export const updateFellowship = async (
   id: string,
-  body: {
-    name: string;
-    church_id: number;
-    cordinator_id: number;
-    address: string;
-    active: boolean;
-  }
+  body: Partial<FellowshipPayload>
 ) => {
   const { data } = await ApiCaller.put(
     QUERY_PATHS.FELLOWSHIP_UPDATE.replace(':id', id),

@@ -8,6 +8,20 @@ interface CellFilters {
   fellowship?: string;
 }
 
+export interface CellPayload {
+  name: string;
+  church_id: number;
+  fellowship_id: number;
+  leader_id?: number | null;
+  country?: string | null;
+  state?: string | null;
+  area?: string | null;
+  address?: string | null;
+  active: 'yes' | 'no';
+  meeting_days: number;
+  start_date?: string;
+}
+
 export const getCells = async (filters: CellFilters = {}) => {
   // console.log('getCells called with filters:', filters);
   const { page = 1, church, fellowship, ...searchFilters } = filters;
@@ -42,16 +56,7 @@ export const getCells = async (filters: CellFilters = {}) => {
   return result;
 };
 
-export const createCell = async (body: {
-  name: string;
-  church_id: number;
-  fellowship_id: number;
-  leader_id: number;
-  address: string;
-  active: boolean;
-  meeting_days: number;
-  start_date?: string;
-}) => {
+export const createCell = async (body: CellPayload) => {
   const { data } = await ApiCaller.post(QUERY_PATHS.CELL_CREATE, {
     ...body,
   });
@@ -67,15 +72,7 @@ export const getCellById = async (id: string) => {
 
 export const updateCell = async (
   id: string,
-  body: {
-    name: string;
-    church_id: number;
-    fellowship_id: number;
-    leader_id: number;
-    address: string;
-    active: boolean;
-    meeting_days: number;
-  }
+  body: Partial<CellPayload>
 ) => {
   const { data } = await ApiCaller.put(
     QUERY_PATHS.CELL_UPDATE.replace(':id', id),

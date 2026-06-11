@@ -27,6 +27,7 @@ type PrayerGroupMeeting = AdminPrayerGroupMeetingPayload & {
   createdAt?: string;
   updatedAt?: string;
   leader?: {
+    name?: string;
     first_name: string;
     last_name: string;
     id: number;
@@ -156,7 +157,11 @@ export default function PrayerGroupSettingsPage() {
                   <User className='h-5 w-5 text-amber-600' />
                   <div>
                     <div className='text-base text-foreground'>
-                    {pg?.leader?.first_name} {pg?.leader?.last_name || 'No leader assigned'}
+                      {pg?.leader?.name ||
+                        [pg?.leader?.first_name, pg?.leader?.last_name]
+                          .filter(Boolean)
+                          .join(' ') ||
+                        'No leader assigned'}
                     </div>
                     <CardDescription className='text-xs'>
                       Prayer Leader
@@ -167,7 +172,13 @@ export default function PrayerGroupSettingsPage() {
                   <Clock className='h-5 w-5 text-amber-600' />
                   <div>
                     <div className='text-base text-foreground'>
-                      {pg?.schedule || 'Time not set'}
+                      {pg?.schedule
+                        ? `${pg.schedule} ${
+                            pg.start_time && pg.end_time
+                              ? `(${pg.start_time} - ${pg.end_time})`
+                              : ''
+                          }`
+                        : 'Schedule not set'}
                     </div>
                     <CardDescription className='text-xs'>
                       Schedule

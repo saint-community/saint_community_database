@@ -15,6 +15,13 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select";
 import { FieldInfo } from "@workspace/ui/components/field-info";
+import { Checkbox } from "@workspace/ui/components/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@workspace/ui/components/dialog";
 import { useMutation } from "@tanstack/react-query";
 import { createWorker } from "@/services/workers";
 import { useWorkerForm } from "@/hooks/workers";
@@ -31,6 +38,7 @@ import {
 import { cn } from "@workspace/ui/lib/utils";
 import { formSchema } from "@/utils/registerSchema";
 import { isEmpty } from "lodash";
+import countriesData from "@/utils/countries.json";
 
 const currentDate = new Date().toISOString();
 
@@ -40,41 +48,65 @@ const genders = [
   { id: "female", name: "Female" },
 ];
 
+const workerStatuses = [
+  { id: "worker", name: "Worker" },
+  { id: "cell_leader", name: "Cell Leader" },
+  { id: "fellowship_leader", name: "Fellowship Leader" },
+  { id: "church_pastor", name: "Church Pastor" },
+  { id: "pastor", name: "Pastor" },
+  { id: "LMA", name: "LMA" },
+];
+
+type Country = {
+  name: string;
+  states?: Array<{
+    name: string;
+    subdivision?: string[] | string | null;
+    subdivisions?: string[] | string | null;
+  }>;
+};
+
+const countries = Array.from(
+  new Map((countriesData as Country[]).map((country) => [country.name, country])).values()
+);
+
+const TERMS_VERSION = "terms-v1";
+const PRIVACY_POLICY_VERSION = "privacy-v1";
+
 function RegisterPageMain() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const { data, error, isLoading } = useWorkerForm(token || "");
   const router = useRouter();
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Import countries.json dynamically to avoid SSR issues
-  const [countries, setCountries] = useState<{ code: string; name: string }[]>(
-    []
-  );
-  useEffect(() => {
-    import("@/utils/countries.json").then((mod) => {
-      setCountries(mod.default || mod);
-    });
-  }, []);
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [privacyOpen, setPrivacyOpen] = useState(false);
 
   const RequiredAsterisk = () => <span className="text-rose-500">*</span>;
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [states, setStates] = useState<string[]>([]);
   const [selectedCountry, setSelectedCountry] = useState("");
+  const [selectedState, setSelectedState] = useState("");
 
-  useEffect(() => {
-    if (selectedCountry) {
-      import("@/utils/states.json").then((mod) => {
-        type AllStates = { [countryCode: string]: string[] };
-        const allStates = (mod.default || mod) as unknown as AllStates;
-        setStates(allStates[selectedCountry as keyof AllStates] || []);
-      });
-    } else {
-      setStates([]);
+  const stateOptions = useMemo(
+    () => countries.find((country) => country.name === selectedCountry)?.states || [],
+    [selectedCountry]
+  );
+
+  const areaOptions = useMemo(() => {
+    const selectedStateData = stateOptions.find(
+      (state) => state.name === selectedState
+    );
+    const areas =
+      selectedStateData?.subdivision ?? selectedStateData?.subdivisions ?? [];
+
+    if (Array.isArray(areas)) {
+      return areas;
     }
-  }, [selectedCountry]);
+
+    return areas ? [areas] : [];
+  }, [selectedState, stateOptions]);
 
   useEffect(() => {
     if (file && typeof file === "object" && "name" in file) {
@@ -92,8 +124,8 @@ function RegisterPageMain() {
         id: data?.data?.churchInformation?.id || "",
         name: data?.data?.churchInformation?.name || "",
       };
-      const fellowships = data?.data?.churchInformation?.fellowships;
-      const cells = data?.data?.churchInformation?.cells;
+      const fellowships = data?.data?.churchInformation?.fellowships || [];
+      const cells = data?.data?.churchInformation?.cells || [];
 
       const prayerGroups = data?.data?.prayerGroups?.map(
         (prayerGroup: { day: string; schedule: string; id: string }) => ({
@@ -161,20 +193,23 @@ function RegisterPageMain() {
       lastName: "",
       country: "",
       state: "",
+      area: "",
       email: "",
       gender: "",
+      status: "worker",
       phoneNumber: "",
       church: church?.id?.toString() || "",
       fellowship: fellowships?.[0]?.id?.toString() || "",
       cell: cells?.[0]?.id?.toString() || "",
       homeAddress: "",
       workAddress: "",
-      schoolAddress: "",
       dateOfBirth: dayjs(currentDate).subtract(7, "years").toDate(),
       department: "",
       dateJoinedChurch: dayjs(currentDate).subtract(7, "days").toDate(),
       prayerGroup: "",
       dateBecameWorker: dayjs(currentDate).subtract(7, "days").toDate(),
+      termsAccepted: false,
+      privacyAcknowledged: false,
     },
    
     validators: {
@@ -208,8 +243,12 @@ function RegisterPageMain() {
         "dob",
         value.dateOfBirth.toISOString().split("T")[0] ?? ""
       );
+      formData.append(
+        "date_of_birth",
+        value.dateOfBirth.toISOString().split("T")[0] ?? ""
+      );
       formData.append("gender", value.gender);
-      formData.append("status", "worker");
+      formData.append("status", value.status);
       formData.append("phone_number", value.phoneNumber);
       formData.append("email", value.email);
       formData.append("facebook_username", "");
@@ -217,7 +256,6 @@ function RegisterPageMain() {
       formData.append("instagram_username", "");
       formData.append("house_address", value.homeAddress);
       formData.append("work_address", value.workAddress);
-      formData.append("school_address", value.schoolAddress);
       formData.append(
         "member_since",
         value.dateJoinedChurch.toISOString().split("T")[0] ?? ""
@@ -233,6 +271,7 @@ function RegisterPageMain() {
       }
       formData.append("country", value.country);
       formData.append("state", value.state);
+      formData.append("area", value.area || "");
       formData.append(
         "date_joined_church",
         value.dateJoinedChurch.toISOString().split("T")[0] ?? ""
@@ -241,10 +280,27 @@ function RegisterPageMain() {
         "date_became_worker",
         value.dateBecameWorker.toISOString().split("T")[0] ?? ""
       );
+      formData.append("terms_accepted", value.termsAccepted ? "1" : "0");
+      formData.append(
+        "privacy_acknowledged",
+        value.privacyAcknowledged ? "1" : "0"
+      );
+      formData.append("terms_version", TERMS_VERSION);
+      formData.append("privacy_policy_version", PRIVACY_POLICY_VERSION);
 
       mutation.mutate(formData);
     } ,
   });
+
+  useEffect(() => {
+    form.setFieldValue("church", church?.id?.toString() || "");
+    if (fellowships.length === 1) {
+      form.setFieldValue("fellowship", fellowships[0]?.id?.toString() || "");
+    }
+    if (cells.length === 1) {
+      form.setFieldValue("cell", cells[0]?.id?.toString() || "");
+    }
+  }, [cells, church?.id, fellowships, form]);
 
   if (isLoading) {
     return (
@@ -415,7 +471,6 @@ function RegisterPageMain() {
         <div className="space-y-2">
           <Label htmlFor="email">
             Email Address
-            <RequiredAsterisk />
           </Label>
           <form.Field
             name="email"
@@ -441,7 +496,6 @@ function RegisterPageMain() {
         <div className="space-y-2">
           <Label htmlFor="phoneNumber">
             Phone Number
-            <RequiredAsterisk />
           </Label>
           <form.Field
             name="phoneNumber"
@@ -467,7 +521,6 @@ function RegisterPageMain() {
         <div className="space-y-2">
           <Label htmlFor="country">
             Country
-            <RequiredAsterisk />
           </Label>
           <form.Field
             name="country"
@@ -479,6 +532,9 @@ function RegisterPageMain() {
                     onValueChange={(e) => {
                       field.handleChange(e);
                       setSelectedCountry(e);
+                      setSelectedState("");
+                      form.setFieldValue("state", "");
+                      form.setFieldValue("area", "");
                     }}
                   >
                     <SelectTrigger className="h-[48px]">
@@ -486,7 +542,7 @@ function RegisterPageMain() {
                     </SelectTrigger>
                     <SelectContent>
                       {countries.map((country) => (
-                        <SelectItem key={country.code} value={country.code}>
+                        <SelectItem key={country.name} value={country.name}>
                           {country.name}
                         </SelectItem>
                       ))}
@@ -501,7 +557,7 @@ function RegisterPageMain() {
 
         {/* State select, depends on selected country */}
         <div className="space-y-2">
-          <Label htmlFor="state">State/Province <RequiredAsterisk /></Label>
+          <Label htmlFor="state">State/Province</Label>
           <form.Field
             name="state"
             children={(field) => {
@@ -509,16 +565,50 @@ function RegisterPageMain() {
                 <>
                   <Select
                     value={field.state.value}
-                    onValueChange={field.handleChange}
+                    onValueChange={(value) => {
+                      field.handleChange(value);
+                      setSelectedState(value);
+                      form.setFieldValue("area", "");
+                    }}
                     disabled={!selectedCountry}
                   >
                     <SelectTrigger className="h-[48px]">
                       <SelectValue placeholder="Select a state" />
                     </SelectTrigger>
                     <SelectContent>
-                      {states.map((state, i) => (
-                        <SelectItem key={i} value={state}>
-                          {state}
+                      {stateOptions.map((state) => (
+                        <SelectItem key={state.name} value={state.name}>
+                          {state.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldInfo field={field} />
+                </>
+              );
+            }}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="area">Area</Label>
+          <form.Field
+            name="area"
+            children={(field) => {
+              return (
+                <>
+                  <Select
+                    value={field.state.value}
+                    onValueChange={field.handleChange}
+                    disabled={!selectedState || areaOptions.length === 0}
+                  >
+                    <SelectTrigger className="h-[48px]">
+                      <SelectValue placeholder="Select an area" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {areaOptions.map((area) => (
+                        <SelectItem key={area} value={area}>
+                          {area}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -564,25 +654,6 @@ function RegisterPageMain() {
                   value={field.state.value}
                   onChange={(e) => field.handleChange(e.target.value)}
                   placeholder="Enter work address"
-                />
-                <FieldInfo field={field} />
-              </>
-            )}
-          />
-        </div>
-
-         <div className="space-y-2">
-          <Label htmlFor="schoolAddress">School Address</Label>
-          <form.Field
-            name="schoolAddress"
-            children={(field) => (
-              <>
-                <Textarea
-                  rows={6}
-                  id="schoolAddress"
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder="Enter school address"
                 />
                 <FieldInfo field={field} />
               </>
@@ -644,6 +715,36 @@ function RegisterPageMain() {
         </div>
 
         <div className="space-y-2">
+          <Label htmlFor="status">
+            Status
+            <RequiredAsterisk />
+          </Label>
+          <form.Field
+            name="status"
+            children={(field) => (
+              <>
+                <Select
+                  value={field.state.value}
+                  onValueChange={field.handleChange}
+                >
+                  <SelectTrigger className="h-[48px]">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {workerStatuses.map((status) => (
+                      <SelectItem key={status.id} value={status.id}>
+                        {status.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldInfo field={field} />
+              </>
+            )}
+          />
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="church">Church</Label>
           <form.Field
             name="church"
@@ -677,7 +778,7 @@ function RegisterPageMain() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="fellowship">Fellowship <RequiredAsterisk /></Label>
+          <Label htmlFor="fellowship">Fellowship</Label>
           <form.Field
             name="fellowship"
             children={(field) => (
@@ -710,7 +811,7 @@ function RegisterPageMain() {
 
         {!isEmpty(cells) && (
           <div className="space-y-2">
-            <Label htmlFor="cell">Cell <RequiredAsterisk /></Label>
+            <Label htmlFor="cell">Cell</Label>
             <form.Field
               name="cell"
               children={(field) => (
@@ -844,6 +945,80 @@ function RegisterPageMain() {
             )}
           />
         </div>
+        <div className="space-y-3 rounded-md border border-gray-200 p-3">
+          <form.Field
+            name="termsAccepted"
+            children={(field) => (
+              <div className="space-y-1">
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="termsAccepted"
+                    checked={field.state.value}
+                    onCheckedChange={(checked) =>
+                      field.handleChange(checked === true)
+                    }
+                  />
+                  <Label
+                    htmlFor="termsAccepted"
+                    className="text-sm font-normal leading-5"
+                  >
+                    I accept the{" "}
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setTermsOpen(true);
+                      }}
+                      className="font-medium text-[#705C2F] underline underline-offset-2"
+                    >
+                      Terms and Conditions
+                    </button>
+                    .
+                    <RequiredAsterisk />
+                  </Label>
+                </div>
+                <FieldInfo field={field} />
+              </div>
+            )}
+          />
+          <form.Field
+            name="privacyAcknowledged"
+            children={(field) => (
+              <div className="space-y-1">
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="privacyAcknowledged"
+                    checked={field.state.value}
+                    onCheckedChange={(checked) =>
+                      field.handleChange(checked === true)
+                    }
+                  />
+                  <Label
+                    htmlFor="privacyAcknowledged"
+                    className="text-sm font-normal leading-5"
+                  >
+                    I acknowledge the{" "}
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setPrivacyOpen(true);
+                      }}
+                      className="font-medium text-[#705C2F] underline underline-offset-2"
+                    >
+                      Privacy Policy
+                    </button>
+                    .
+                    <RequiredAsterisk />
+                  </Label>
+                </div>
+                <FieldInfo field={field} />
+              </div>
+            )}
+          />
+        </div>
         <div className="w-full ">
           <form.Subscribe
             selector={(state) => [state.canSubmit, mutation.isPending]}
@@ -860,6 +1035,30 @@ function RegisterPageMain() {
           />
         </div>
       </form>
+      <Dialog open={termsOpen} onOpenChange={setTermsOpen}>
+        <DialogContent className="max-h-[85vh] max-w-[92vw] overflow-hidden bg-white p-0 sm:max-w-3xl">
+          <DialogHeader className="border-b border-gray-200 px-5 py-4">
+            <DialogTitle>Terms and Conditions</DialogTitle>
+          </DialogHeader>
+          <iframe
+            title="Terms and Conditions"
+            src="/terms"
+            className="h-[72vh] w-full border-0"
+          />
+        </DialogContent>
+      </Dialog>
+      <Dialog open={privacyOpen} onOpenChange={setPrivacyOpen}>
+        <DialogContent className="max-h-[85vh] max-w-[92vw] overflow-hidden bg-white p-0 sm:max-w-3xl">
+          <DialogHeader className="border-b border-gray-200 px-5 py-4">
+            <DialogTitle>Privacy Policy</DialogTitle>
+          </DialogHeader>
+          <iframe
+            title="Privacy Policy"
+            src="/privacy-policy"
+            className="h-[72vh] w-full border-0"
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -8,8 +8,11 @@ export interface PrayerGroup {
   schedule: string;
 }
 
-export const getPrayerGroups = async () => {
-  const { data } = await ApiCaller.get(QUERY_PATHS.PRAYER_GROUPS);
+export const getPrayerGroups = async (churchId?: number | string) => {
+  const path = churchId
+    ? `${QUERY_PATHS.PRAYER_GROUPS}/${churchId}`
+    : QUERY_PATHS.PRAYER_GROUPS;
+  const { data } = await ApiCaller.get(path);
   return data || [];
 };
 
