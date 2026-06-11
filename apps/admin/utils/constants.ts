@@ -18,6 +18,24 @@ export const QUERY_PATHS = {
   DELETE_ACCOUNT: '/api/account/delete/:id',
   UPDATE_ACCOUNT: '/api/account/update',
   SWITCH_CHURCH: '/api/account/church/switch/:church_id',
+
+  // onboarding
+  ONBOARDING_INVITE: '/api/onboarding/invite',
+  ONBOARDING_DETAIL: '/api/onboarding/:token/details',
+  ONBOARDING_ACCOUNT: '/api/onboarding/:token/account',
+  ONBOARDING_CHURCH: '/api/onboarding/:token/church',
+  ONBOARDING_FELLOWSHIP: '/api/onboarding/:token/fellowship',
+  ONBOARDING_CELL: '/api/onboarding/:token/cell',
+  ONBOARDING_TOKEN_INVITE: '/api/onboarding/:token/invite',
+  ONBOARDING_FINISH: '/api/onboarding/:token/finish',
+
+  // ownership
+  OWNERSHIP_OPTIONS: '/api/ownership/options',
+  OWNERSHIP_ENTITY: '/api/ownership/entity',
+  OWNERSHIP_USER: '/api/ownership/user/:userId',
+  OWNERSHIP_CREATE: '/api/ownership',
+  OWNERSHIP_DELETE: '/api/ownership/:id',
+
   // church
   CHURCHES: '/api/churches',
   CHURCH_DETAIL: '/api/church/:id',
@@ -43,6 +61,7 @@ export const QUERY_PATHS = {
   WORKER_UPDATE: '/api/worker/update/:id',
   WORKER_FORM_GENERATE: '/api/worker/form/generate',
   WORKER_FORM_DETAIL: '/api/worker/form/:token',
+  WORKER_FORM_INVALIDATE: '/api/worker/form/:token/invalidate',
   WORKER_APPROVE: '/api/worker/approve/:id',
   WORKER_REJECT: '/api/worker/reject/:id',
   WORKER_PENDING: '/api/workers/pending',

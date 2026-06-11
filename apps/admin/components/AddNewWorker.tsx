@@ -9,7 +9,7 @@ import { Textarea } from '@workspace/ui/components/textarea';
 import { Label } from '@workspace/ui/components/label';
 import { Modal } from '@workspace/ui/components/modal';
 import { Loader2, SquarePlus } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { DatePicker } from '@workspace/ui/components/date-picker';
 import {
   Select,
@@ -27,24 +27,36 @@ import { useMutation } from '@tanstack/react-query';
 import { createWorker } from '@/services/workers';
 import { useWorkers } from '@/hooks/workers';
 import { useMe } from '@/hooks/useMe';
-import { COUNTRIES, ROLES } from '@/utils/constants';
+import { ROLES } from '@/utils/constants';
 import { usePrayerGroupOption } from '@/hooks/prayer_groups';
 import { toast } from '@workspace/ui/lib/sonner';
 import { isEmpty } from 'lodash';
+import countries from '@/utils/countries.json';
+
+const uniqueCountries = Array.from(
+  new Map((countries as any[]).map((country) => [country.name, country])).values()
+);
 
 const formSchema = z.object({
   fullName: z.string().min(2, {
     message: 'Full name must be at least 2 characters.',
   }),
-  email: z.string().email({
-    message: 'Please enter a valid email address.',
-  }),
+  email: z.union([
+    z.string().email({
+      message: 'Please enter a valid email address.',
+    }),
+    z.literal(''),
+  ]),
   gender: z.string().min(1, {
     message: 'Please select a gender.',
   }),
-  phoneNumber: z.string().min(10, {
-    message: 'Please enter a valid phone number.',
-  }),
+  status: z.enum(
+    ['worker', 'cell_leader', 'fellowship_leader', 'church_pastor', 'pastor', 'LMA'],
+    {
+      required_error: 'Please select a status.',
+    }
+  ),
+  phoneNumber: z.string(),
   church: z.string().min(1, {
     message: 'Please select a church.',
   }),
@@ -52,11 +64,8 @@ const formSchema = z.object({
     message: 'Please select a fellowship.',
   }),
   cell: z.string(),
-  homeAddress: z.string().min(5, {
-    message: 'Please enter a valid home address.',
-  }),
+  homeAddress: z.string(),
   workAddress: z.string(),
-  schoolAddress: z.string(),
   dateOfBirth: z.date().refine(
     (date) => {
       const parsedDate = new Date(date);
@@ -87,11 +96,21 @@ const formSchema = z.object({
   state: z.string().min(1, {
     message: 'State is required',
   }),
+  area: z.string(),
 });
 
 const genders = [
   { id: 'male', name: 'Male' },
   { id: 'female', name: 'Female' },
+];
+
+const workerStatuses = [
+  { id: 'worker', name: 'Worker' },
+  { id: 'cell_leader', name: 'Cell Leader' },
+  { id: 'fellowship_leader', name: 'Fellowship Leader' },
+  { id: 'church_pastor', name: 'Church Pastor' },
+  { id: 'pastor', name: 'Pastor' },
+  { id: 'LMA', name: 'LMA' },
 ];
 
 export function AddNewWorkerSheet({
@@ -104,50 +123,25 @@ export function AddNewWorkerSheet({
   const [open, setOpen] = useState(false);
   const { data: user } = useMe();
 
-
-    // Import countries.json dynamically to avoid SSR issues
-    const [countries, setCountries] = useState<{ code: string; name: string }[]>(
-      []
-    );
-    useEffect(() => {
-      import("@/utils/countries.json").then((mod) => {
-        setCountries(mod.default || mod);
-      });
-    }, []);
-  
-    const [states, setStates] = useState<string[]>([]);
-    const [selectedCountry, setSelectedCountry] = useState("");
-  
-    useEffect(() => {
-      if (selectedCountry) {
-        import("@/utils/states.json").then((mod) => {
-          type AllStates = { [countryCode: string]: string[] };
-          const allStates = (mod.default || mod) as unknown as AllStates;
-          setStates(allStates[selectedCountry as keyof AllStates] || []);
-        });
-      } else {
-        setStates([]);
-      }
-    }, [selectedCountry]);
-
   const form = useForm({
     defaultValues: {
       fullName: '',
       email: '',
       gender: '',
+      status: 'worker',
       phoneNumber: '',
       church: user?.church_id?.toString() || '',
       fellowship: user?.fellowship_id?.toString() || '',
       cell: user?.cell_id?.toString() || '',
       homeAddress: '',
       workAddress: '',
-      schoolAddress: '',
       dateOfBirth: new Date(),
       department: '',
       dateJoinedChurch: new Date(),
       prayerGroup: '',
       country: 'Nigeria',
       state: '',
+      area: '',
     },
     validators: {
       onSubmit: formSchema,
@@ -160,27 +154,28 @@ export function AddNewWorkerSheet({
       mutation.mutate({
         church_id: Number(value.church),
         fellowship_id: Number(value.fellowship),
-        cell_id: value.cell,
+        cell_id: value.cell ? Number(value.cell) : null,
         first_name: value.fullName.split(' ')[0] || '',
-        last_name: value.fullName.split(' ')[1] || '',
+        last_name: value.fullName.split(' ').slice(1).join(' ') || value.fullName.split(' ')[0] || '',
+        date_of_birth: value.dateOfBirth.toISOString().split('T')[0],
         dob: value.dateOfBirth.toISOString().split('T')[0],
         gender: value.gender,
-        status: 'worker',
-        phone_number: value.phoneNumber,
-        email: value.email,
+        status: value.status,
+        phone_number: value.phoneNumber || undefined,
+        email: value.email || undefined,
         facebook_username: '',
         twitter_username: '',
         instagram_username: '',
-        house_address: value.homeAddress,
-        work_address: value.workAddress,
-        school_address: value.schoolAddress,
+        house_address: value.homeAddress || undefined,
+        work_address: value.workAddress || undefined,
         member_since: value.dateJoinedChurch.toISOString().split('T')[0],
         worker_since: value.dateJoinedChurch.toISOString().split('T')[0],
         active: true,
         prayer_group_id: value.prayerGroup,
-        department_id: value.department ? Number(value.department) : undefined,
+        department_id: value.department ? Number(value.department) : null,
         country: value.country,
         state: value.state,
+        area: value.area || undefined,
       });
     },
     onSubmitInvalid(props) {
@@ -191,8 +186,11 @@ export function AddNewWorkerSheet({
   const lockChurchSelect =
     !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
   const { data: churches } = useChurchesOption(!lockChurchSelect);
-  const { data: departments } = useDepartmentsOption();
   const churchId = useStore(form.store, (state) => state.values.church);
+  const {
+    data: departments,
+    isLoading: departmentsLoading,
+  } = useDepartmentsOption(churchId);
   const { data: fellowships } = useFellowshipsOption(churchId);
   const fellowshipId = useStore(form.store, (state) => state.values.fellowship);
   const { data: cells } = useCellsOption(fellowshipId);
@@ -200,7 +198,10 @@ export function AddNewWorkerSheet({
     church_id: church_id?.toString() || '',
     page,
   });
-  const { data: prayerGroups } = usePrayerGroupOption();
+  const {
+    data: prayerGroups,
+    isLoading: prayerGroupsLoading,
+  } = usePrayerGroupOption(churchId);
 
   const lockFellowshipSelect =
     !!user &&
@@ -250,6 +251,43 @@ export function AddNewWorkerSheet({
     return cells;
   }, [user, cells, lockCellSelect]);
 
+  const selectedCountry = useStore(form.store, (state) => state.values.country);
+  const selectedState = useStore(form.store, (state) => state.values.state);
+
+  const countryOptions = useMemo(
+    () =>
+      uniqueCountries.map((country) => ({
+        value: country.name,
+        label: country.name,
+      })),
+    []
+  );
+
+  const stateOptions = useMemo(() => {
+    const country = uniqueCountries.find(
+      (item) => item.name === selectedCountry
+    );
+    return (country?.states || []).map((state: any) => ({
+      value: state.name,
+      label: state.name,
+    }));
+  }, [selectedCountry]);
+
+  const areaOptions = useMemo(() => {
+    const country = uniqueCountries.find(
+      (item) => item.name === selectedCountry
+    );
+    const state = country?.states?.find(
+      (item: any) => item.name === selectedState
+    );
+    return (state?.subdivisions || state?.subdivision || []).map(
+      (area: string) => ({
+        value: area,
+        label: area,
+      })
+    );
+  }, [selectedCountry, selectedState]);
+
   const mutation = useMutation({
     mutationFn: createWorker,
     onSuccess: () => {
@@ -270,10 +308,24 @@ export function AddNewWorkerSheet({
       trigger={
         <Button 
         onClick={(e) => {
+          if (prayerGroupsLoading || departmentsLoading) {
+            e.preventDefault();
+            e.stopPropagation();
+            toast.info('Checking church setup...');
+            return;
+          }
+
           if (!prayerGroups || prayerGroups.length === 0) {
             e.preventDefault();
             e.stopPropagation();
-            toast.error("Please create a prayer group first");
+            toast.error('Please create a prayer group first');
+            return;
+          }
+
+          if (!departments || departments.length === 0) {
+            e.preventDefault();
+            e.stopPropagation();
+            toast.error('Please create a department first');
           }
         }}
         className='text-sm h-[44px]'>
@@ -348,6 +400,33 @@ export function AddNewWorkerSheet({
                     {genders.map((gender) => (
                       <SelectItem key={gender.id} value={gender.id}>
                         {gender.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldInfo field={field} />
+              </>
+            )}
+          />
+        </div>
+
+        <div className='space-y-2'>
+          <Label htmlFor='status'>Status</Label>
+          <form.Field
+            name='status'
+            children={(field) => (
+              <>
+                <Select
+                  value={field.state.value}
+                  onValueChange={field.handleChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder='Select status' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {workerStatuses.map((status) => (
+                      <SelectItem key={status.id} value={status.id}>
+                        {status.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -532,25 +611,6 @@ export function AddNewWorkerSheet({
           />
         </div>
 
-         <div className='space-y-2'>
-          <Label htmlFor='schoolAddress'>School Address</Label>
-          <form.Field
-            name='schoolAddress'
-            children={(field) => (
-              <>
-                <Textarea
-                  id='schoolAddress'
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder='Enter school address'
-                />
-                <FieldInfo field={field} />
-              </>
-            )}
-          />
-        </div>
-
-      
         <div className='space-y-2'>
           <Label htmlFor='country'>Country</Label>
            <form.Field
@@ -560,18 +620,19 @@ export function AddNewWorkerSheet({
                 <>
                   <Select
                     value={field.state.value}
-                    onValueChange={(e) => {
-                      field.handleChange(e);
-                      setSelectedCountry(e);
+                    onValueChange={(value) => {
+                      field.handleChange(value);
+                      form.setFieldValue('state', '');
+                      form.setFieldValue('area', '');
                     }}
                   >
                     <SelectTrigger className="h-[48px]">
                       <SelectValue placeholder="Select a country" />
                     </SelectTrigger>
                     <SelectContent>
-                      {countries.map((country) => (
-                        <SelectItem key={country.code} value={country.code}>
-                          {country.name}
+                      {countryOptions.map((country) => (
+                        <SelectItem key={country.value} value={country.value}>
+                          {country.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -592,16 +653,49 @@ export function AddNewWorkerSheet({
                 <>
                   <Select
                     value={field.state.value}
-                    onValueChange={field.handleChange}
+                    onValueChange={(value) => {
+                      field.handleChange(value);
+                      form.setFieldValue('area', '');
+                    }}
                     disabled={!selectedCountry}
                   >
                     <SelectTrigger className="h-[48px]">
                       <SelectValue placeholder="Select a state" />
                     </SelectTrigger>
                     <SelectContent>
-                      {states.map((state, i) => (
-                        <SelectItem key={i} value={state}>
-                          {state}
+                      {stateOptions.map((state: { value: string; label: string }) => (
+                        <SelectItem key={state.value} value={state.value}>
+                          {state.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FieldInfo field={field} />
+                </>
+              );
+            }}
+          />
+        </div>
+
+        <div className='space-y-2'>
+          <Label htmlFor='area'>Area</Label>
+          <form.Field
+            name='area'
+            children={(field) => {
+              return (
+                <>
+                  <Select
+                    value={field.state.value}
+                    onValueChange={field.handleChange}
+                    disabled={!selectedState || areaOptions.length === 0}
+                  >
+                    <SelectTrigger className="h-[48px]">
+                      <SelectValue placeholder="Select an area" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {areaOptions.map((area: { value: string; label: string }) => (
+                        <SelectItem key={area.value} value={area.value}>
+                          {area.label}
                         </SelectItem>
                       ))}
                     </SelectContent>

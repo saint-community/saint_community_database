@@ -9,7 +9,6 @@ import { format } from 'date-fns';
 import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { updateFellowship } from '@/services/fellowships';
-import { LeaderSelector } from '@/components/WorkerSelector';
 import { Label } from '@workspace/ui/components/label';
 import { useChurchesOption } from '@/hooks/churches';
 import { FormSelectField, FormField } from '@/components/forms';
@@ -17,6 +16,12 @@ import { useMe } from '@/hooks/useMe';
 import { DatePicker } from '@workspace/ui/components/date-picker';
 import { ROLES } from '@/utils/constants';
 import { toast } from '@workspace/ui/lib/sonner';
+import { useChurchAccountOptions } from '@/hooks/auth';
+import countries from '@/utils/countries.json';
+
+const uniqueCountries = Array.from(
+  new Map((countries as any[]).map((country) => [country.name, country])).values()
+);
 
 // const formSchema = z.object({
 //   name: z.string().min(2, {
@@ -43,6 +48,9 @@ export default function FellowshipDetailPage() {
   const [editedData, setEditedData] = useState<any>(null);
   const { data: churches } = useChurchesOption();
   const { data: user, isAdmin } = useMe();
+  const { data: leaderOptions } = useChurchAccountOptions(
+    fellowship?.church_id || user?.church_id
+  );
 
   const lockChurchSelect =
     !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
@@ -58,6 +66,53 @@ export default function FellowshipDetailPage() {
     }
     return churches;
   }, [user, churches, lockChurchSelect]);
+
+  const countryOptions = useMemo(
+    () =>
+      uniqueCountries.map((country) => ({
+        value: country.name,
+        label: country.name,
+      })),
+    []
+  );
+
+  const selectedCountry = editedData?.country ?? fellowship?.country ?? '';
+  const selectedState = editedData?.state ?? fellowship?.state ?? '';
+
+  const stateOptions = useMemo(() => {
+    const country = uniqueCountries.find(
+      (item) => item.name === selectedCountry
+    );
+    return (country?.states || []).map((state: any) => ({
+      value: state.name,
+      label: state.name,
+    }));
+  }, [selectedCountry]);
+
+  const areaOptions = useMemo(() => {
+    const country = uniqueCountries.find(
+      (item) => item.name === selectedCountry
+    );
+    const state = country?.states?.find(
+      (item: any) => item.name === selectedState
+    );
+    return (state?.subdivisions || state?.subdivision || []).map(
+      (area: string) => ({
+        value: area,
+        label: area,
+      })
+    );
+  }, [selectedCountry, selectedState]);
+
+  const meetingDayOptions = [
+    { value: '1', label: 'Monday' },
+    { value: '2', label: 'Tuesday' },
+    { value: '3', label: 'Wednesday' },
+    { value: '4', label: 'Thursday' },
+    { value: '5', label: 'Friday' },
+    { value: '6', label: 'Saturday' },
+    { value: '7', label: 'Sunday' },
+  ];
 
   const mutation = useMutation({
     mutationFn: (data: any) => updateFellowship(id, data),
@@ -90,7 +145,11 @@ export default function FellowshipDetailPage() {
     name: fellowship.name,
     cordinator_id: fellowship.cordinator_id,
     church_id: fellowship.church_id.toString(),
-    location: fellowship.location,
+    country: fellowship.country || '',
+    state: fellowship.state || '',
+    area: fellowship.area || '',
+    meeting_days: fellowship.meeting_days?.toString() || '4',
+    active: fellowship.active || 'yes',
     address: fellowship.address || '',
     dateStarted: fellowship.start_date
       ? new Date(fellowship.start_date)
@@ -108,6 +167,25 @@ export default function FellowshipDetailPage() {
   const formattedDate = format(currentData.dateStarted, 'do MMM. yyyy');
 
   const handleEdit = (field: string, value: string | Date | undefined) => {
+    if (field === 'country') {
+      setEditedData({
+        ...currentData,
+        country: value,
+        state: '',
+        area: '',
+      });
+      return;
+    }
+
+    if (field === 'state') {
+      setEditedData({
+        ...currentData,
+        state: value,
+        area: '',
+      });
+      return;
+    }
+
     setEditedData({
       ...currentData,
       [field]: value,
@@ -123,9 +201,16 @@ export default function FellowshipDetailPage() {
 
     mutation.mutate({
       name: editedData.name,
-      cordinator_id: Number(editedData.cordinator_id),
+      cordinator_id:
+        editedData.cordinator_id && editedData.cordinator_id !== 'none'
+          ? Number(editedData.cordinator_id)
+          : null,
       church_id: Number(editedData.church_id),
-      location: editedData.location,
+      country: editedData.country || null,
+      state: editedData.state || null,
+      area: editedData.area || null,
+      meeting_days: Number(editedData.meeting_days),
+      active: editedData.active,
       address: editedData.address,
       start_date: editedData.dateStarted?.toISOString()?.split('T')[0],
     });
@@ -174,12 +259,19 @@ export default function FellowshipDetailPage() {
           <div className='space-y-2'>
             <Label className='block text-sm font-medium'>Name of Leader</Label>
 
-            <LeaderSelector
-              selectedWorker={currentData.cordinator_id}
-              setSelectedWorker={(worker) => {
-                handleEdit('cordinator_id', worker);
-              }}
-              churchId={currentData.church_id}
+            <FormSelectField
+              label=''
+              value={currentData.cordinator_id?.toString() || ''}
+              onEdit={(value) => handleEdit('cordinator_id', value)}
+              options={[
+                { value: 'none', label: 'No leader assigned' },
+                ...(leaderOptions || []).map(
+                  (leader: { value: number; label: string }) => ({
+                    value: String(leader.value),
+                    label: leader.label,
+                  })
+                ),
+              ]}
             />
           </div>
 
@@ -194,6 +286,44 @@ export default function FellowshipDetailPage() {
             label='Address'
             value={currentData.address}
             onEdit={(value) => handleEdit('address', value)}
+          />
+
+          <FormSelectField
+            label='Country'
+            value={currentData.country}
+            onEdit={(value) => handleEdit('country', value)}
+            options={countryOptions}
+          />
+
+          <FormSelectField
+            label='State'
+            value={currentData.state}
+            onEdit={(value) => handleEdit('state', value)}
+            options={stateOptions}
+          />
+
+          <FormSelectField
+            label='Area'
+            value={currentData.area}
+            onEdit={(value) => handleEdit('area', value)}
+            options={areaOptions}
+          />
+
+          <FormSelectField
+            label='Meeting Day'
+            value={currentData.meeting_days}
+            onEdit={(value) => handleEdit('meeting_days', value)}
+            options={meetingDayOptions}
+          />
+
+          <FormSelectField
+            label='Active'
+            value={currentData.active}
+            onEdit={(value) => handleEdit('active', value)}
+            options={[
+              { value: 'yes', label: 'Yes' },
+              { value: 'no', label: 'No' },
+            ]}
           />
           <div className='space-y-2'>
             <Label className='block text-sm font-medium'>Date Started</Label>

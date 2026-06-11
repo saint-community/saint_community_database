@@ -2,10 +2,10 @@ import { getPrayerGroupById, getPrayerGroups } from '@/services/prayer_groups';
 import { QUERY_PATHS } from '@/utils/constants';
 import { useQuery } from '@tanstack/react-query';
 
-export const usePrayerGroups = () => {
+export const usePrayerGroups = (churchId?: number | string) => {
   return useQuery({
-    queryKey: [QUERY_PATHS.PRAYER_GROUPS],
-    queryFn: () => getPrayerGroups(),
+    queryKey: [QUERY_PATHS.PRAYER_GROUPS, churchId],
+    queryFn: () => getPrayerGroups(churchId),
   });
 };
 
@@ -17,10 +17,11 @@ export const usePrayerGroupById = (id: string) => {
   });
 };
 
-export const usePrayerGroupOption = () => {
+export const usePrayerGroupOption = (churchId?: number | string) => {
   return useQuery({
-    queryKey: [QUERY_PATHS.PRAYER_GROUPS, 'option'],
-    queryFn: () => getPrayerGroups(),
+    queryKey: [QUERY_PATHS.PRAYER_GROUPS, 'option', churchId],
+    queryFn: () => getPrayerGroups(churchId),
+    enabled: churchId === undefined || churchId !== '',
     select: (data) => {
       return data.map(
         (prayerGroup: { id: string; day: string; schedule: string }) => ({

@@ -7,7 +7,7 @@ import { useParams } from 'next/navigation';
 import { useChurchById } from '@/hooks/churches';
 import { CalendarIcon, Loader2, Pencil, Users, Users2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { updateChurch } from '@/services/churches';
 import { DatePicker } from '@workspace/ui/components/date-picker';
@@ -15,21 +15,19 @@ import { FormSelectField } from '@/components/forms';
 // import { COUNTRIES } from '@/utils/constants';
 import { Label } from '@workspace/ui/components/label';
 import { toast } from '@workspace/ui/lib/sonner';
+import { Checkbox } from '@workspace/ui/components/checkbox';
+import countries from '@/utils/countries.json';
+
+const uniqueCountries = Array.from(
+  new Map((countries as any[]).map((country) => [country.name, country])).values()
+);
 
 export default function ChurchDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const { data: church, isLoading, refetch } = useChurchById(id);
-    const [countries, setCountries] = useState<{ code: string; name: string }[]>(
-        []
-      );
  
   const [editedData, setEditedData] = useState<any>(null);
-   useEffect(() => {
-    import("@/utils/countries.json").then((mod) => {
-      setCountries(mod.default || mod);
-    });
-  }, []);
 
   const mutation = useMutation({
     mutationFn: (data: any) => updateChurch(id, data),
@@ -61,8 +59,11 @@ export default function ChurchDetailPage() {
   const churchData = {
     name: church.name,
     pastor: church.pastorName,
-    location: church.state,
-    address: church.address,
+    country: church?.country || '',
+    state: church?.state || '',
+    area: church?.area || '',
+    address: church.address || '',
+    active: church.active ?? true,
     dateStarted: church.start_date
       ? new Date(church.start_date)
       : new Date('2022-10-22'),
@@ -70,14 +71,72 @@ export default function ChurchDetailPage() {
     leaders: church?.leaders?.length || 0,
     workers: church?.workers?.length || 0,
     members: church?.members?.length || 0,
-    country: church?.country || '',
   };
 
-  const currentData = editedData || churchData;
+  const currentData = {
+    ...churchData,
+    ...(editedData || {}),
+  };
+
+  const countryOptions = useMemo(
+    () =>
+      uniqueCountries.map((country) => ({
+        value: country.name,
+        label: country.name,
+      })),
+    []
+  );
+
+  const selectedCountry = editedData?.country ?? church?.country ?? '';
+  const selectedState = editedData?.state ?? church?.state ?? '';
+
+  const stateOptions = useMemo(() => {
+    const country = uniqueCountries.find(
+      (item) => item.name === selectedCountry
+    );
+    return (country?.states || []).map((state: any) => ({
+      value: state.name,
+      label: state.name,
+    }));
+  }, [selectedCountry]);
+
+  const areaOptions = useMemo(() => {
+    const country = uniqueCountries.find(
+      (item) => item.name === selectedCountry
+    );
+    const state = country?.states?.find(
+      (item: any) => item.name === selectedState
+    );
+    return (state?.subdivisions || state?.subdivision || []).map(
+      (area: string) => ({
+        value: area,
+        label: area,
+      })
+    );
+  }, [selectedCountry, selectedState]);
 
   const formattedDate = format(currentData.dateStarted, 'do MMM. yyyy');
 
   const handleEdit = (field: string, value: string | Date | undefined) => {
+    if (field === 'country') {
+      setEditedData({
+        ...currentData,
+        country: value,
+        state: '',
+        area: '',
+      });
+      return;
+    }
+
+    if (field === 'state') {
+      setEditedData({
+        ...currentData,
+        state: value,
+        area: '',
+      });
+      return;
+    }
+
     setEditedData({
       ...currentData,
       [field]: value,
@@ -93,11 +152,12 @@ export default function ChurchDetailPage() {
 
     mutation.mutate({
       name: editedData.name,
-      pastorName: editedData.pastor,
-      state: editedData.location,
-      address: editedData.address,
-      start_date: editedData.dateStarted?.toISOString()?.split('T')[0],
-      country: editedData.country,
+      country: currentData.country || null,
+      state: currentData.state || null,
+      area: currentData.area || null,
+      address: currentData.address || null,
+      active: Boolean(currentData.active),
+      start_date: currentData.dateStarted?.toISOString()?.split('T')[0] || null,
 
     });
   };
@@ -161,21 +221,43 @@ export default function ChurchDetailPage() {
             onEdit={(value) => handleEdit('address', value)}
           />
 
-          <FormField
-            label='Church Location'
-            value={currentData.location}
-            onEdit={(value) => handleEdit('location', value)}
-          />
-
           <FormSelectField
             label='Country'
             value={currentData.country}
             onEdit={(value) => handleEdit('country', value)}
-            options={countries.map((country) => ({
-              value: country.name,
-              label: country.name,
-            }))}
+            options={countryOptions}
           />
+
+          <FormSelectField
+            label='State'
+            value={currentData.state}
+            onEdit={(value) => handleEdit('state', value)}
+            options={stateOptions}
+          />
+
+          <FormSelectField
+            label='Area'
+            value={currentData.area}
+            onEdit={(value) => handleEdit('area', value)}
+            options={areaOptions}
+          />
+
+          <div className='flex items-center gap-3 rounded-md border border-gray-200 p-3'>
+            <Checkbox
+              id='active'
+              checked={Boolean(currentData.active)}
+              onCheckedChange={(checked) =>
+                setEditedData((prev: any) => ({
+                  ...currentData,
+                  ...(prev || {}),
+                  active: checked === true,
+                }))
+              }
+            />
+            <Label htmlFor='active' className='text-sm font-medium'>
+              Active church
+            </Label>
+          </div>
 
           <div className='space-y-2'>
             <Label className='block text-sm font-medium'>Date Started</Label>

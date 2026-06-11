@@ -13,12 +13,17 @@ import { updateCell } from '@/services/cell';
 import { FormSelectField } from '@/components/forms';
 import { useChurchesOption } from '@/hooks/churches';
 import { useFellowshipsOption } from '@/hooks/fellowships';
-import { LeaderSelector } from '@/components/WorkerSelector';
 import { Label } from '@workspace/ui/components/label';
 import { useMe } from '@/hooks/useMe';
-import { MEETING_DAYS, ROLES } from '@/utils/constants';
+import { ROLES } from '@/utils/constants';
 import { DatePicker } from '@workspace/ui/components/date-picker';
 import { toast } from '@workspace/ui/lib/sonner';
+import { useChurchAccountOptions } from '@/hooks/auth';
+import countries from '@/utils/countries.json';
+
+const uniqueCountries = Array.from(
+  new Map((countries as any[]).map((country) => [country.name, country])).values()
+);
 
 // const formSchema = z.object({
 //   name: z.string().min(2, {
@@ -48,14 +53,20 @@ export default function CellDetailPage() {
   const [editedData, setEditedData] = useState<any>(null);
   const { data: churches } = useChurchesOption();
   const { data: user, isAdmin } = useMe();
+  const { data: leaderOptions } = useChurchAccountOptions(
+    cell?.church_id || user?.church_id
+  );
 
   const cellData = {
     name: cell?.name,
     leader_id: cell?.leader_id,
     church_id: cell?.church_id.toString(),
     fellowship_id: cell?.fellowship_id.toString(),
-    location: cell?.location,
-    address: cell?.address,
+    country: cell?.country || '',
+    state: cell?.state || '',
+    area: cell?.area || '',
+    address: cell?.address || '',
+    active: cell?.active || 'yes',
     dateStarted: cell?.start_date
       ? new Date(cell?.start_date)
       : new Date('2022-10-22'),
@@ -102,6 +113,53 @@ export default function CellDetailPage() {
     return fellowships;
   }, [user, fellowships, lockFellowshipSelect]);
 
+  const countryOptions = useMemo(
+    () =>
+      uniqueCountries.map((country) => ({
+        value: country.name,
+        label: country.name,
+      })),
+    []
+  );
+
+  const selectedCountry = editedData?.country ?? cell?.country ?? '';
+  const selectedState = editedData?.state ?? cell?.state ?? '';
+
+  const stateOptions = useMemo(() => {
+    const country = uniqueCountries.find(
+      (item) => item.name === selectedCountry
+    );
+    return (country?.states || []).map((state: any) => ({
+      value: state.name,
+      label: state.name,
+    }));
+  }, [selectedCountry]);
+
+  const areaOptions = useMemo(() => {
+    const country = uniqueCountries.find(
+      (item) => item.name === selectedCountry
+    );
+    const state = country?.states?.find(
+      (item: any) => item.name === selectedState
+    );
+    return (state?.subdivisions || state?.subdivision || []).map(
+      (area: string) => ({
+        value: area,
+        label: area,
+      })
+    );
+  }, [selectedCountry, selectedState]);
+
+  const meetingDayOptions = [
+    { value: '1', label: 'Monday' },
+    { value: '2', label: 'Tuesday' },
+    { value: '3', label: 'Wednesday' },
+    { value: '4', label: 'Thursday' },
+    { value: '5', label: 'Friday' },
+    { value: '6', label: 'Saturday' },
+    { value: '7', label: 'Sunday' },
+  ];
+
   const mutation = useMutation({
     mutationFn: (data: any) => updateCell(id, data),
     onSuccess: () => {
@@ -130,6 +188,25 @@ export default function CellDetailPage() {
   }
 
   const handleEdit = (field: string, value: string | Date | undefined) => {
+    if (field === 'country') {
+      setEditedData({
+        ...currentData,
+        country: value,
+        state: '',
+        area: '',
+      });
+      return;
+    }
+
+    if (field === 'state') {
+      setEditedData({
+        ...currentData,
+        state: value,
+        area: '',
+      });
+      return;
+    }
+
     setEditedData({
       ...currentData,
       [field]: value,
@@ -141,7 +218,24 @@ export default function CellDetailPage() {
   };
 
   const handleSave = () => {
-    mutation.mutate(editedData);
+    if (!editedData) return;
+
+    mutation.mutate({
+      name: currentData.name,
+      church_id: Number(currentData.church_id),
+      fellowship_id: Number(currentData.fellowship_id),
+      leader_id:
+        currentData.leader_id && currentData.leader_id !== 'none'
+          ? Number(currentData.leader_id)
+          : null,
+      country: currentData.country || null,
+      state: currentData.state || null,
+      area: currentData.area || null,
+      address: currentData.address || null,
+      meeting_days: Number(currentData.meeting_days),
+      active: currentData.active,
+      start_date: currentData.dateStarted?.toISOString()?.split('T')[0],
+    });
   };
 
   const formattedDate = format(cellData.dateStarted, 'do MMM. yyyy');
@@ -184,13 +278,19 @@ export default function CellDetailPage() {
           <div className='space-y-2'>
             <Label className='block text-sm font-medium'>Name of Leader</Label>
 
-            <LeaderSelector
-              selectedWorker={currentData.leader_id}
-              setSelectedWorker={(worker) => {
-                handleEdit('leader_id', worker);
-              }}
-              churchId={currentData.church_id}
-              fellowshipId={currentData.fellowship_id}
+            <FormSelectField
+              label=''
+              value={currentData.leader_id?.toString() || ''}
+              onEdit={(value) => handleEdit('leader_id', value)}
+              options={[
+                { value: 'none', label: 'No leader assigned' },
+                ...(leaderOptions || []).map(
+                  (leader: { value: number; label: string }) => ({
+                    value: String(leader.value),
+                    label: leader.label,
+                  })
+                ),
+              ]}
             />
           </div>
           <FormSelectField
@@ -211,13 +311,44 @@ export default function CellDetailPage() {
             label='Meeting Days'
             value={currentData.meeting_days}
             onEdit={(value) => handleEdit('meeting_days', value)}
-            options={MEETING_DAYS}
+            options={meetingDayOptions}
           />
 
           <FormField
             label='Address'
             value={currentData.address}
             onEdit={(value) => handleEdit('address', value)}
+          />
+
+          <FormSelectField
+            label='Country'
+            value={currentData.country}
+            onEdit={(value) => handleEdit('country', value)}
+            options={countryOptions}
+          />
+
+          <FormSelectField
+            label='State'
+            value={currentData.state}
+            onEdit={(value) => handleEdit('state', value)}
+            options={stateOptions}
+          />
+
+          <FormSelectField
+            label='Area'
+            value={currentData.area}
+            onEdit={(value) => handleEdit('area', value)}
+            options={areaOptions}
+          />
+
+          <FormSelectField
+            label='Active'
+            value={currentData.active}
+            onEdit={(value) => handleEdit('active', value)}
+            options={[
+              { value: 'yes', label: 'Yes' },
+              { value: 'no', label: 'No' },
+            ]}
           />
 
           <div className='space-y-2'>

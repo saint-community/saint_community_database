@@ -2,20 +2,20 @@
 'use client';
 
 import { Button } from '@workspace/ui/components/button';
-import { useForm } from '@workspace/ui/lib/react-hook-form';
+import { useForm, useStore } from '@workspace/ui/lib/react-hook-form';
 import { z } from 'zod';
 import { Input } from '@workspace/ui/components/input';
 import { Textarea } from '@workspace/ui/components/textarea';
 import { Label } from '@workspace/ui/components/label';
 import { Modal } from '@workspace/ui/components/modal';
 import { Loader2, SquarePlus } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { DatePicker } from '@workspace/ui/components/date-picker';
 import { FieldInfo } from '@workspace/ui/components/field-info';
 import { createChurch } from '@/services/churches';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@workspace/ui/lib/sonner';
-import { COUNTRIES, QUERY_PATHS } from '@/utils/constants';
+import { QUERY_PATHS } from '@/utils/constants';
 import {
   Select,
   SelectTrigger,
@@ -23,23 +23,22 @@ import {
   SelectContent,
   SelectItem,
 } from '@workspace/ui/components/select';
+import { Checkbox } from '@workspace/ui/components/checkbox';
+import countries from '@/utils/countries.json';
+
+const uniqueCountries = Array.from(
+  new Map((countries as any[]).map((country) => [country.name, country])).values()
+);
 
 const formSchema = z.object({
   churchName: z.string().min(2, {
     message: 'Church name must be at least 2 characters.',
   }),
-  location: z.string().min(2, {
-    message: 'Location must be at least 2 characters.',
-  }),
-  address: z.string().min(5, {
-    message: 'Address must be at least 5 characters.',
-  }),
-  country: z.string().min(2, {
-    message: 'Country is required',
-  }),
-  // pastorName: z.string().min(2, {
-  //   message: 'Pastor name must be at least 2 characters.',
-  // }),
+  country: z.string(),
+  state: z.string(),
+  area: z.string(),
+  address: z.string(),
+  active: z.boolean(),
   dateStarted: z.date().refine(
     (date) => {
       const parsedDate = new Date(date);
@@ -54,30 +53,6 @@ const formSchema = z.object({
 export function AddNewChurchSheet() {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
-   // Import countries.json dynamically to avoid SSR issues
-    const [countries, setCountries] = useState<{ code: string; name: string }[]>(
-      []
-    );
-    useEffect(() => {
-      import("@/utils/countries.json").then((mod) => {
-        setCountries(mod.default || mod);
-      });
-    }, []);
-
-    const [states, setStates] = useState<string[]>([]);
-      const [selectedCountry, setSelectedCountry] = useState("");
-    
-      useEffect(() => {
-        if (selectedCountry) {
-          import("@/utils/states.json").then((mod) => {
-            type AllStates = { [countryCode: string]: string[] };
-            const allStates = (mod.default || mod) as unknown as AllStates;
-            setStates(allStates[selectedCountry as keyof AllStates] || []);
-          });
-        } else {
-          setStates([]);
-        }
-      }, [selectedCountry]);
   
 
   const mutation = useMutation({
@@ -96,10 +71,11 @@ export function AddNewChurchSheet() {
   const form = useForm({
     defaultValues: {
       churchName: '',
-      location: '',
       address: '',
       country: '',
-      // pastorName: '',
+      state: '',
+      area: '',
+      active: true,
       dateStarted: new Date(),
     },
     validators: {
@@ -110,11 +86,12 @@ export function AddNewChurchSheet() {
       console.log(value);
       mutation.mutate({
         name: value.churchName,
-        country: value.country,
-        state: value.location,
-        address: value.address,
-        active: true,
-        start_date: value.dateStarted.toISOString()?.split('T')[0] || '',
+        country: value.country || null,
+        state: value.state || null,
+        area: value.area || null,
+        address: value.address || null,
+        active: value.active,
+        start_date: value.dateStarted?.toISOString()?.split('T')[0] || null,
       });
       // Handle form submission here
     },
@@ -122,6 +99,43 @@ export function AddNewChurchSheet() {
       console.log(props);
     },
   });
+
+  const selectedCountry = useStore(form.store, (state) => state.values.country);
+  const selectedState = useStore(form.store, (state) => state.values.state);
+
+  const countryOptions = useMemo(
+    () =>
+      uniqueCountries.map((country) => ({
+        value: country.name,
+        label: country.name,
+      })),
+    []
+  );
+
+  const stateOptions = useMemo(() => {
+    const country = uniqueCountries.find(
+      (item) => item.name === selectedCountry
+    );
+    return (country?.states || []).map((state: any) => ({
+      value: state.name,
+      label: state.name,
+    }));
+  }, [selectedCountry]);
+
+  const areaOptions = useMemo(() => {
+    const country = uniqueCountries.find(
+      (item) => item.name === selectedCountry
+    );
+    const state = country?.states?.find(
+      (item: any) => item.name === selectedState
+    );
+    return (state?.subdivisions || state?.subdivision || []).map(
+      (area: string) => ({
+        value: area,
+        label: area,
+      })
+    );
+  }, [selectedCountry, selectedState]);
 
   return (
     <Modal
@@ -163,24 +177,6 @@ export function AddNewChurchSheet() {
         </div>
 
         <div className='space-y-2'>
-          <Label htmlFor='location'>Location</Label>
-          <form.Field
-            name='location'
-            children={(field) => (
-              <>
-                <Input
-                  id='location'
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder='Enter location'
-                />
-                <FieldInfo field={field} />
-              </>
-            )}
-          />
-        </div>
-
-        <div className='space-y-2'>
           <Label htmlFor='address'>Church Address</Label>
           <form.Field
             name='address'
@@ -206,22 +202,101 @@ export function AddNewChurchSheet() {
               <>
                 <Select
                   value={field.state.value}
-                 onValueChange={(e) => {
-                    field.handleChange(e);
-                    setSelectedCountry(e);
+                  onValueChange={(value) => {
+                    field.handleChange(value);
+                    form.setFieldValue('state', '');
+                    form.setFieldValue('area', '');
                   }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder='Select a country' />
                   </SelectTrigger>
                   <SelectContent>
-                    {countries.map(({ name, code }) => (
-                      <SelectItem key={code} value={name}>
-                        {name}
+                    {countryOptions.map((country) => (
+                      <SelectItem key={country.value} value={country.value}>
+                        {country.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <FieldInfo field={field} />
+              </>
+            )}
+          />
+        </div>
+
+        <div className='space-y-2'>
+          <Label htmlFor='state'>State</Label>
+          <form.Field
+            name='state'
+            children={(field) => (
+              <>
+                <Select
+                  value={field.state.value}
+                  onValueChange={(value) => {
+                    field.handleChange(value);
+                    form.setFieldValue('area', '');
+                  }}
+                  disabled={!selectedCountry}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder='Select state' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stateOptions.map((state: { value: string; label: string }) => (
+                      <SelectItem key={state.value} value={state.value}>
+                        {state.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldInfo field={field} />
+              </>
+            )}
+          />
+        </div>
+
+        <div className='space-y-2'>
+          <Label htmlFor='area'>Area</Label>
+          <form.Field
+            name='area'
+            children={(field) => (
+              <>
+                <Select
+                  value={field.state.value}
+                  onValueChange={field.handleChange}
+                  disabled={!selectedState || areaOptions.length === 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder='Select area' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {areaOptions.map((area: { value: string; label: string }) => (
+                      <SelectItem key={area.value} value={area.value}>
+                        {area.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldInfo field={field} />
+              </>
+            )}
+          />
+        </div>
+
+        <div className='flex items-center gap-3 rounded-md border border-gray-200 p-3'>
+          <form.Field
+            name='active'
+            children={(field) => (
+              <>
+                <Checkbox
+                  id='active'
+                  checked={field.state.value}
+                  onCheckedChange={(checked) => field.handleChange(checked === true)}
+                />
+                <Label htmlFor='active' className='text-sm font-medium'>
+                  Active church
+                </Label>
                 <FieldInfo field={field} />
               </>
             )}

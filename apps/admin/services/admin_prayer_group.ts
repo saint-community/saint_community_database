@@ -5,10 +5,9 @@ import { QUERY_PATHS } from '@/utils/constants';
 
 export interface AdminPrayerGroupMeetingPayload {
   church_id: number;
-  leader_id: number;
+  leader_id: number | null;
   start_time: string;
   end_time: string;
-  period: string;
   day: string;
   schedule: string;
 }
@@ -34,7 +33,7 @@ export const updateAdminPrayerGroupMeeting = async (
   meetingId: string,
   body: AdminPrayerGroupMeetingPayload
 ) => {
-  const { data } = await ApiCaller.patch(
+  const { data } = await ApiCaller.put(
     QUERY_PATHS.ADMIN_PRAYER_GROUP_UPDATE.replace(':id', meetingId),
     body
   );

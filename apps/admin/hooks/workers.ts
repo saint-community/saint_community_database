@@ -103,10 +103,10 @@ export const useApproveWorker = (id: string) => {
   });
 };
 
-export const useRejectWorker = (id: string) => {
+export const useRejectWorker = (id: string, reason?: string) => {
   return useQuery({
     queryKey: [QUERY_PATHS.WORKER_REJECT.replace(':id', id)],
-    queryFn: () => rejectWorker(id),
+    queryFn: () => rejectWorker({ id, reason }),
     enabled: !!id,
   });
 };
