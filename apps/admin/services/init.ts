@@ -2,7 +2,7 @@ import axios from "axios";
 import { STORAGE_KEYS } from "@/utils/constants";
 
 //const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"; saintscommunity.railway.internal
-const API_URL = "saintscommunity-production-8c8a.up.railway.app";
+const API_URL = "https://saintscommunity-production-8c8a.up.railway.app";
 const X_API_KEY =
   process.env.NEXT_PUBLIC_X_API_KEY ||
   "113c53c9e26574039e24ce0cc63a6f7b3be020e5";
