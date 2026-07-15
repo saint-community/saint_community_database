@@ -309,7 +309,7 @@ function OnboardingWizard() {
                 <select
                   value={inviteRole}
                   onChange={(event) => setInviteRole(event.target.value as OnboardingRole)}
-                  className='h-11 rounded-md border border-gray-200 px-3 text-sm'
+                  className='h-11 rounded-md border border-gray-200 bg-white px-3 text-sm'
                 >
                   <option value='church_pastor'>Church pastor</option>
                   <option value='fellowship_leader'>Fellowship leader</option>
@@ -319,7 +319,7 @@ function OnboardingWizard() {
                 <select
                   value={inviteRole === 'church_pastor' ? 'cell_leader' : inviteRole}
                   onChange={(event) => setInviteRole(event.target.value as OnboardingRole)}
-                  className='h-11 rounded-md border border-gray-200 px-3 text-sm'
+                  className='h-11 rounded-md border border-gray-200 bg-white px-3 text-sm'
                 >
                   <option value='cell_leader'>Cell leader</option>
                 </select>
@@ -549,7 +549,7 @@ function SelectField({
         <SelectTrigger className='h-11'>
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className='bg-white'>
           {options.map((option) => {
             const item =
               typeof option === 'string'

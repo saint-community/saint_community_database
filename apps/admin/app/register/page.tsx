@@ -2,7 +2,7 @@
 "use client";
 
 import { Button } from "@workspace/ui/components/button";
-import { useForm } from "@workspace/ui/lib/react-hook-form";
+import { useForm, useStore } from "@workspace/ui/lib/react-hook-form";
 import { Input } from "@workspace/ui/components/input";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { Label } from "@workspace/ui/components/label";
@@ -200,7 +200,7 @@ function RegisterPageMain() {
       phoneNumber: "",
       church: church?.id?.toString() || "",
       fellowship: fellowships?.[0]?.id?.toString() || "",
-      cell: cells?.[0]?.id?.toString() || "",
+      cell: "",
       homeAddress: "",
       workAddress: "",
       dateOfBirth: dayjs(currentDate).subtract(7, "years").toDate(),
@@ -222,8 +222,6 @@ function RegisterPageMain() {
         formApi.setFieldValue("church", church?.id?.toString());
         fellowships.length === 1 &&
           formApi.setFieldValue("fellowship", fellowships?.[0]?.id?.toString());
-        cells.length === 1 &&
-          formApi.setFieldValue("cell", cells?.[0]?.id?.toString());
       },
     },
     onSubmit: async ({ value }) => {
@@ -292,15 +290,45 @@ function RegisterPageMain() {
     } ,
   });
 
+  const selectedFellowshipId = useStore(
+    form.store,
+    (state) => state.values.fellowship
+  );
+
+  const filteredCells = useMemo(
+    () =>
+      cells.filter(
+        (cell: { fellowship_id?: number | string }) =>
+          String(cell.fellowship_id) === String(selectedFellowshipId)
+      ),
+    [cells, selectedFellowshipId]
+  );
+
   useEffect(() => {
     form.setFieldValue("church", church?.id?.toString() || "");
     if (fellowships.length === 1) {
       form.setFieldValue("fellowship", fellowships[0]?.id?.toString() || "");
     }
-    if (cells.length === 1) {
-      form.setFieldValue("cell", cells[0]?.id?.toString() || "");
+  }, [church?.id, fellowships, form]);
+
+  useEffect(() => {
+    if (!selectedFellowshipId) {
+      form.setFieldValue("cell", "");
+      return;
     }
-  }, [cells, church?.id, fellowships, form]);
+
+    const currentCellBelongsToFellowship = filteredCells.some(
+      (cell: { id: number | string }) =>
+        String(cell.id) === String(form.state.values.cell)
+    );
+
+    if (!currentCellBelongsToFellowship) {
+      form.setFieldValue(
+        "cell",
+        filteredCells.length === 1 ? String(filteredCells[0]?.id || "") : ""
+      );
+    }
+  }, [filteredCells, form, selectedFellowshipId]);
 
   if (isLoading) {
     return (
@@ -725,7 +753,19 @@ function RegisterPageMain() {
               <>
                 <Select
                   value={field.state.value}
-                  onValueChange={field.handleChange}
+                  onValueChange={(value) => {
+                    field.handleChange(value);
+                    const fellowshipCells = cells.filter(
+                      (cell: { fellowship_id?: number | string }) =>
+                        String(cell.fellowship_id) === String(value)
+                    );
+                    form.setFieldValue(
+                      "cell",
+                      fellowshipCells.length === 1
+                        ? String(fellowshipCells[0]?.id || "")
+                        : ""
+                    );
+                  }}
                 >
                   <SelectTrigger className="h-[48px]">
                     <SelectValue placeholder="Select status" />
@@ -809,7 +849,7 @@ function RegisterPageMain() {
           />
         </div>
 
-        {!isEmpty(cells) && (
+        {!isEmpty(filteredCells) && (
           <div className="space-y-2">
             <Label htmlFor="cell">Cell</Label>
             <form.Field
@@ -824,7 +864,7 @@ function RegisterPageMain() {
                       <SelectValue placeholder="Select a cell" />
                     </SelectTrigger>
                     <SelectContent>
-                      {cells?.map((cell: { id: number; name: string }) => (
+                      {filteredCells?.map((cell: { id: number; name: string }) => (
                         <SelectItem key={cell.id} value={`${cell.id}`}>
                           {cell.name}
                         </SelectItem>
