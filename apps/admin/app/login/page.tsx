@@ -53,7 +53,7 @@ export default function LoginPage() {
     <div className="flex h-svh flex-col sm:flex-row w-full overflow-hidden">
       <div className="flex sm:flex-1 bg-slate-600 overflow-hidden relative justify-center items-center p-12 sm:p-0">
         <p className="z-10 text-center sm:text-[58px] text-md text-white font-serif">
-          SAINTS COMMUNITY TEST
+          SAINTS COMMUNITY
         </p>
         <Image
           src={imageFile}
