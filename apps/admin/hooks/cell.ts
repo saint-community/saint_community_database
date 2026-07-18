@@ -38,6 +38,7 @@ export const useCellsOption = (fellowshipId?: string) => {
   return useQuery({
     queryKey: [QUERY_PATHS.CELLS, 'option', fellowshipId],
     queryFn: () => getFellowshipById(fellowshipId || ''),
+    enabled: !!fellowshipId,
     select: (data) =>
       data?.cells?.map((cell: { id: string; name: string }) => ({
         value: cell.id,

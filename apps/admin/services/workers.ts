@@ -114,11 +114,23 @@ export const invalidateWorkerForm = async (token: string) => {
 };
 
 
-export const getWorkersRegistration = async ({action, page = 1}: {action: string, page?: number}) => {
+export const getWorkersRegistration = async ({
+  action,
+  page = 1,
+  fellowship_id,
+  cell_id,
+}: {
+  action: string;
+  page?: number;
+  fellowship_id?: string;
+  cell_id?: string;
+}) => {
   const { data } = await ApiCaller.get(
     `${QUERY_PATHS.WORKERS}/${action}`, {
       params: {
         ...(page && { page }),
+        ...(fellowship_id && { fellowship_id }),
+        ...(cell_id && { cell_id }),
       }
     }
   );

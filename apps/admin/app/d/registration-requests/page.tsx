@@ -18,6 +18,13 @@ import {
   DialogTitle,
 } from '@workspace/ui/components/dialog';
 import { Label } from '@workspace/ui/components/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@workspace/ui/components/select';
 import { Textarea } from '@workspace/ui/components/textarea';
 import { toast } from '@workspace/ui/lib/sonner';
 import { cn } from '@workspace/ui/lib/utils';
@@ -35,6 +42,10 @@ import {
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { isEmpty } from 'lodash';
+import { useMe } from '@/hooks/useMe';
+import { useFellowshipsOption } from '@/hooks/fellowships';
+import { useCellsOption } from '@/hooks/cell';
+import { ROLES } from '@/utils/constants';
 
 const approvalStyles: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -165,9 +176,26 @@ const RegistrationRequests = () => {
   } | null>(null);
   const [selectedWorker, setSelectedWorker] = useState<any | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [selectedFellowship, setSelectedFellowship] = useState('all');
+  const [selectedCell, setSelectedCell] = useState('all');
 
   const searchParams = useSearchParams();
   const slug = searchParams.get('status') ?? 'pending';
+  const { data: user } = useMe();
+  const showPastorFilters =
+    !!user &&
+    [
+      ROLES.ADMIN,
+      ROLES.PASTOR,
+      ROLES.CHURCH_PASTOR,
+      ROLES.FELLOWSHIP_LEADER,
+    ].includes(user.role);
+  const { data: fellowships = [] } = useFellowshipsOption(
+    user?.church_id ? String(user.church_id) : undefined
+  );
+  const { data: cells = [] } = useCellsOption(
+    selectedFellowship !== 'all' ? selectedFellowship : undefined
+  );
   const {
     data: workers,
     fetchNextPage,
@@ -175,7 +203,11 @@ const RegistrationRequests = () => {
     isFetchingNextPage,
     refetch,
     isLoading,
-  } = useInfiniteWorkersRegistration({ action: slug });
+  } = useInfiniteWorkersRegistration({
+    action: slug,
+    fellowship_id: selectedFellowship !== 'all' ? selectedFellowship : undefined,
+    cell_id: selectedCell !== 'all' ? selectedCell : undefined,
+  });
 
   const mutation = useMutation({
     mutationFn: (id: any) => approveWorker(id),
@@ -239,6 +271,73 @@ const RegistrationRequests = () => {
         </div>
 
         <h1 className='text-2xl font-bold mb-6 capitalize'>{slug} List</h1>
+
+        {showPastorFilters ? (
+          <div className='mb-6 rounded-lg border border-gray-200 bg-white p-4'>
+            <div className='grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end'>
+              <div className='space-y-2'>
+                <Label>Fellowship</Label>
+                <Select
+                  value={selectedFellowship}
+                  onValueChange={(value) => {
+                    setSelectedFellowship(value);
+                    setSelectedCell('all');
+                  }}
+                >
+                  <SelectTrigger className='h-11'>
+                    <SelectValue placeholder='Filter by fellowship' />
+                  </SelectTrigger>
+                  <SelectContent className='bg-white'>
+                    <SelectItem value='all'>All fellowships</SelectItem>
+                    {fellowships.map(
+                      (fellowship: { value: string; label: string }) => (
+                        <SelectItem
+                          key={fellowship.value}
+                          value={String(fellowship.value)}
+                        >
+                          {fellowship.label}
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className='space-y-2'>
+                <Label>Cell</Label>
+                <Select
+                  value={selectedCell}
+                  onValueChange={setSelectedCell}
+                  disabled={selectedFellowship === 'all'}
+                >
+                  <SelectTrigger className='h-11'>
+                    <SelectValue placeholder='Filter by cell' />
+                  </SelectTrigger>
+                  <SelectContent className='bg-white'>
+                    <SelectItem value='all'>All cells</SelectItem>
+                    {cells.map((cell: { value: string; label: string }) => (
+                      <SelectItem key={cell.value} value={String(cell.value)}>
+                        {cell.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button
+                variant='outline'
+                className='bg-white'
+                onClick={() => {
+                  setSelectedFellowship('all');
+                  setSelectedCell('all');
+                }}
+                disabled={selectedFellowship === 'all' && selectedCell === 'all'}
+              >
+                Clear filters
+              </Button>
+            </div>
+          </div>
+        ) : null}
 
         {isLoading ? (
           <div className='flex flex-col items-center justify-center h-screen mx-auto'>
