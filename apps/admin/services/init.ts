@@ -1,7 +1,7 @@
 import axios from "axios";
 import { STORAGE_KEYS } from "@/utils/constants";
 
-const API_URL = "https://admin-service.saintscommunityportal.com"; // || "http://127.0.0.1:81111";
+const API_URL = "http://127.0.0.1:8000"; //"https://admin-service.saintscommunityportal.com"; // ||
 
 const X_API_KEY =
   process.env.NEXT_PUBLIC_X_API_KEY ||

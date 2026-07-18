@@ -1,4 +1,4 @@
-'use client';
+"use client";
 import {
   Settings,
   Church,
@@ -8,8 +8,8 @@ import {
   LogOut,
   Settings2,
   BarChart3,
-} from 'lucide-react';
-import Logo from '@/assets/svgs/logo.svg';
+} from "lucide-react";
+import Logo from "@/assets/svgs/logo.svg";
 import {
   Sidebar,
   SidebarContent,
@@ -20,32 +20,32 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from '@workspace/ui/components/sidebar';
-import Image from 'next/image';
+} from "@workspace/ui/components/sidebar";
+import Image from "next/image";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
-} from '@workspace/ui/components/avatar';
-import Link from 'next/link';
-import { useMe } from '@/hooks/useMe';
-import { ROLES } from '@/utils/constants';
-import { useMemo } from 'react';
+} from "@workspace/ui/components/avatar";
+import Link from "next/link";
+import { useMe } from "@/hooks/useMe";
+import { ROLES } from "@/utils/constants";
+import { useMemo } from "react";
 
 const otherItems = [
   {
-    title: 'Settings',
-    url: '/d/settings/general',
+    title: "Settings",
+    url: "/d/settings/general",
     icon: Settings,
   },
   {
-    title: 'Advanced',
-    url: '/d/registration-requests?status=pending',
+    title: "Workers Onboarding",
+    url: "/d/registration-requests?status=pending",
     icon: Settings2,
   },
   {
-    title: 'Sign Out',
-    url: '#',
+    title: "Sign Out",
+    url: "#",
     icon: LogOut,
     isSignOut: true,
   },
@@ -74,8 +74,8 @@ export function AppSidebar() {
   const mainItems = useMemo(() => {
     const items = [
       {
-        title: 'Analytics Dashboard',
-        url: 'https://analytics.saintscommunityportal.com/',
+        title: "Analytics Dashboard",
+        url: "https://analytics.saintscommunityportal.com/",
         icon: BarChart3,
         external: true,
       },
@@ -87,8 +87,8 @@ export function AppSidebar() {
       ...(!hideChurch
         ? [
             {
-              title: 'Churches',
-              url: '/d/churches',
+              title: "Churches",
+              url: "/d/churches",
               icon: Church,
             },
           ]
@@ -96,8 +96,8 @@ export function AppSidebar() {
       ...(!hideFellowship
         ? [
             {
-              title: 'Fellowships/PCF',
-              url: '/d/fellowships',
+              title: "Fellowships/PCF",
+              url: "/d/fellowships",
               icon: ListCheck,
             },
           ]
@@ -105,15 +105,15 @@ export function AppSidebar() {
       ...(!hideCells
         ? [
             {
-              title: 'Cells',
-              url: '/d/cells',
+              title: "Cells",
+              url: "/d/cells",
               icon: Users2,
             },
           ]
         : []),
       {
-        title: 'Workers in Training',
-        url: '/d/workers',
+        title: "Workers in Training",
+        url: "/d/workers",
         icon: User2,
       },
     ];
@@ -122,26 +122,26 @@ export function AppSidebar() {
   }, [hideChurch, hideFellowship, hideCells]);
 
   return (
-    <Sidebar className='h-dvh'>
-      <SidebarContent className='bg-[#fafafa]'>
-        <SidebarGroup className='p-0'>
-          <SidebarHeader className='pt-20'>
+    <Sidebar className="h-dvh">
+      <SidebarContent className="bg-[#fafafa]">
+        <SidebarGroup className="p-0">
+          <SidebarHeader className="pt-20">
             {/* <SidebarGroupLabel>Application</SidebarGroupLabel> */}
-            <div className='flex flex-col items-center pb-12'>
+            <div className="flex flex-col items-center pb-12">
               <div>
-                <Image src={Logo} alt='Logo' />
-                <p className='text-[#B91507] text-xs place-self-end mt-[-5px]'>
+                <Image src={Logo} alt="Logo" />
+                <p className="text-[#B91507] text-xs place-self-end mt-[-5px]">
                   Database
                 </p>
               </div>
-              <Avatar className='sm:w-[100px] sm:h-[100px] w-[50px] h-[50px] mt-12 mb-4'>
-                <AvatarImage src='https://github.com/shadcn.png' alt='@user' />
+              <Avatar className="sm:w-[100px] sm:h-[100px] w-[50px] h-[50px] mt-12 mb-4">
+                <AvatarImage src="https://github.com/shadcn.png" alt="@user" />
                 <AvatarFallback>CN</AvatarFallback>
               </Avatar>
-              <b className='sm:text-[19px] text-md font-medium m-0 p-0'>
+              <b className="sm:text-[19px] text-md font-medium m-0 p-0">
                 {data?.name}
               </b>
-              <p className='sm:text-sm text-sm-0 p-0'>{data?.email}</p>
+              <p className="sm:text-sm text-sm-0 p-0">{data?.email}</p>
             </div>
           </SidebarHeader>
           <SidebarGroupContent>
@@ -150,14 +150,14 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    className='rounded-none px-4 h-[56px]'
+                    className="rounded-none px-4 h-[56px]"
                   >
                     {item.external ? (
                       <a
                         href={item.url}
-                        target='_blank'
-                        rel='noopener noreferrer'
-                        className=''
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className=""
                         onClick={() => {
                           if (isMobile) {
                             toggleSidebar();
@@ -167,14 +167,14 @@ export function AppSidebar() {
                         <item.icon
                           size={24}
                           fontSize={24}
-                          className='stroke-[#B91507]'
+                          className="stroke-[#B91507]"
                         />
-                        <span className='text-sm'>{item.title}</span>
+                        <span className="text-sm">{item.title}</span>
                       </a>
                     ) : (
                       <Link
                         href={item.url}
-                        className=''
+                        className=""
                         onClick={() => {
                           if (isMobile) {
                             toggleSidebar();
@@ -184,22 +184,22 @@ export function AppSidebar() {
                         <item.icon
                           size={24}
                           fontSize={24}
-                          className='stroke-[#B91507]'
+                          className="stroke-[#B91507]"
                         />
-                        <span className='text-sm'>{item.title}</span>
+                        <span className="text-sm">{item.title}</span>
                       </Link>
                     )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
-            <div className='h-[1.5px] bg-[#705C2F] my-6 w-full' />
+            <div className="h-[1.5px] bg-[#705C2F] my-6 w-full" />
             <SidebarMenu>
               {otherItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    className='rounded-none px-4 h-[56px]'
+                    className="rounded-none px-4 h-[56px]"
                   >
                     <Link
                       href={item.url}
@@ -212,8 +212,8 @@ export function AppSidebar() {
                         }
                       }}
                     >
-                      <item.icon size={24} className='stroke-[#B91507]' />
-                      <span className='text-sm'>{item.title}</span>
+                      <item.icon size={24} className="stroke-[#B91507]" />
+                      <span className="text-sm">{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
