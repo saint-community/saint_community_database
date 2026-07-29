@@ -50,6 +50,17 @@ export function FormSelectField({
   onEdit,
   options,
 }: FormFieldProps) {
+  const uniqueOptions = Array.from(
+    new Map(
+      (options || [])
+        .filter((option) => option?.value !== undefined && option?.value !== '')
+        .map((option) => [String(option.value), {
+          value: String(option.value),
+          label: option.label,
+        }])
+    ).values()
+  );
+
   return (
     <div className='space-y-2'>
       <label className='block text-sm font-medium'>{label}</label>
@@ -60,9 +71,9 @@ export function FormSelectField({
               <SelectValue placeholder='Select a church' />
             </SelectTrigger>
             <SelectContent>
-              {options?.map((church: { value: string; label: string }) => (
-                <SelectItem key={church.value} value={`${church.value}`}>
-                  {church.label}
+              {uniqueOptions.map((option: { value: string; label: string }) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
                 </SelectItem>
               ))}
             </SelectContent>

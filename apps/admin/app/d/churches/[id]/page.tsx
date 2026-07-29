@@ -42,6 +42,91 @@ export default function ChurchDetailPage() {
     },
   });
 
+  const churchData = {
+    name: church?.name || '',
+    pastor: church?.pastorName,
+    country: church?.country || '',
+    state: church?.state || '',
+    area: church?.area || '',
+    address: church?.address || '',
+    active: church?.active ?? true,
+    dateStarted: church?.start_date
+      ? new Date(church?.start_date)
+      : new Date('2022-10-22'),
+    lma: 15,
+    leaders: church?.leaders?.length || 0,
+    workers: church?.workers?.length || 0,
+    members: church?.members?.length || 0,
+  };
+
+  const currentData = {
+    ...churchData,
+    ...(editedData || {}),
+  };
+
+  const countryOptions = useMemo<Array<{ value: string; label: string }>>(
+    () =>
+      Array.from(
+        new Map(
+          uniqueCountries.map((country) => [
+            String(country.name),
+            {
+              value: String(country.name),
+              label: String(country.name),
+            },
+          ])
+        ).values()
+      ),
+    []
+  );
+
+  const selectedCountry = editedData?.country ?? church?.country ?? '';
+  const selectedState = editedData?.state ?? church?.state ?? '';
+
+  const stateOptions = useMemo<Array<{ value: string; label: string }>>(() => {
+    const country = uniqueCountries.find(
+      (item) => item.name === selectedCountry
+    );
+    return Array.from<{ value: string; label: string }>(
+      new Map(
+        (country?.states || []).map((state: any) => [
+          String(state.name),
+          {
+            value: String(state.name),
+            label: String(state.name),
+          },
+        ])
+      ).values() as IterableIterator<{ value: string; label: string }>
+    );
+  }, [selectedCountry]);
+
+  const areaOptions = useMemo<Array<{ value: string; label: string }>>(() => {
+    const country = uniqueCountries.find(
+      (item) => item.name === selectedCountry
+    );
+    const state = country?.states?.find(
+      (item: any) => item.name === selectedState
+    );
+    const areas = state?.subdivisions || state?.subdivision || [];
+    const areaList = Array.isArray(areas) ? areas : [areas];
+
+    return Array.from<{ value: string; label: string }>(
+      new Map(
+        areaList
+          .filter(Boolean)
+          .map((area: string) => [
+            String(area),
+            {
+              value: String(area),
+              label: String(area),
+            },
+          ])
+      ).values() as IterableIterator<{ value: string; label: string }>
+    );
+  }, [selectedCountry, selectedState]);
+
+  const formattedDate = format(currentData.dateStarted, 'do MMM. yyyy');
+
   if (isLoading) {
     return (
       <div className='flex justify-center items-center h-full'>Loading...</div>
@@ -55,67 +140,6 @@ export default function ChurchDetailPage() {
       </div>
     );
   }
-
-  const churchData = {
-    name: church.name,
-    pastor: church.pastorName,
-    country: church?.country || '',
-    state: church?.state || '',
-    area: church?.area || '',
-    address: church.address || '',
-    active: church.active ?? true,
-    dateStarted: church.start_date
-      ? new Date(church.start_date)
-      : new Date('2022-10-22'),
-    lma: 15,
-    leaders: church?.leaders?.length || 0,
-    workers: church?.workers?.length || 0,
-    members: church?.members?.length || 0,
-  };
-
-  const currentData = {
-    ...churchData,
-    ...(editedData || {}),
-  };
-
-  const countryOptions = useMemo(
-    () =>
-      uniqueCountries.map((country) => ({
-        value: country.name,
-        label: country.name,
-      })),
-    []
-  );
-
-  const selectedCountry = editedData?.country ?? church?.country ?? '';
-  const selectedState = editedData?.state ?? church?.state ?? '';
-
-  const stateOptions = useMemo(() => {
-    const country = uniqueCountries.find(
-      (item) => item.name === selectedCountry
-    );
-    return (country?.states || []).map((state: any) => ({
-      value: state.name,
-      label: state.name,
-    }));
-  }, [selectedCountry]);
-
-  const areaOptions = useMemo(() => {
-    const country = uniqueCountries.find(
-      (item) => item.name === selectedCountry
-    );
-    const state = country?.states?.find(
-      (item: any) => item.name === selectedState
-    );
-    return (state?.subdivisions || state?.subdivision || []).map(
-      (area: string) => ({
-        value: area,
-        label: area,
-      })
-    );
-  }, [selectedCountry, selectedState]);
-
-  const formattedDate = format(currentData.dateStarted, 'do MMM. yyyy');
 
   const handleEdit = (field: string, value: string | Date | undefined) => {
     if (field === 'country') {

@@ -3,6 +3,8 @@ import { STORAGE_KEYS } from "@/utils/constants";
 
 const API_URL = "https://admin-service.saintscommunityportal.com"; // || http://127.0.0.1:8000";
 
+//const API_URL = "http://127.0.0.1:8000";
+
 const X_API_KEY =
   process.env.NEXT_PUBLIC_X_API_KEY ||
   "113c53c9e26574039e24ce0cc63a6f7b3be020e5";
