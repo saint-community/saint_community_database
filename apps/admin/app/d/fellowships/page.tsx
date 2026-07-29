@@ -58,7 +58,7 @@ export default function Page() {
   const isAdmin =
     user?.role === ROLES.ADMIN ||
     user?.role === ROLES.PASTOR ||
-    user?.role === ROLES.CHURCH_PASTOR;
+    user?.role === ROLES.CHURCH_PASTOR || user?.role === ROLES.CHURCH_ADMIN;
 
   if (user && !isAdmin) {
     redirect('/d/cells');
@@ -131,7 +131,7 @@ export default function Page() {
           onSearchChange={setSearchValue}
           filterComponent={
             // Only show church filter for ADMIN and PASTOR roles
-            (user?.role === ROLES.ADMIN || user?.role === ROLES.PASTOR) || user?.role === ROLES.CHURCH_PASTOR ? (
+            (user?.role === ROLES.ADMIN || user?.role === ROLES.PASTOR) || user?.role === ROLES.CHURCH_PASTOR || user?.role === ROLES.CHURCH_ADMIN ? (
               <FellowshipFilters
                 church={filters.church}
                 onChurchChange={(church) => updateParams({ church })}

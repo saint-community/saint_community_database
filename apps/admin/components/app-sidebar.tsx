@@ -59,7 +59,7 @@ export function AppSidebar() {
 
   const hideFellowship =
     !!data &&
-    ![ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_PASTOR].includes(data?.role);
+    ![ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_PASTOR, ROLES.CHURCH_ADMIN].includes(data?.role);
 
   const hideCells =
     !!data &&
@@ -67,6 +67,7 @@ export function AppSidebar() {
       ROLES.ADMIN,
       ROLES.PASTOR,
       ROLES.CHURCH_PASTOR,
+      ROLES.CHURCH_ADMIN,
       ROLES.FELLOWSHIP_LEADER,
     ].includes(data?.role);
 
