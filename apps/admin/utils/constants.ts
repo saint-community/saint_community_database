@@ -123,6 +123,7 @@ export const ROLES = {
   ADMIN: 'admin',
   PASTOR: 'pastor',
   CHURCH_PASTOR: 'church_pastor',
+  CHURCH_ADMIN: 'church_admin',
   FELLOWSHIP_LEADER: 'fellowship_leader',
   CELL_LEADER: 'cell_leader',
 };

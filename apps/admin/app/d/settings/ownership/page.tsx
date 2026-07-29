@@ -76,7 +76,8 @@ export default function OwnershipSettingsPage() {
     useState<OwnershipEntityType>('church');
   const [newOwnerEntityId, setNewOwnerEntityId] = useState('');
 
-  const isAdmin = user?.role === ROLES.ADMIN;
+  const canManageOwnership =
+    user?.role === ROLES.ADMIN || user?.role === ROLES.CHURCH_ADMIN;
   const { data: options = {}, isLoading: optionsLoading } = useOwnershipOptions();
 
   const entityOwnership = useEntityOwnership(entityType, entityId);
@@ -155,7 +156,7 @@ export default function OwnershipSettingsPage() {
     return options.cells || [];
   }, [newOwnerEntityType, options]);
 
-  if (user && !isAdmin) {
+  if (user && !canManageOwnership) {
     return (
       <div className='p-6 text-sm text-gray-600'>
         You do not have permission to access ownership settings.

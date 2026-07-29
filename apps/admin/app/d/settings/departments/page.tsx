@@ -242,7 +242,7 @@ export default function DepartmentsSettingsPage() {
   const isAllowed =
     user?.role === ROLES.ADMIN ||
     user?.role === ROLES.PASTOR ||
-    user?.role === ROLES.CHURCH_PASTOR;
+    user?.role === ROLES.CHURCH_PASTOR || user?.role === ROLES.CHURCH_ADMIN;
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteDepartment(id),

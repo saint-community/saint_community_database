@@ -21,8 +21,10 @@ export default function SettingsLayout({
   const { data: user } = useMe();
   const hideUsers =
     !!user &&
-    ![ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_PASTOR].includes(user?.role);
+    ![ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_PASTOR, ROLES.CHURCH_ADMIN].includes(user?.role);
   const showOnboarding = user?.role === ROLES.ADMIN;
+  const showOwnership =
+    user?.role === ROLES.ADMIN || user?.role === ROLES.CHURCH_ADMIN;
 
   // const hidePrayerGroup = !!user && user?.role !== ROLES.ADMIN;
 
@@ -62,6 +64,10 @@ export default function SettingsLayout({
             href: '/d/settings/onboarding',
             icon: Send,
           },
+        ]
+      : []),
+    ...(showOwnership
+      ? [
           {
             title: 'Ownership Settings',
             href: '/d/settings/ownership',

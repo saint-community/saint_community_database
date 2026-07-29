@@ -2,12 +2,12 @@
 'use client';
 
 import { Button } from '@workspace/ui/components/button';
-import { useForm } from '@workspace/ui/lib/react-hook-form';
+import { useForm, useStore } from '@workspace/ui/lib/react-hook-form';
 import { z } from 'zod';
 import { Input } from '@workspace/ui/components/input';
 import { Label } from '@workspace/ui/components/label';
 import { Modal } from '@workspace/ui/components/modal';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Select,
   SelectContent,
@@ -20,32 +20,55 @@ import { useMutation } from '@tanstack/react-query';
 import { useMe } from '@/hooks/useMe';
 import { ROLES } from '@/utils/constants';
 import { useAccounts } from '@/hooks/auth';
+import { useChurchesOption } from '@/hooks/churches';
 import { registerUser } from '@/services/auth';
 import { toast } from '@workspace/ui/lib/sonner';
 import { Loader2 } from 'lucide-react';
 
-const formSchema = z.object({
-  name: z.string().min(2, {
-    message: 'Name must be at least 2 characters.',
-  }),
-  email: z.string().email({
-    message: 'Please enter a valid email address.',
-  }),
-  church_id: z.string(),
-  fellowship_id: z.string(),
-  cell_id: z.string(),
-  password: z.string().min(1, {
-    message: 'Please enter a valid password.',
-  }),
-  role: z.string().min(1, {
-    message: 'Please select a role.',
-  }),
-});
+const formSchema = z
+  .object({
+    name: z.string().min(2, {
+      message: 'Name must be at least 2 characters.',
+    }),
+    email: z.string().email({
+      message: 'Please enter a valid email address.',
+    }),
+    church_id: z.string(),
+    fellowship_id: z.string(),
+    cell_id: z.string(),
+    password: z.string(),
+    role: z.string().min(1, {
+      message: 'Please select a role.',
+    }),
+  })
+  .superRefine((value, ctx) => {
+    if (value.role === ROLES.CHURCH_ADMIN && !value.church_id) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['church_id'],
+        message: 'Please select the church this church admin belongs to.',
+      });
+    }
+
+    if (
+      ![ROLES.ADMIN, ROLES.CHURCH_ADMIN].includes(value.role) &&
+      !value.password
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['password'],
+        message: 'Please enter a valid password.',
+      });
+    }
+  });
 
 export function AddNewAdmin() {
   const [open, setOpen] = useState(false);
   const { refetch } = useAccounts();
   const { data: user } = useMe();
+  const { data: churches } = useChurchesOption(
+    open && user?.role === ROLES.ADMIN
+  );
 
   // const lockChurchSelect =
   //   !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
@@ -105,6 +128,16 @@ export function AddNewAdmin() {
       console.log(props);
     },
   });
+
+  const selectedRole = useStore(form.store, (state) => state.values.role);
+
+  const roleOptions = useMemo(
+    () =>
+      Object.values(ROLES).filter(
+        (role) => role !== ROLES.CHURCH_ADMIN || user?.role === ROLES.ADMIN
+      ),
+    [user?.role]
+  );
 
   return (
     <Modal
@@ -167,13 +200,21 @@ export function AddNewAdmin() {
               <>
                 <Select
                   value={field.state.value}
-                  onValueChange={field.handleChange}
+                  onValueChange={(value) => {
+                    field.handleChange(value);
+                    if ([ROLES.ADMIN, ROLES.CHURCH_ADMIN].includes(value)) {
+                      form.setFieldValue('password', '');
+                    }
+                    if (value !== ROLES.CHURCH_ADMIN && user?.role === ROLES.ADMIN) {
+                      form.setFieldValue('church_id', '');
+                    }
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder='Select role' />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.values(ROLES).map((role) => (
+                    {roleOptions.map((role) => (
                       <SelectItem key={role} value={role}>
                         {role?.replace('_', ' ')?.charAt(0)?.toUpperCase() +
                           role?.replace('_', ' ')?.slice(1)}
@@ -187,24 +228,60 @@ export function AddNewAdmin() {
           />
         </div>
 
-        <div className='space-y-2'>
-          <Label htmlFor='password'>Password</Label>
-          <form.Field
-            name='password'
-            children={(field) => (
-              <>
-                <Input
-                  id='password'
-                  type='password'
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder='Enter password'
-                />
-                <FieldInfo field={field} />
-              </>
-            )}
-          />
-        </div>
+        {selectedRole === ROLES.CHURCH_ADMIN ? (
+          <div className='space-y-2'>
+            <Label htmlFor='church_id'>Church</Label>
+            <form.Field
+              name='church_id'
+              children={(field) => (
+                <>
+                  <Select
+                    value={field.state.value}
+                    onValueChange={field.handleChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder='Select church' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {churches?.map(
+                        (church: { value: string; label: string }) => (
+                          <SelectItem
+                            key={church.value}
+                            value={String(church.value)}
+                          >
+                            {church.label}
+                          </SelectItem>
+                        )
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <FieldInfo field={field} />
+                </>
+              )}
+            />
+          </div>
+        ) : null}
+
+        {![ROLES.ADMIN, ROLES.CHURCH_ADMIN].includes(selectedRole) ? (
+          <div className='space-y-2'>
+            <Label htmlFor='password'>Password</Label>
+            <form.Field
+              name='password'
+              children={(field) => (
+                <>
+                  <Input
+                    id='password'
+                    type='password'
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    placeholder='Enter password'
+                  />
+                  <FieldInfo field={field} />
+                </>
+              )}
+            />
+          </div>
+        ) : null}
 
         <div className='w-full mt-4'>
           <form.Subscribe

@@ -126,7 +126,7 @@ export function AddNewCellSheet() {
 
   const lockFellowshipSelect =
     !!user &&
-    ![ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_PASTOR].includes(user?.role);
+    ![ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_PASTOR, ROLES.CHURCH_ADMIN].includes(user?.role);
 
   const churchOptions = useMemo(() => {
     if (lockChurchSelect) {

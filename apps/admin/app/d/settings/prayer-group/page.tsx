@@ -44,7 +44,7 @@ export default function PrayerGroupSettingsPage() {
   const isPrayerGroupAllowed =
     user?.role === ROLES.ADMIN ||
     user?.role === ROLES.PASTOR ||
-    user?.role === ROLES.CHURCH_PASTOR;
+    user?.role === ROLES.CHURCH_PASTOR || user?.role === ROLES.CHURCH_ADMIN;
 
   const deleteMutation = useMutation({
     mutationFn: (_id: string) => deleteAdminPrayerGroupMeeting(_id),

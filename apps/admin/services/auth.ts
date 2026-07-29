@@ -28,7 +28,7 @@ export async function loginUser(body: {
 
 export async function registerUser(body: {
   email: string;
-  password: string;
+  password?: string;
   name: string;
   role: string;
   church_id?: number;
