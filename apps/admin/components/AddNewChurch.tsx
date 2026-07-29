@@ -30,6 +30,23 @@ const uniqueCountries = Array.from(
   new Map((countries as any[]).map((country) => [country.name, country])).values()
 );
 
+const uniqueSelectOptions = (items: Array<string | { value?: any; label?: any }>) =>
+  Array.from(
+    new Map(
+      items
+        .map((item) =>
+          typeof item === 'string'
+            ? { value: item, label: item }
+            : {
+                value: String(item.value ?? ''),
+                label: String(item.label ?? item.value ?? ''),
+              }
+        )
+        .filter((item) => item.value)
+        .map((item) => [item.value, item])
+    ).values()
+  );
+
 const formSchema = z.object({
   churchName: z.string().min(2, {
     message: 'Church name must be at least 2 characters.',
@@ -105,10 +122,10 @@ export function AddNewChurchSheet() {
 
   const countryOptions = useMemo(
     () =>
-      uniqueCountries.map((country) => ({
+      uniqueSelectOptions(uniqueCountries.map((country) => ({
         value: country.name,
         label: country.name,
-      })),
+      }))),
     []
   );
 
@@ -116,10 +133,10 @@ export function AddNewChurchSheet() {
     const country = uniqueCountries.find(
       (item) => item.name === selectedCountry
     );
-    return (country?.states || []).map((state: any) => ({
+    return uniqueSelectOptions((country?.states || []).map((state: any) => ({
       value: state.name,
       label: state.name,
-    }));
+    })));
   }, [selectedCountry]);
 
   const areaOptions = useMemo(() => {
@@ -129,12 +146,8 @@ export function AddNewChurchSheet() {
     const state = country?.states?.find(
       (item: any) => item.name === selectedState
     );
-    return (state?.subdivisions || state?.subdivision || []).map(
-      (area: string) => ({
-        value: area,
-        label: area,
-      })
-    );
+    const areas = state?.subdivisions || state?.subdivision || [];
+    return uniqueSelectOptions(Array.isArray(areas) ? areas : [areas]);
   }, [selectedCountry, selectedState]);
 
   return (
@@ -213,7 +226,7 @@ export function AddNewChurchSheet() {
                   </SelectTrigger>
                   <SelectContent>
                     {countryOptions.map((country) => (
-                      <SelectItem key={country.value} value={country.value}>
+                      <SelectItem key={`country-${country.value}`} value={country.value}>
                         {country.label}
                       </SelectItem>
                     ))}
@@ -244,7 +257,7 @@ export function AddNewChurchSheet() {
                   </SelectTrigger>
                   <SelectContent>
                     {stateOptions.map((state: { value: string; label: string }) => (
-                      <SelectItem key={state.value} value={state.value}>
+                      <SelectItem key={`state-${state.value}`} value={state.value}>
                         {state.label}
                       </SelectItem>
                     ))}
@@ -272,7 +285,7 @@ export function AddNewChurchSheet() {
                   </SelectTrigger>
                   <SelectContent>
                     {areaOptions.map((area: { value: string; label: string }) => (
-                      <SelectItem key={area.value} value={area.value}>
+                      <SelectItem key={`area-${area.value}`} value={area.value}>
                         {area.label}
                       </SelectItem>
                     ))}

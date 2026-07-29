@@ -27,7 +27,24 @@ export function ChurchFilters({
 
   useEffect(() => {
     import('@/utils/countries.json').then((mod) => {
-      setCountries((mod.default || mod) as unknown as { code: string; name: string }[]);
+      const countryList = (mod.default || mod) as unknown as {
+        code?: string;
+        name: string;
+      }[];
+
+      setCountries(
+        Array.from(
+          new Map(
+            countryList.map((country) => [
+              country.name,
+              {
+                code: country.code || country.name,
+                name: country.name,
+              },
+            ])
+          ).values()
+        )
+      );
     });
   }, []);
 
@@ -60,9 +77,12 @@ export function ChurchFilters({
               <SelectValue placeholder="Filter by Country" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Countries</SelectItem>
+              <SelectItem key="all-countries" value="all">All Countries</SelectItem>
               {countries.map((countryOption) => (
-                <SelectItem key={countryOption.code} value={countryOption.name}>
+                <SelectItem
+                  key={`country-${countryOption.name}`}
+                  value={countryOption.name}
+                >
                   {countryOption.name}
                 </SelectItem>
               ))}
