@@ -31,15 +31,9 @@ const formSchema = z.object({
   email: z.string().email({
     message: 'Please enter a valid email address.',
   }),
-  church_id: z.string().min(1, {
-    message: 'Please select a church.',
-  }),
-  fellowship_id: z.string().min(1, {
-    message: 'Please select a fellowship.',
-  }),
-  cell_id: z.string().min(1, {
-    message: 'Please select a cell.',
-  }),
+  church_id: z.string(),
+  fellowship_id: z.string(),
+  cell_id: z.string(),
   password: z.string().min(1, {
     message: 'Please enter a valid password.',
   }),
@@ -50,10 +44,6 @@ const formSchema = z.object({
 
 export function AddNewAdmin() {
   const [open, setOpen] = useState(false);
-  // const { data: churches } = useChurchesOption();
-  // const { data: departments } = useDepartmentsOption();
-  // const { data: fellowships } = useFellowshipsOption();
-  // const { data: cells } = useCellsOption();
   const { refetch } = useAccounts();
   const { data: user } = useMe();
 
@@ -100,9 +90,11 @@ export function AddNewAdmin() {
     },
     onSubmit: async ({ value }) => {
       mutation.mutate({
-        church_id: Number(value.church_id),
-        fellowship_id: Number(value.fellowship_id),
-        cell_id: Number(value.cell_id),
+        ...(value.church_id ? { church_id: Number(value.church_id) } : {}),
+        ...(value.fellowship_id
+          ? { fellowship_id: Number(value.fellowship_id) }
+          : {}),
+        ...(value.cell_id ? { cell_id: Number(value.cell_id) } : {}),
         name: value.name,
         password: value.password,
         email: value.email,
@@ -119,7 +111,7 @@ export function AddNewAdmin() {
       trigger={<Button variant='outline'>Add new user</Button>}
       open={open}
       setOpen={setOpen}
-      title='Create new worker'
+      title='Create new user'
       description=''
     >
       <form

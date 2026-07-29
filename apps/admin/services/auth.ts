@@ -31,7 +31,7 @@ export async function registerUser(body: {
   password: string;
   name: string;
   role: string;
-  church_id: number;
+  church_id?: number;
   fellowship_id?: number;
   cell_id?: number;
 }): Promise<{
