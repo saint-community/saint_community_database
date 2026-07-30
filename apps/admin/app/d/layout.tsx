@@ -15,6 +15,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     if (!data && !isLoading) {
       router.push('/');
     }
+    if (data?.must_change_password && !isLoading) {
+      router.push('/change-password');
+    }
   }, [data, router, isLoading]);
 
   if (isLoading) {

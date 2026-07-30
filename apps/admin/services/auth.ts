@@ -4,6 +4,9 @@ import { ApiCaller } from './init';
 export interface LoginResponse {
   error: string;
   message: string;
+  data?: {
+    must_change_password?: boolean;
+  };
 }
 
 export async function loginUser(body: {

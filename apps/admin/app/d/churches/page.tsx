@@ -46,8 +46,14 @@ export default function Page() {
   const { data: stats } = useStatistics();
   
   const isAdmin = React.useMemo(() => {
-    return user?.role === ROLES.ADMIN || user?.role === ROLES.PASTOR;
+    return (
+      user?.role === ROLES.ADMIN ||
+      user?.role === ROLES.PASTOR ||
+      user?.role === ROLES.CHURCH_ADMIN
+    );
   }, [user?.role]);
+  const canCreateChurch =
+    user?.role === ROLES.ADMIN || user?.role === ROLES.PASTOR;
 
   const churches = data?.data || [];
 
@@ -110,7 +116,7 @@ export default function Page() {
       <div className=''>
         <TableCard
           title='Churches List'
-          action={<AddNewChurchSheet />}
+          action={canCreateChurch ? <AddNewChurchSheet /> : undefined}
           data={churches || []}
              placeholder='Search by church name'
           columnKeys={[

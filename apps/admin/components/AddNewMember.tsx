@@ -10,7 +10,6 @@ import { Label } from '@workspace/ui/components/label';
 import { Modal } from '@workspace/ui/components/modal';
 import { SquarePlus } from 'lucide-react';
 import { useState } from 'react';
-import { DatePicker } from '@workspace/ui/components/date-picker';
 import {
   Select,
   SelectContent,
@@ -26,6 +25,11 @@ import { useCellsOption } from '@/hooks/cell';
 import { useMutation } from '@tanstack/react-query';
 import { createWorker } from '@/services/workers';
 import { useWorkers } from '@/hooks/workers';
+
+const dateInputValue = (date?: Date | null) =>
+  date instanceof Date && !Number.isNaN(date.getTime())
+    ? date.toISOString().split('T')[0]
+    : '';
 
 const formSchema = z.object({
   fullName: z.string().min(2, {
@@ -389,9 +393,11 @@ export function AddNewMemberSheet() {
             name='dateOfBirth'
             children={(field) => (
               <>
-                <DatePicker
-                  value={field.state.value}
-                  onChange={(date) => field.handleChange(date || new Date())}
+                <Input
+                  id='dateOfBirth'
+                  type='date'
+                  value={dateInputValue(field.state.value)}
+                  onChange={(e) => field.handleChange(new Date(e.target.value))}
                 />
                 <FieldInfo field={field} />
               </>
@@ -438,9 +444,11 @@ export function AddNewMemberSheet() {
             name='dateJoinedChurch'
             children={(field) => (
               <>
-                <DatePicker
-                  value={field.state.value}
-                  onChange={(date) => field.handleChange(date || new Date())}
+                <Input
+                  id='dateJoinedChurch'
+                  type='date'
+                  value={dateInputValue(field.state.value)}
+                  onChange={(e) => field.handleChange(new Date(e.target.value))}
                 />
                 <FieldInfo field={field} />
               </>

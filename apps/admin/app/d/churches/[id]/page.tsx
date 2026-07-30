@@ -10,7 +10,6 @@ import { format } from 'date-fns';
 import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { updateChurch } from '@/services/churches';
-import { DatePicker } from '@workspace/ui/components/date-picker';
 import { FormSelectField } from '@/components/forms';
 // import { COUNTRIES } from '@/utils/constants';
 import { Label } from '@workspace/ui/components/label';
@@ -21,6 +20,11 @@ import countries from '@/utils/countries.json';
 const uniqueCountries = Array.from(
   new Map((countries as any[]).map((country) => [country.name, country])).values()
 );
+
+const dateInputValue = (date?: Date | null) =>
+  date instanceof Date && !Number.isNaN(date.getTime())
+    ? date.toISOString().split('T')[0]
+    : '';
 
 export default function ChurchDetailPage() {
   const params = useParams();
@@ -285,9 +289,10 @@ export default function ChurchDetailPage() {
 
           <div className='space-y-2'>
             <Label className='block text-sm font-medium'>Date Started</Label>
-            <DatePicker
-              value={currentData.dateStarted}
-              onChange={(date) => handleEdit('dateStarted', date)}
+            <Input
+              type='date'
+              value={dateInputValue(currentData.dateStarted)}
+              onChange={(e) => handleEdit('dateStarted', new Date(e.target.value))}
             />
           </div>
 

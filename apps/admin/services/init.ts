@@ -1,9 +1,9 @@
 import axios from "axios";
 import { STORAGE_KEYS } from "@/utils/constants";
 
-const API_URL = "https://admin-service.saintscommunityportal.com"; // || http://127.0.0.1:8000";
+//const API_URL = "https://admin-service.saintscommunityportal.com"; // || http://127.0.0.1:8000";
 
-//const API_URL = "http://127.0.0.1:8000";
+const API_URL = "http://127.0.0.1:8000";
 
 const X_API_KEY =
   process.env.NEXT_PUBLIC_X_API_KEY ||
@@ -31,6 +31,11 @@ ApiCaller.interceptors.request.use(async (config) => {
 ApiCaller.interceptors.response.use(
   (response) => response,
   (error) => {
+    if (error.response?.status === 423) {
+      if (typeof window !== "undefined") {
+        window.location.href = "/change-password";
+      }
+    }
     if (error.response?.status === 401) {
       if (typeof window !== "undefined") {
         localStorage.removeItem(STORAGE_KEYS.TOKEN);

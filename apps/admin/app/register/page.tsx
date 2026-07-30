@@ -6,7 +6,6 @@ import { useForm, useStore } from "@workspace/ui/lib/react-hook-form";
 import { Input } from "@workspace/ui/components/input";
 import { Textarea } from "@workspace/ui/components/textarea";
 import { Label } from "@workspace/ui/components/label";
-import { DatePicker } from "@workspace/ui/components/date-picker";
 import {
   Select,
   SelectContent,
@@ -41,6 +40,11 @@ import { isEmpty } from "lodash";
 import countriesData from "@/utils/countries.json";
 
 const currentDate = new Date().toISOString();
+
+const dateInputValue = (date?: Date | null) =>
+  date instanceof Date && !Number.isNaN(date.getTime())
+    ? date.toISOString().split("T")[0]
+    : "";
 
 
 const genders = [
@@ -729,11 +733,12 @@ function RegisterPageMain() {
               name="dateOfBirth"
               children={(field) => (
                 <>
-                  <DatePicker
-                    value={field.state.value}
-                    onChange={(date) => field.handleChange(date || new Date())}
+                  <Input
+                    id="dateOfBirth"
+                    type="date"
+                    value={dateInputValue(field.state.value)}
+                    onChange={(e) => field.handleChange(new Date(e.target.value))}
                     className="h-[48px]"
-                    captionLayout="dropdown"
                   />
                   <FieldInfo field={field} />
                 </>
@@ -953,11 +958,12 @@ function RegisterPageMain() {
             name="dateJoinedChurch"
             children={(field) => (
               <>
-                <DatePicker
-                  value={field.state.value}
-                  onChange={(date) => field.handleChange(date || new Date())}
+                <Input
+                  id="dateJoinedChurch"
+                  type="date"
+                  value={dateInputValue(field.state.value)}
+                  onChange={(e) => field.handleChange(new Date(e.target.value))}
                   className="h-[48px]"
-                  captionLayout="dropdown"
                 />
                 <FieldInfo field={field} />
               </>
@@ -974,11 +980,12 @@ function RegisterPageMain() {
             name="dateBecameWorker"
             children={(field) => (
               <>
-                <DatePicker
-                  value={field.state.value}
-                  onChange={(date) => field.handleChange(date || new Date())}
+                <Input
+                  id="dateBecameWorker"
+                  type="date"
+                  value={dateInputValue(field.state.value)}
+                  onChange={(e) => field.handleChange(new Date(e.target.value))}
                   className="h-[48px]"
-                  captionLayout="dropdown"
                 />
                 <FieldInfo field={field} />
               </>
