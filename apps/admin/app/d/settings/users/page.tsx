@@ -40,7 +40,8 @@ export default function UsersPage() {
   const { data: user } = useMe();
   const accounts = data?.data || [];
   const queryClient = useQueryClient();
-  const isAdmin = !!user && [ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
+  const isAdmin =
+    !!user && [ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_ADMIN].includes(user?.role);
   const [selectedMember, setSelectedMember] = useState<any>(null);
 
   console.log(data);

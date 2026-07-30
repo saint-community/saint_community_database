@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { Input } from '@workspace/ui/components/input';
 import { Label } from '@workspace/ui/components/label';
 import { Modal } from '@workspace/ui/components/modal';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Select,
   SelectContent,
@@ -42,11 +42,14 @@ const formSchema = z
     }),
   })
   .superRefine((value, ctx) => {
-    if (value.role === ROLES.CHURCH_ADMIN && !value.church_id) {
+    if (
+      [ROLES.CHURCH_PASTOR, ROLES.CHURCH_ADMIN].includes(value.role) &&
+      !value.church_id
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['church_id'],
-        message: 'Please select the church this church admin belongs to.',
+        message: 'Please select the church this user belongs to.',
       });
     }
 
@@ -131,13 +134,42 @@ export function AddNewAdmin() {
 
   const selectedRole = useStore(form.store, (state) => state.values.role);
 
+  useEffect(() => {
+    if (user?.role !== ROLES.CHURCH_ADMIN) return;
+
+    form.setFieldValue('role', ROLES.CHURCH_PASTOR);
+    form.setFieldValue('church_id', user?.church_id?.toString() || '');
+  }, [form, user]);
+
   const roleOptions = useMemo(
-    () =>
-      Object.values(ROLES).filter(
+    () => {
+      if (user?.role === ROLES.CHURCH_ADMIN) {
+        return [
+          ROLES.CHURCH_PASTOR,
+          ROLES.FELLOWSHIP_LEADER,
+          ROLES.CELL_LEADER,
+        ];
+      }
+
+      return Object.values(ROLES).filter(
         (role) => role !== ROLES.CHURCH_ADMIN || user?.role === ROLES.ADMIN
-      ),
+      );
+    },
     [user?.role]
   );
+
+  const churchOptions = useMemo(() => {
+    if (user?.role === ROLES.CHURCH_ADMIN) {
+      return [
+        {
+          value: user?.church_id?.toString() || '',
+          label: user?.church_name || 'Current church',
+        },
+      ].filter((church) => church.value);
+    }
+
+    return churches || [];
+  }, [churches, user]);
 
   return (
     <Modal
@@ -205,7 +237,10 @@ export function AddNewAdmin() {
                     if ([ROLES.ADMIN, ROLES.CHURCH_ADMIN].includes(value)) {
                       form.setFieldValue('password', '');
                     }
-                    if (value !== ROLES.CHURCH_ADMIN && user?.role === ROLES.ADMIN) {
+                    if (
+                      ![ROLES.CHURCH_PASTOR, ROLES.CHURCH_ADMIN].includes(value) &&
+                      user?.role === ROLES.ADMIN
+                    ) {
                       form.setFieldValue('church_id', '');
                     }
                   }}
@@ -228,7 +263,7 @@ export function AddNewAdmin() {
           />
         </div>
 
-        {selectedRole === ROLES.CHURCH_ADMIN ? (
+        {[ROLES.CHURCH_PASTOR, ROLES.CHURCH_ADMIN].includes(selectedRole) ? (
           <div className='space-y-2'>
             <Label htmlFor='church_id'>Church</Label>
             <form.Field
@@ -238,12 +273,13 @@ export function AddNewAdmin() {
                   <Select
                     value={field.state.value}
                     onValueChange={field.handleChange}
+                    disabled={user?.role === ROLES.CHURCH_ADMIN}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder='Select church' />
                     </SelectTrigger>
                     <SelectContent>
-                      {churches?.map(
+                      {churchOptions.map(
                         (church: { value: string; label: string }) => (
                           <SelectItem
                             key={church.value}

@@ -25,6 +25,8 @@ interface User {
   fellowship_name?: string;
   cell_name?: string;
   worker_id?: number | null;
+  must_change_password?: boolean;
+  password_changed_at?: string | null;
   churches?: Church[];
 }
 

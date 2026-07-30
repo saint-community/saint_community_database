@@ -10,7 +10,6 @@ import { Label } from '@workspace/ui/components/label';
 import { Modal } from '@workspace/ui/components/modal';
 import { Loader2, SquarePlus } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { DatePicker } from '@workspace/ui/components/date-picker';
 import {
   Select,
   SelectContent,
@@ -36,6 +35,11 @@ import countries from '@/utils/countries.json';
 const uniqueCountries = Array.from(
   new Map((countries as any[]).map((country) => [country.name, country])).values()
 );
+
+const dateInputValue = (date?: Date | null) =>
+  date instanceof Date && !Number.isNaN(date.getTime())
+    ? date.toISOString().split('T')[0]
+    : '';
 
 const formSchema = z.object({
   fullName: z.string().min(2, {
@@ -716,9 +720,11 @@ export function AddNewWorkerSheet({
             name='dateOfBirth'
             children={(field) => (
               <>
-                <DatePicker
-                  value={field.state.value}
-                  onChange={(date) => field.handleChange(date || new Date())}
+                <Input
+                  id='dateOfBirth'
+                  type='date'
+                  value={dateInputValue(field.state.value)}
+                  onChange={(e) => field.handleChange(new Date(e.target.value))}
                 />
                 <FieldInfo field={field} />
               </>
@@ -797,9 +803,11 @@ export function AddNewWorkerSheet({
             name='dateJoinedChurch'
             children={(field) => (
               <>
-                <DatePicker
-                  value={field.state.value}
-                  onChange={(date) => field.handleChange(date || new Date())}
+                <Input
+                  id='dateJoinedChurch'
+                  type='date'
+                  value={dateInputValue(field.state.value)}
+                  onChange={(e) => field.handleChange(new Date(e.target.value))}
                 />
                 <FieldInfo field={field} />
               </>

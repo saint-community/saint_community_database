@@ -40,9 +40,9 @@ export default function LoginPage() {
 
   const loginMutation = useMutation({
     mutationFn: loginUser,
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast.success("Login successful");
-      router.push("/d");
+      router.push((data as any)?.data?.must_change_password ? "/change-password" : "/d");
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || "An error occurred");

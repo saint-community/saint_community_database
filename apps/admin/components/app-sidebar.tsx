@@ -55,7 +55,7 @@ export function AppSidebar() {
   const { data } = useMe();
   const { isMobile, toggleSidebar } = useSidebar();
   const hideChurch =
-    !!data && ![ROLES.ADMIN, ROLES.PASTOR].includes(data?.role);
+    !!data && ![ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_ADMIN].includes(data?.role);
 
   const hideFellowship =
     !!data &&

@@ -16,7 +16,6 @@ import { useFellowshipsOption } from '@/hooks/fellowships';
 import { Label } from '@workspace/ui/components/label';
 import { useMe } from '@/hooks/useMe';
 import { ROLES } from '@/utils/constants';
-import { DatePicker } from '@workspace/ui/components/date-picker';
 import { toast } from '@workspace/ui/lib/sonner';
 import { useChurchAccountOptions } from '@/hooks/auth';
 import countries from '@/utils/countries.json';
@@ -24,6 +23,11 @@ import countries from '@/utils/countries.json';
 const uniqueCountries = Array.from(
   new Map((countries as any[]).map((country) => [country.name, country])).values()
 );
+
+const dateInputValue = (date?: Date | null) =>
+  date instanceof Date && !Number.isNaN(date.getTime())
+    ? date.toISOString().split('T')[0]
+    : '';
 
 // const formSchema = z.object({
 //   name: z.string().min(2, {
@@ -353,9 +357,10 @@ export default function CellDetailPage() {
 
           <div className='space-y-2'>
             <Label className='block text-sm font-medium'>Date Started</Label>
-            <DatePicker
-              value={currentData.dateStarted}
-              onChange={(date) => handleEdit('dateStarted', date)}
+            <Input
+              type='date'
+              value={dateInputValue(currentData.dateStarted)}
+              onChange={(e) => handleEdit('dateStarted', new Date(e.target.value))}
             />
           </div>
 

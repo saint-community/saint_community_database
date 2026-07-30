@@ -10,7 +10,6 @@ import { Label } from '@workspace/ui/components/label';
 import { Modal } from '@workspace/ui/components/modal';
 import { Loader2, SquarePlus } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { DatePicker } from '@workspace/ui/components/date-picker';
 import { FieldInfo } from '@workspace/ui/components/field-info';
 import { createChurch } from '@/services/churches';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -46,6 +45,11 @@ const uniqueSelectOptions = (items: Array<string | { value?: any; label?: any }>
         .map((item) => [item.value, item])
     ).values()
   );
+
+const dateInputValue = (date?: Date | null) =>
+  date instanceof Date && !Number.isNaN(date.getTime())
+    ? date.toISOString().split('T')[0]
+    : '';
 
 const formSchema = z.object({
   churchName: z.string().min(2, {
@@ -341,9 +345,11 @@ export function AddNewChurchSheet() {
             name='dateStarted'
             children={(field) => (
               <>
-                <DatePicker
-                  value={field.state.value}
-                  onChange={(date) => field.handleChange(date || new Date())}
+                <Input
+                  id='dateStarted'
+                  type='date'
+                  value={dateInputValue(field.state.value)}
+                  onChange={(e) => field.handleChange(new Date(e.target.value))}
                 />
                 <FieldInfo field={field} />
               </>
