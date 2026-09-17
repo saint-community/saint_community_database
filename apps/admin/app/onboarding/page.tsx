@@ -275,7 +275,7 @@ function OnboardingWizard() {
           <p className="text-sm font-medium text-[#705C2F]">
             Saints Community Church Portal
           </p>
-          <h1 className="text-2xl font-semibold">Leaders Onboarding Form</h1>
+          <h1 className="text-2xl font-semibold">workers Onboarding Form</h1>
           <p className="text-sm text-gray-500 capitalize">
             Role: {role?.replaceAll("_", " ")}
           </p>

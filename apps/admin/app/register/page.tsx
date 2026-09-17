@@ -46,7 +46,6 @@ const dateInputValue = (date?: Date | null) =>
     ? date.toISOString().split("T")[0]
     : "";
 
-
 const genders = [
   { id: "male", name: "Male" },
   { id: "female", name: "Female" },
@@ -71,7 +70,9 @@ type Country = {
 };
 
 const countries = Array.from(
-  new Map((countriesData as Country[]).map((country) => [country.name, country])).values()
+  new Map(
+    (countriesData as Country[]).map((country) => [country.name, country]),
+  ).values(),
 );
 
 const TERMS_VERSION = "terms-v1";
@@ -94,13 +95,15 @@ function RegisterPageMain() {
   const [selectedState, setSelectedState] = useState("");
 
   const stateOptions = useMemo(
-    () => countries.find((country) => country.name === selectedCountry)?.states || [],
-    [selectedCountry]
+    () =>
+      countries.find((country) => country.name === selectedCountry)?.states ||
+      [],
+    [selectedCountry],
   );
 
   const areaOptions = useMemo(() => {
     const selectedStateData = stateOptions.find(
-      (state) => state.name === selectedState
+      (state) => state.name === selectedState,
     );
     const areas =
       selectedStateData?.subdivision ?? selectedStateData?.subdivisions ?? [];
@@ -135,22 +138,21 @@ function RegisterPageMain() {
         (prayerGroup: { day: string; schedule: string; id: string }) => ({
           value: prayerGroup.id,
           label: `${prayerGroup.day} (${prayerGroup.schedule})`,
-        })
+        }),
       );
 
       const departments = data?.data?.departments?.map(
         (department: { name: string; id: string }) => ({
           value: department.id,
           label: department.name,
-        })
+        }),
       );
 
       return { church, fellowships, cells, prayerGroups, departments };
     }, [data]);
-    
 
   function normalizeServerErrors(
-    errors: Record<string, string[] | string>
+    errors: Record<string, string[] | string>,
   ): Record<string, string> {
     const result: any = {};
 
@@ -215,12 +217,12 @@ function RegisterPageMain() {
       termsAccepted: false,
       privacyAcknowledged: false,
     },
-   
+
     validators: {
       // suppress type error as formSchema matches the expected type
       /* @ts-ignore */
       onSubmit: formSchema,
-       /* @ts-ignore */
+      /* @ts-ignore */
       onChange: formSchema,
       onChangeAsync: ({ formApi }) => {
         formApi.setFieldValue("church", church?.id?.toString());
@@ -230,12 +232,12 @@ function RegisterPageMain() {
     },
     onSubmit: async ({ value }) => {
       // Handle form submission here
-      
+
       const formData = new FormData();
 
-      if (value.profileImage) {
-        formData.append("profile_image", value.profileImage);
-      }
+      // if (value.profileImage) {
+      //   formData.append("profile_image", value.profileImage);
+      // }
       formData.append("church_id", String(value.church));
       formData.append("fellowship_id", String(value.fellowship));
       formData.append("cell_id", String(value.cell));
@@ -243,11 +245,11 @@ function RegisterPageMain() {
       formData.append("last_name", value.lastName || "");
       formData.append(
         "dob",
-        value.dateOfBirth.toISOString().split("T")[0] ?? ""
+        value.dateOfBirth.toISOString().split("T")[0] ?? "",
       );
       formData.append(
         "date_of_birth",
-        value.dateOfBirth.toISOString().split("T")[0] ?? ""
+        value.dateOfBirth.toISOString().split("T")[0] ?? "",
       );
       formData.append("gender", value.gender);
       formData.append("status", value.status);
@@ -260,11 +262,11 @@ function RegisterPageMain() {
       formData.append("work_address", value.workAddress);
       formData.append(
         "member_since",
-        value.dateJoinedChurch.toISOString().split("T")[0] ?? ""
+        value.dateJoinedChurch.toISOString().split("T")[0] ?? "",
       );
       formData.append(
         "worker_since",
-        value.dateJoinedChurch.toISOString().split("T")[0] ?? ""
+        value.dateJoinedChurch.toISOString().split("T")[0] ?? "",
       );
       formData.append("active", "true");
       formData.append("prayer_group_id", value.prayerGroup);
@@ -276,36 +278,36 @@ function RegisterPageMain() {
       formData.append("area", value.area || "");
       formData.append(
         "date_joined_church",
-        value.dateJoinedChurch.toISOString().split("T")[0] ?? ""
+        value.dateJoinedChurch.toISOString().split("T")[0] ?? "",
       );
       formData.append(
         "date_became_worker",
-        value.dateBecameWorker.toISOString().split("T")[0] ?? ""
+        value.dateBecameWorker.toISOString().split("T")[0] ?? "",
       );
       formData.append("terms_accepted", value.termsAccepted ? "1" : "0");
       formData.append(
         "privacy_acknowledged",
-        value.privacyAcknowledged ? "1" : "0"
+        value.privacyAcknowledged ? "1" : "0",
       );
       formData.append("terms_version", TERMS_VERSION);
       formData.append("privacy_policy_version", PRIVACY_POLICY_VERSION);
 
       mutation.mutate(formData);
-    } ,
+    },
   });
 
   const selectedFellowshipId = useStore(
     form.store,
-    (state) => state.values.fellowship
+    (state) => state.values.fellowship,
   );
 
   const filteredCells = useMemo(
     () =>
       cells.filter(
         (cell: { fellowship_id?: number | string }) =>
-          String(cell.fellowship_id) === String(selectedFellowshipId)
+          String(cell.fellowship_id) === String(selectedFellowshipId),
       ),
-    [cells, selectedFellowshipId]
+    [cells, selectedFellowshipId],
   );
 
   useEffect(() => {
@@ -323,13 +325,13 @@ function RegisterPageMain() {
 
     const currentCellBelongsToFellowship = filteredCells.some(
       (cell: { id: number | string }) =>
-        String(cell.id) === String(form.state.values.cell)
+        String(cell.id) === String(form.state.values.cell),
     );
 
     if (!currentCellBelongsToFellowship) {
       form.setFieldValue(
         "cell",
-        filteredCells.length === 1 ? String(filteredCells[0]?.id || "") : ""
+        filteredCells.length === 1 ? String(filteredCells[0]?.id || "") : "",
       );
     }
   }, [filteredCells, form, selectedFellowshipId]);
@@ -405,7 +407,7 @@ function RegisterPageMain() {
                     htmlFor="photo-upload"
                     className={cn(
                       "flex flex-col items-center justify-center border border-dashed border-spacing-3 border-secondary w-full rounded-lg py-6  cursor-pointer hover:border-gray-400 transition-colors relative",
-                      previewUrl && "hidden"
+                      previewUrl && "hidden",
                     )}
                   >
                     <span className="text-black items-center gap-3 flex text-md">
@@ -501,9 +503,7 @@ function RegisterPageMain() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="email">
-            Email Address
-          </Label>
+          <Label htmlFor="email">Email Address</Label>
           <form.Field
             name="email"
             children={(field) => (
@@ -526,9 +526,7 @@ function RegisterPageMain() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="phoneNumber">
-            Phone Number
-          </Label>
+          <Label htmlFor="phoneNumber">Phone Number</Label>
           <form.Field
             name="phoneNumber"
             children={(field) => (
@@ -551,9 +549,7 @@ function RegisterPageMain() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="country">
-            Country
-          </Label>
+          <Label htmlFor="country">Country</Label>
           <form.Field
             name="country"
             children={(field) => {
@@ -737,7 +733,9 @@ function RegisterPageMain() {
                     id="dateOfBirth"
                     type="date"
                     value={dateInputValue(field.state.value)}
-                    onChange={(e) => field.handleChange(new Date(e.target.value))}
+                    onChange={(e) =>
+                      field.handleChange(new Date(e.target.value))
+                    }
                     className="h-[48px]"
                   />
                   <FieldInfo field={field} />
@@ -762,13 +760,13 @@ function RegisterPageMain() {
                     field.handleChange(value);
                     const fellowshipCells = cells.filter(
                       (cell: { fellowship_id?: number | string }) =>
-                        String(cell.fellowship_id) === String(value)
+                        String(cell.fellowship_id) === String(value),
                     );
                     form.setFieldValue(
                       "cell",
                       fellowshipCells.length === 1
                         ? String(fellowshipCells[0]?.id || "")
-                        : ""
+                        : "",
                     );
                   }}
                 >
@@ -812,7 +810,7 @@ function RegisterPageMain() {
                         >
                           {church.label}
                         </SelectItem>
-                      )
+                      ),
                     )}
                   </SelectContent>
                 </Select>
@@ -844,7 +842,7 @@ function RegisterPageMain() {
                         >
                           {fellowship.name}
                         </SelectItem>
-                      )
+                      ),
                     )}
                   </SelectContent>
                 </Select>
@@ -869,11 +867,13 @@ function RegisterPageMain() {
                       <SelectValue placeholder="Select a cell" />
                     </SelectTrigger>
                     <SelectContent>
-                      {filteredCells?.map((cell: { id: number; name: string }) => (
-                        <SelectItem key={cell.id} value={`${cell.id}`}>
-                          {cell.name}
-                        </SelectItem>
-                      ))}
+                      {filteredCells?.map(
+                        (cell: { id: number; name: string }) => (
+                          <SelectItem key={cell.id} value={`${cell.id}`}>
+                            {cell.name}
+                          </SelectItem>
+                        ),
+                      )}
                     </SelectContent>
                   </Select>
                   <FieldInfo field={field} />
@@ -905,7 +905,7 @@ function RegisterPageMain() {
                         >
                           {department.label}
                         </SelectItem>
-                      )
+                      ),
                     )}
                   </SelectContent>
                 </Select>
@@ -939,7 +939,7 @@ function RegisterPageMain() {
                         >
                           {prayerGroup.label}
                         </SelectItem>
-                      )
+                      ),
                     )}
                   </SelectContent>
                 </Select>
