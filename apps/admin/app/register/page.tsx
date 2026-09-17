@@ -24,17 +24,11 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import { createWorker } from "@/services/workers";
 import { useWorkerForm } from "@/hooks/workers";
-import { Loader, Upload } from "lucide-react";
+import { Loader } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "@workspace/ui/lib/sonner";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
-import {
-  Avatar,
-  AvatarImage,
-  AvatarFallback,
-} from "@workspace/ui/components/avatar";
-import { cn } from "@workspace/ui/lib/utils";
 import { formSchema } from "@/utils/registerSchema";
 import { isEmpty } from "lodash";
 import countriesData from "@/utils/countries.json";
@@ -89,8 +83,6 @@ function RegisterPageMain() {
 
   const RequiredAsterisk = () => <span className="text-rose-500">*</span>;
 
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [file, setFile] = useState<File | null>(null);
   const [selectedCountry, setSelectedCountry] = useState("");
   const [selectedState, setSelectedState] = useState("");
 
@@ -114,16 +106,6 @@ function RegisterPageMain() {
 
     return areas ? [areas] : [];
   }, [selectedState, stateOptions]);
-
-  useEffect(() => {
-    if (file && typeof file === "object" && "name" in file) {
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-      return () => URL.revokeObjectURL(url);
-    } else {
-      setPreviewUrl(null);
-    }
-  }, [file]);
 
   const { church, fellowships, cells, prayerGroups, departments } =
     useMemo(() => {
@@ -194,7 +176,6 @@ function RegisterPageMain() {
 
   const form = useForm({
     defaultValues: {
-      profileImage: null as File | null,
       firstName: "",
       lastName: "",
       country: "",
@@ -235,9 +216,6 @@ function RegisterPageMain() {
 
       const formData = new FormData();
 
-      // if (value.profileImage) {
-      //   formData.append("profile_image", value.profileImage);
-      // }
       formData.append("church_id", String(value.church));
       formData.append("fellowship_id", String(value.fellowship));
       formData.append("cell_id", String(value.cell));
@@ -266,7 +244,7 @@ function RegisterPageMain() {
       );
       formData.append(
         "worker_since",
-        value.dateJoinedChurch.toISOString().split("T")[0] ?? "",
+        value.dateBecameWorker.toISOString().split("T")[0] ?? "",
       );
       formData.append("active", "true");
       formData.append("prayer_group_id", value.prayerGroup);
@@ -398,67 +376,6 @@ function RegisterPageMain() {
         }}
         className="flex-1 w-full space-y-4 p-4 md:px-0"
       >
-        <div className="space-y-2">
-          <form.Field name="profileImage">
-            {(field) => {
-              return (
-                <div className="flex flex-col items-center gap-2">
-                  <Label
-                    htmlFor="photo-upload"
-                    className={cn(
-                      "flex flex-col items-center justify-center border border-dashed border-spacing-3 border-secondary w-full rounded-lg py-6  cursor-pointer hover:border-gray-400 transition-colors relative",
-                      previewUrl && "hidden",
-                    )}
-                  >
-                    <span className="text-black items-center gap-3 flex text-md">
-                      <Upload color="red" /> Upload a photo
-                    </span>
-
-                    <input
-                      id="photo-upload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0] ?? null;
-                        field.handleChange(file);
-                        setFile(file);
-                      }}
-                    />
-                  </Label>
-                  {file && (
-                    <div className="flex flex-col items-center">
-                      {previewUrl && (
-                        <Avatar className="w-[100px] h-[100px] mt-12 mb-4">
-                          <AvatarImage
-                            src={previewUrl}
-                            alt="Photo preview"
-                            className="w-full h-full object-cover rounded-lg"
-                          />
-                          <AvatarFallback>CN</AvatarFallback>
-                        </Avatar>
-                      )}
-                      <span className="mt-1 text-xs text-green-600 text-center truncate">
-                        {/* {"name" in file ? file.name : ""} */}
-                      </span>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="border-red-500 text-red-500 px-8 capitalize bg-white my-4"
-                        onClick={() => {
-                          // Trigger file input click to change photo
-                          document.getElementById("photo-upload")?.click();
-                        }}
-                      >
-                        Change photo
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              );
-            }}
-          </form.Field>
-        </div>
         <div className="space-y-2">
           <Label htmlFor="firstName">
             First Name
@@ -756,19 +673,7 @@ function RegisterPageMain() {
               <>
                 <Select
                   value={field.state.value}
-                  onValueChange={(value) => {
-                    field.handleChange(value);
-                    const fellowshipCells = cells.filter(
-                      (cell: { fellowship_id?: number | string }) =>
-                        String(cell.fellowship_id) === String(value),
-                    );
-                    form.setFieldValue(
-                      "cell",
-                      fellowshipCells.length === 1
-                        ? String(fellowshipCells[0]?.id || "")
-                        : "",
-                    );
-                  }}
+                  onValueChange={field.handleChange}
                 >
                   <SelectTrigger className="h-[48px]">
                     <SelectValue placeholder="Select status" />
