@@ -76,6 +76,62 @@ function RegisterPageMain() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const { data, error, isLoading } = useWorkerForm(token || "");
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen max-w-[375px] mx-auto bg-white">
+        <Loader className="w-12 h-12 animate-spin mb-4 text-gray-400" />
+        <span className="text-gray-500">Hang tight, we're loading 🚀</span>
+      </div>
+    );
+  }
+  const isAxiosError =
+    error &&
+    typeof error === "object" &&
+    "response" in error &&
+    error.response &&
+    typeof error.response === "object";
+
+  if (
+    !token ||
+    (isAxiosError &&
+      (error as any).response?.status === 404 &&
+      !(error as any).response?.data?.success)
+  ) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen max-w-[375px] mx-auto bg-white">
+        <div className="text-center px-4">
+          <h2 className="text-lg font-semibold text-rose-600 mb-2">
+            Oops! Registration Link Invalid or Expired
+          </h2>
+          <p className="text-gray-500 mb-4">
+            The registration link you used is either invalid or has expired.
+            Please request a new registration link or contact support for
+            assistance.
+          </p>
+          <div className="pt-4 border-t border-gray-200">
+            <p className="text-xs text-gray-500">
+              Need help? Contact support at{" "}
+              <a
+                href="mailto:support@saintcommunity.com"
+                className="text-green-600 hover:underline"
+              >
+                support@saintcommunity.com
+              </a>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !data?.data?.churchInformation) {
+    return <p role="alert" className="p-6 text-center">Unable to load the registration form. Please refresh and try again.</p>;
+  }
+
+  return <RegistrationForm key={token} data={data} />;
+}
+
+function RegistrationForm({ data }: { data: NonNullable<ReturnType<typeof useWorkerForm>["data"]> }) {
   const router = useRouter();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [termsOpen, setTermsOpen] = useState(false);
@@ -191,7 +247,7 @@ function RegisterPageMain() {
       status: "worker",
       phoneNumber: "",
       church: church?.id?.toString() || "",
-      fellowship: fixedFellowshipId,
+      fellowship: fixedFellowshipId || (fellowships.length === 1 ? String(fellowships[0].id) : ""),
       cell: fixedCellId,
       homeAddress: "",
       workAddress: "",
@@ -329,53 +385,6 @@ function RegisterPageMain() {
     }
   }, [filteredCells, form, selectedFellowshipId, fixedCellId]);
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen max-w-[375px] mx-auto bg-white">
-        <Loader className="w-12 h-12 animate-spin mb-4 text-gray-400" />
-        <span className="text-gray-500">Hang tight, we're loading 🚀</span>
-      </div>
-    );
-  }
-  const isAxiosError =
-    error &&
-    typeof error === "object" &&
-    "response" in error &&
-    error.response &&
-    typeof error.response === "object";
-
-  if (
-    !token ||
-    (isAxiosError &&
-      (error as any).response?.status === 404 &&
-      !(error as any).response?.data?.success)
-  ) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen max-w-[375px] mx-auto bg-white">
-        <div className="text-center px-4">
-          <h2 className="text-lg font-semibold text-rose-600 mb-2">
-            Oops! Registration Link Invalid or Expired
-          </h2>
-          <p className="text-gray-500 mb-4">
-            The registration link you used is either invalid or has expired.
-            Please request a new registration link or contact support for
-            assistance.
-          </p>
-          <div className="pt-4 border-t border-gray-200">
-            <p className="text-xs text-gray-500">
-              Need help? Contact support at{" "}
-              <a
-                href="mailto:support@saintcommunity.com"
-                className="text-green-600 hover:underline"
-              >
-                support@saintcommunity.com
-              </a>
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col items-center justify-center max-w-[375px] mx-auto bg-white py-[100px]">
