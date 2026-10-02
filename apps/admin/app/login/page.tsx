@@ -42,7 +42,7 @@ export default function LoginPage() {
     mutationFn: loginUser,
     onSuccess: (data) => {
       toast.success("Login successful");
-      router.push((data as any)?.data?.must_change_password ? "/change-password" : "/d");
+      router.push((data as any)?.data?.must_change_password ? "/change-password" : "/d/workers");
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || "An error occurred");

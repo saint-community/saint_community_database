@@ -41,7 +41,8 @@ export default function UsersPage() {
   const accounts = data?.data || [];
   const queryClient = useQueryClient();
   const isAdmin =
-    !!user && [ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_ADMIN].includes(user?.role);
+    !!user &&
+    [ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_ADMIN].includes(user?.role);
   const [selectedMember, setSelectedMember] = useState<any>(null);
 
   console.log(data);
@@ -133,42 +134,56 @@ export default function UsersPage() {
 
                 {isAdmin && (
                   <TableCell>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant='destructive'
-                          size='sm'
-                          disabled={isPending}
-                        >
-                          {isPending && selectedMember === member.id ? (
-                            <Loader2 className='w-4 h-4 animate-spin' />
-                          ) : (
-                            <Trash />
-                          )}
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            Are you absolutely sure?
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This action cannot be undone. This will permanently
-                            delete this account and remove their data from our
-                            servers.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            className='bg-red-500 hover:bg-red-600'
-                            onClick={() => handleRemoveMember(member.id)}
+                    <div className='flex items-center gap-2'>
+                      {(member.role !== ROLES.CHURCH_ADMIN ||
+                        user?.role === ROLES.ADMIN) &&
+                        (user?.role !== ROLES.CHURCH_ADMIN ||
+                          (String(member.church_id) ===
+                            String(user.church_id) &&
+                            [
+                              ROLES.CHURCH_PASTOR,
+                              ROLES.FELLOWSHIP_LEADER,
+                              ROLES.CELL_LEADER,
+                            ].includes(member.role))) && (
+                          <AddNewAdmin account={member} />
+                        )}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant='destructive'
+                            size='sm'
+                            disabled={isPending}
                           >
-                            Continue
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                            {isPending && selectedMember === member.id ? (
+                              <Loader2 className='w-4 h-4 animate-spin' />
+                            ) : (
+                              <Trash />
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              Are you absolutely sure?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will
+                              permanently delete this account and remove their
+                              data from our servers.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              className='bg-red-500 hover:bg-red-600'
+                              onClick={() => handleRemoveMember(member.id)}
+                            >
+                              Continue
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </TableCell>
                 )}
               </TableRow>

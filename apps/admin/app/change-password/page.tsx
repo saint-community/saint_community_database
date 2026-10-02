@@ -40,7 +40,7 @@ export default function ChangePasswordPage() {
       }
 
       toast.success("Password changed successfully");
-      router.push("/d");
+      router.push("/d/workers");
     },
     onError: (error: any) => {
       toast.error(

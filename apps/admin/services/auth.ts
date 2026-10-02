@@ -45,6 +45,26 @@ export async function registerUser(body: {
   return data;
 }
 
+export interface ManagedUser {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  church_id?: number | null;
+  fellowship_id?: number | null;
+  cell_id?: number | null;
+}
+
+export type ManagedUserUpdate = Omit<ManagedUser, 'id'>;
+
+export async function updateManagedUser(id: number, body: ManagedUserUpdate) {
+  const { data } = await ApiCaller.put(
+    QUERY_PATHS.MANAGED_ACCOUNT_UPDATE.replace(':id', String(id)),
+    body
+  );
+  return data;
+}
+
 export async function resetPassword(body: { email: string }): Promise<{
   error: string;
   message: string;
@@ -120,7 +140,10 @@ export const switchChurch = async (churchId: number) => {
       const user = JSON.parse(currentUser);
       const updatedUser = await getAccountById(user.id.toString());
       if (updatedUser?.data) {
-        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser.data));
+        localStorage.setItem(
+          STORAGE_KEYS.USER,
+          JSON.stringify(updatedUser.data)
+        );
       }
     }
   }
