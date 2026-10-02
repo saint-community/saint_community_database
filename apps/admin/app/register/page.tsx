@@ -133,6 +133,11 @@ function RegisterPageMain() {
       return { church, fellowships, cells, prayerGroups, departments };
     }, [data]);
 
+  const fixedFellowshipId = String(
+    data?.data?.registrationScope?.fellowship_id || "",
+  );
+  const fixedCellId = String(data?.data?.registrationScope?.cell_id || "");
+
   function normalizeServerErrors(
     errors: Record<string, string[] | string>,
   ): Record<string, string> {
@@ -186,8 +191,8 @@ function RegisterPageMain() {
       status: "worker",
       phoneNumber: "",
       church: church?.id?.toString() || "",
-      fellowship: fellowships?.[0]?.id?.toString() || "",
-      cell: "",
+      fellowship: fixedFellowshipId,
+      cell: fixedCellId,
       homeAddress: "",
       workAddress: "",
       dateOfBirth: dayjs(currentDate).subtract(7, "years").toDate(),
@@ -205,11 +210,6 @@ function RegisterPageMain() {
       onSubmit: formSchema,
       /* @ts-ignore */
       onChange: formSchema,
-      onChangeAsync: ({ formApi }) => {
-        formApi.setFieldValue("church", church?.id?.toString());
-        fellowships.length === 1 &&
-          formApi.setFieldValue("fellowship", fellowships?.[0]?.id?.toString());
-      },
     },
     onSubmit: async ({ value }) => {
       // Handle form submission here
@@ -282,20 +282,35 @@ function RegisterPageMain() {
   const filteredCells = useMemo(
     () =>
       cells.filter(
-        (cell: { fellowship_id?: number | string }) =>
-          String(cell.fellowship_id) === String(selectedFellowshipId),
+        (cell: { id: number | string; fellowship_id?: number | string }) =>
+          fixedCellId
+            ? String(cell.id) === fixedCellId
+            : String(cell.fellowship_id) === String(selectedFellowshipId),
       ),
-    [cells, selectedFellowshipId],
+    [cells, selectedFellowshipId, fixedCellId],
   );
 
   useEffect(() => {
     form.setFieldValue("church", church?.id?.toString() || "");
-    if (fellowships.length === 1) {
+    if (fixedFellowshipId) {
+      form.setFieldValue("fellowship", fixedFellowshipId);
+    } else if (fellowships.length === 1) {
       form.setFieldValue("fellowship", fellowships[0]?.id?.toString() || "");
+    } else if (
+      !fellowships.some(
+        (item: { id: number | string }) =>
+          String(item.id) === form.state.values.fellowship,
+      )
+    ) {
+      form.setFieldValue("fellowship", "");
     }
-  }, [church?.id, fellowships, form]);
+  }, [church?.id, fellowships, form, fixedFellowshipId]);
 
   useEffect(() => {
+    if (fixedCellId) {
+      form.setFieldValue("cell", fixedCellId);
+      return;
+    }
     if (!selectedFellowshipId) {
       form.setFieldValue("cell", "");
       return;
@@ -312,7 +327,7 @@ function RegisterPageMain() {
         filteredCells.length === 1 ? String(filteredCells[0]?.id || "") : "",
       );
     }
-  }, [filteredCells, form, selectedFellowshipId]);
+  }, [filteredCells, form, selectedFellowshipId, fixedCellId]);
 
   if (isLoading) {
     return (
@@ -703,19 +718,16 @@ function RegisterPageMain() {
                   onValueChange={field.handleChange}
                   disabled
                 >
-                  <SelectTrigger className="h-[48px]">
-                    <SelectValue placeholder="Select a church" />
+                  <SelectTrigger id="church" className="h-[48px]">
+                    <SelectValue placeholder="Select a church">
+                      {church.name}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {[{ value: church?.id, label: church?.name }].map(
-                      (church) => (
-                        <SelectItem
-                          key={church.value}
-                          value={`${church.value}`}
-                        >
-                          {church.label}
-                        </SelectItem>
-                      ),
+                    {church.id && (
+                      <SelectItem value={String(church.id)}>
+                        {church.name}
+                      </SelectItem>
                     )}
                   </SelectContent>
                 </Select>
@@ -734,6 +746,7 @@ function RegisterPageMain() {
                 <Select
                   value={field.state.value}
                   onValueChange={field.handleChange}
+                  disabled={!!fixedFellowshipId}
                 >
                   <SelectTrigger className="h-[48px]">
                     <SelectValue placeholder="Select a fellowship" />
@@ -767,6 +780,7 @@ function RegisterPageMain() {
                   <Select
                     value={field.state.value}
                     onValueChange={field.handleChange}
+                    disabled={!!fixedCellId}
                   >
                     <SelectTrigger className="h-[48px]">
                       <SelectValue placeholder="Select a cell" />

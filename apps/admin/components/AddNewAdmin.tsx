@@ -16,99 +16,143 @@ import {
   SelectValue,
 } from '@workspace/ui/components/select';
 import { FieldInfo } from '@workspace/ui/components/field-info';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMe } from '@/hooks/useMe';
-import { ROLES } from '@/utils/constants';
-import { useAccounts } from '@/hooks/auth';
+import { QUERY_PATHS, ROLES, STORAGE_KEYS } from '@/utils/constants';
 import { useChurchesOption } from '@/hooks/churches';
-import { registerUser } from '@/services/auth';
+import {
+  registerUser,
+  updateManagedUser,
+  type ManagedUser,
+  type ManagedUserUpdate,
+} from '@/services/auth';
 import { toast } from '@workspace/ui/lib/sonner';
 import { Loader2 } from 'lucide-react';
+import { getChurchById, getChurches } from '@/services/churches';
+import { getFellowshipById } from '@/services/fellowships';
 
-const formSchema = z
-  .object({
-    name: z.string().min(2, {
-      message: 'Name must be at least 2 characters.',
-    }),
-    email: z.string().email({
-      message: 'Please enter a valid email address.',
-    }),
-    church_id: z.string(),
-    fellowship_id: z.string(),
-    cell_id: z.string(),
-    password: z.string(),
-    role: z.string().min(1, {
-      message: 'Please select a role.',
-    }),
-  })
-  .superRefine((value, ctx) => {
-    if (
-      [ROLES.CHURCH_PASTOR, ROLES.CHURCH_ADMIN].includes(value.role) &&
-      !value.church_id
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['church_id'],
-        message: 'Please select the church this user belongs to.',
-      });
-    }
+const churchRoles = [
+  ROLES.CHURCH_PASTOR,
+  ROLES.CHURCH_ADMIN,
+  ROLES.FELLOWSHIP_LEADER,
+  ROLES.CELL_LEADER,
+];
+const fellowshipRoles = [ROLES.FELLOWSHIP_LEADER, ROLES.CELL_LEADER];
 
-    if (
-      ![ROLES.ADMIN, ROLES.CHURCH_ADMIN].includes(value.role) &&
-      !value.password
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['password'],
-        message: 'Please enter a valid password.',
-      });
-    }
-  });
+const createFormSchema = (isEditing: boolean) =>
+  z
+    .object({
+      name: z.string().min(2, {
+        message: 'Name must be at least 2 characters.',
+      }),
+      email: z.string().email({
+        message: 'Please enter a valid email address.',
+      }),
+      church_id: z.string(),
+      fellowship_id: z.string(),
+      cell_id: z.string(),
+      password: z.string(),
+      role: z.string().min(1, {
+        message: 'Please select a role.',
+      }),
+    })
+    .superRefine((value, ctx) => {
+      if (churchRoles.includes(value.role) && !value.church_id) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['church_id'],
+          message: 'Please select the church this user belongs to.',
+        });
+      }
 
-export function AddNewAdmin() {
+      for (const [required, field, label] of [
+        [fellowshipRoles.includes(value.role), 'fellowship_id', 'fellowship'],
+        [value.role === ROLES.CELL_LEADER, 'cell_id', 'cell'],
+      ] as const) {
+        if (required && !value[field]) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [field],
+            message: `Please select a ${label}.`,
+          });
+        }
+      }
+
+      if (
+        !isEditing &&
+        ![ROLES.ADMIN, ROLES.CHURCH_ADMIN].includes(value.role) &&
+        !value.password
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['password'],
+          message: 'Please enter a valid password.',
+        });
+      }
+    });
+
+export function AddNewAdmin({ account }: { account?: ManagedUser }) {
   const [open, setOpen] = useState(false);
-  const { refetch } = useAccounts();
+  const queryClient = useQueryClient();
   const { data: user } = useMe();
-  const { data: churches } = useChurchesOption(
-    open && user?.role === ROLES.ADMIN
-  );
-
-  // const lockChurchSelect =
-  //   !!user && ![ROLES.ADMIN, ROLES.PASTOR].includes(user?.role);
-  // const lockFellowshipSelect =
-  //   !!user &&
-  //   ![ROLES.ADMIN, ROLES.PASTOR, ROLES.CHURCH_PASTOR].includes(user?.role);
-  // const lockCellSelect =
-  //   !!user &&
-  //   ![
-  //     ROLES.ADMIN,
-  //     ROLES.PASTOR,
-  //     ROLES.CHURCH_PASTOR,
-  //     ROLES.FELLOWSHIP_LEADER,
-  //   ].includes(user?.role);
-
+  const isEditing = !!account;
+  const formSchema = useMemo(() => createFormSchema(isEditing), [isEditing]);
   const mutation = useMutation({
-    mutationFn: registerUser,
-    onSuccess: () => {
-      toast.success('Admin created successfully');
-      setOpen(false);
-      refetch();
-      form.reset();
+    mutationFn: (payload: ManagedUserUpdate & { password?: string }) => {
+      if (account) return updateManagedUser(account.id, payload);
+      return registerUser({
+        ...payload,
+        church_id: payload.church_id ?? undefined,
+        fellowship_id: payload.fellowship_id ?? undefined,
+        cell_id: payload.cell_id ?? undefined,
+      });
     },
-    onError: () => {
-      toast.error('Failed to create admin');
+    onSuccess: (response) => {
+      toast.success(
+        isEditing ? 'User updated successfully' : 'User created successfully'
+      );
+      setOpen(false);
+      void queryClient.invalidateQueries({ queryKey: [QUERY_PATHS.ACCOUNTS] });
+      if (account) {
+        void queryClient.invalidateQueries({
+          queryKey: [
+            QUERY_PATHS.ACCOUNT_DETAIL.replace(':id', String(account.id)),
+          ],
+        });
+        if (account.id === user?.id && response.data) {
+          const storedUser = JSON.parse(
+            localStorage.getItem(STORAGE_KEYS.USER) || '{}'
+          );
+          localStorage.setItem(
+            STORAGE_KEYS.USER,
+            JSON.stringify({ ...storedUser, ...response.data })
+          );
+          window.location.reload();
+        }
+      }
+    },
+    onError: (error: any) => {
+      const response = error?.response?.data;
+      const errors = response?.errors
+        ? Object.values(response.errors).flat().join(' ')
+        : '';
+      toast.error(
+        errors ||
+          response?.message ||
+          (isEditing ? 'Failed to update user' : 'Failed to create user')
+      );
     },
   });
 
   const form = useForm({
     defaultValues: {
-      name: '',
-      email: '',
+      name: account?.name || '',
+      email: account?.email || '',
       password: '',
-      church_id: user?.church_id?.toString() || '',
-      fellowship_id: user?.fellowship_id?.toString() || '',
-      cell_id: user?.cell_id?.toString() || '',
-      role: 'admin',
+      church_id: account?.church_id?.toString() || '',
+      fellowship_id: account?.fellowship_id?.toString() || '',
+      cell_id: account?.cell_id?.toString() || '',
+      role: account?.role || 'admin',
     },
     validators: {
       onSubmit: formSchema,
@@ -116,13 +160,17 @@ export function AddNewAdmin() {
     },
     onSubmit: async ({ value }) => {
       mutation.mutate({
-        ...(value.church_id ? { church_id: Number(value.church_id) } : {}),
-        ...(value.fellowship_id
-          ? { fellowship_id: Number(value.fellowship_id) }
-          : {}),
-        ...(value.cell_id ? { cell_id: Number(value.cell_id) } : {}),
+        church_id: value.church_id ? Number(value.church_id) : null,
+        fellowship_id:
+          fellowshipRoles.includes(value.role) && value.fellowship_id
+            ? Number(value.fellowship_id)
+            : null,
+        cell_id:
+          value.role === ROLES.CELL_LEADER && value.cell_id
+            ? Number(value.cell_id)
+            : null,
         name: value.name,
-        password: value.password,
+        ...(!isEditing ? { password: value.password } : {}),
         email: value.email,
         role: value.role,
       });
@@ -133,33 +181,88 @@ export function AddNewAdmin() {
   });
 
   const selectedRole = useStore(form.store, (state) => state.values.role);
+  const selectedChurch = useStore(
+    form.store,
+    (state) => state.values.church_id
+  );
+  const selectedFellowship = useStore(
+    form.store,
+    (state) => state.values.fellowship_id
+  );
+  const lockChurch = user?.role === ROLES.CHURCH_ADMIN;
+  const isAdmin = user?.role === ROLES.ADMIN;
+  const scopedChurches = useChurchesOption(
+    open && !!user && !lockChurch && !isAdmin
+  );
+  const allChurches = useQuery({
+    queryKey: ['user-form-all-churches'],
+    enabled: open && isAdmin,
+    queryFn: async () => {
+      const churches: Array<{ id: number | string; name: string }> = [];
+      let page = 1;
+      while (true) {
+        const result = await getChurches({ page });
+        churches.push(...(Array.isArray(result) ? result : result.data || []));
+        if (
+          Array.isArray(result) ||
+          !(result.next_page_url || page < Number(result.last_page))
+        )
+          break;
+        page += 1;
+      }
+      return churches.map((church) => ({
+        value: String(church.id),
+        label: church.name,
+      }));
+    },
+  });
+  const {
+    data: churches,
+    isLoading: churchesLoading,
+    isError: churchesError,
+  } = isAdmin ? allChurches : scopedChurches;
+  const fellowshipQuery = useQuery({
+    queryKey: ['user-form-fellowships', selectedChurch],
+    queryFn: () => getChurchById(selectedChurch),
+    enabled: open && fellowshipRoles.includes(selectedRole) && !!selectedChurch,
+    select: (data) =>
+      (data?.fellowships || []) as Array<{ id: number | string; name: string }>,
+  });
+  const cellQuery = useQuery({
+    queryKey: ['user-form-cells', selectedFellowship],
+    queryFn: () => getFellowshipById(selectedFellowship),
+    enabled: open && selectedRole === ROLES.CELL_LEADER && !!selectedFellowship,
+    select: (data) =>
+      (data?.cells || []) as Array<{ id: number | string; name: string }>,
+  });
 
   useEffect(() => {
-    if (user?.role !== ROLES.CHURCH_ADMIN) return;
+    if (!open) return;
+    form.reset({
+      name: account?.name || '',
+      email: account?.email || '',
+      password: '',
+      role:
+        account?.role ||
+        (user?.role === ROLES.CHURCH_ADMIN ? ROLES.CHURCH_PASTOR : ROLES.ADMIN),
+      church_id: String(account?.church_id || user?.church_id || ''),
+      fellowship_id: String(account?.fellowship_id || ''),
+      cell_id: String(account?.cell_id || ''),
+    });
+  }, [open, account, user?.church_id, user?.role, form]);
 
-    form.setFieldValue('role', ROLES.CHURCH_PASTOR);
-    form.setFieldValue('church_id', user?.church_id?.toString() || '');
-  }, [form, user]);
+  const roleOptions = useMemo(() => {
+    if (user?.role === ROLES.CHURCH_ADMIN) {
+      return [ROLES.CHURCH_PASTOR, ROLES.FELLOWSHIP_LEADER, ROLES.CELL_LEADER];
+    }
 
-  const roleOptions = useMemo(
-    () => {
-      if (user?.role === ROLES.CHURCH_ADMIN) {
-        return [
-          ROLES.CHURCH_PASTOR,
-          ROLES.FELLOWSHIP_LEADER,
-          ROLES.CELL_LEADER,
-        ];
-      }
-
-      return Object.values(ROLES).filter(
-        (role) => role !== ROLES.CHURCH_ADMIN || user?.role === ROLES.ADMIN
-      );
-    },
-    [user?.role]
-  );
+    return Object.values(ROLES).filter(
+      (role) => role !== ROLES.CHURCH_ADMIN || user?.role === ROLES.ADMIN
+    );
+  }, [user?.role]);
 
   const churchOptions = useMemo(() => {
-    if (user?.role === ROLES.CHURCH_ADMIN) {
+    if (lockChurch) {
       return [
         {
           value: user?.church_id?.toString() || '',
@@ -169,14 +272,20 @@ export function AddNewAdmin() {
     }
 
     return churches || [];
-  }, [churches, user]);
+  }, [churches, user, lockChurch]);
 
   return (
     <Modal
-      trigger={<Button variant='outline'>Add new user</Button>}
+      trigger={
+        <Button variant='outline' size={isEditing ? 'sm' : 'default'}>
+          {isEditing ? 'Edit' : 'Add new user'}
+        </Button>
+      }
       open={open}
-      setOpen={setOpen}
-      title='Create new user'
+      setOpen={(nextOpen) => {
+        if (!mutation.isPending) setOpen(nextOpen);
+      }}
+      title={isEditing ? 'Edit user' : 'Create new user'}
       description=''
     >
       <form
@@ -237,12 +346,14 @@ export function AddNewAdmin() {
                     if ([ROLES.ADMIN, ROLES.CHURCH_ADMIN].includes(value)) {
                       form.setFieldValue('password', '');
                     }
-                    if (
-                      ![ROLES.CHURCH_PASTOR, ROLES.CHURCH_ADMIN].includes(value) &&
-                      user?.role === ROLES.ADMIN
-                    ) {
-                      form.setFieldValue('church_id', '');
-                    }
+                    form.setFieldValue('fellowship_id', '');
+                    form.setFieldValue('cell_id', '');
+                    form.setFieldValue(
+                      'church_id',
+                      user?.role === ROLES.CHURCH_ADMIN
+                        ? user?.church_id?.toString() || ''
+                        : ''
+                    );
                   }}
                 >
                   <SelectTrigger>
@@ -263,7 +374,7 @@ export function AddNewAdmin() {
           />
         </div>
 
-        {[ROLES.CHURCH_PASTOR, ROLES.CHURCH_ADMIN].includes(selectedRole) ? (
+        {churchRoles.includes(selectedRole) ? (
           <div className='space-y-2'>
             <Label htmlFor='church_id'>Church</Label>
             <form.Field
@@ -272,11 +383,21 @@ export function AddNewAdmin() {
                 <>
                   <Select
                     value={field.state.value}
-                    onValueChange={field.handleChange}
-                    disabled={user?.role === ROLES.CHURCH_ADMIN}
+                    onValueChange={(value) => {
+                      field.handleChange(value);
+                      form.setFieldValue('fellowship_id', '');
+                      form.setFieldValue('cell_id', '');
+                    }}
+                    disabled={lockChurch || churchesLoading}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder='Select church' />
+                      <SelectValue
+                        placeholder={
+                          churchesLoading && !lockChurch
+                            ? 'Loading churches...'
+                            : 'Select church'
+                        }
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       {churchOptions.map(
@@ -298,7 +419,106 @@ export function AddNewAdmin() {
           </div>
         ) : null}
 
-        {![ROLES.ADMIN, ROLES.CHURCH_ADMIN].includes(selectedRole) ? (
+        {churchRoles.includes(selectedRole) &&
+          (lockChurch
+            ? !user?.church_id
+            : churchesError ||
+              (!churchesLoading && churchOptions.length === 0)) && (
+            <p role='status' className='text-sm text-red-500'>
+              {lockChurch
+                ? 'Your account has no current church assigned.'
+                : churchesError
+                  ? 'Unable to load churches. Please try again.'
+                  : 'No churches available.'}
+            </p>
+          )}
+
+        {(
+          [
+            {
+              name: 'fellowship_id',
+              label: 'Fellowship',
+              visible: fellowshipRoles.includes(selectedRole),
+              parent: selectedChurch,
+              query: fellowshipQuery,
+            },
+            {
+              name: 'cell_id',
+              label: 'Cell',
+              visible: selectedRole === ROLES.CELL_LEADER,
+              parent: selectedFellowship,
+              query: cellQuery,
+            },
+          ] as const
+        )
+          .filter(({ visible }) => visible)
+          .map(({ name, label, parent, query }) => (
+            <div key={name} className='space-y-2'>
+              <Label htmlFor={name}>{label}</Label>
+              <form.Field name={name}>
+                {(field) => (
+                  <>
+                    <Select
+                      value={field.state.value}
+                      disabled={
+                        !parent ||
+                        query.isLoading ||
+                        query.isError ||
+                        !query.data?.length
+                      }
+                      onValueChange={(value) => {
+                        field.handleChange(value);
+                        if (name === 'fellowship_id')
+                          form.setFieldValue('cell_id', '');
+                      }}
+                    >
+                      <SelectTrigger id={name}>
+                        <SelectValue
+                          placeholder={
+                            query.isLoading
+                              ? 'Loading...'
+                              : 'Select ' + label.toLowerCase()
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(query.data || []).map((option) => (
+                          <SelectItem key={option.id} value={String(option.id)}>
+                            {option.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FieldInfo field={field} />
+                    {parent && query.isError && (
+                      <p role='alert' className='text-sm text-red-500'>
+                        Unable to load {label.toLowerCase()} options.{' '}
+                        <button
+                          type='button'
+                          className='underline'
+                          onClick={() => void query.refetch()}
+                        >
+                          Retry
+                        </button>
+                      </p>
+                    )}
+                    {parent &&
+                      !query.isLoading &&
+                      !query.isError &&
+                      !query.data?.length && (
+                        <p role='status' className='text-sm text-gray-500'>
+                          No {label.toLowerCase()} options available for this
+                          selection.
+                        </p>
+                      )}
+                  </>
+                )}
+              </form.Field>
+            </div>
+          ))}
+
+        {!isEditing &&
+        ![ROLES.ADMIN, ROLES.CHURCH_ADMIN].includes(selectedRole) ? (
           <div className='space-y-2'>
             <Label htmlFor='password'>Password</Label>
             <form.Field
@@ -323,9 +543,15 @@ export function AddNewAdmin() {
           <form.Subscribe
             selector={(state) => [state.canSubmit, mutation.isPending]}
             children={([canSubmit, isPending]) => (
-              <Button type='submit' className='w-full' disabled={!canSubmit}>
+              <Button
+                type='submit'
+                className='w-full'
+                disabled={!canSubmit || isPending}
+              >
                 {isPending ? (
                   <Loader2 className='w-4 h-4 animate-spin' />
+                ) : isEditing ? (
+                  'Save changes'
                 ) : (
                   'Add User'
                 )}
