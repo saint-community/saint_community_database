@@ -189,10 +189,15 @@ function RegistrationForm({ data }: { data: NonNullable<ReturnType<typeof useWor
       return { church, fellowships, cells, prayerGroups, departments };
     }, [data]);
 
-  const fixedFellowshipId = String(
-    data?.data?.registrationScope?.fellowship_id || "",
-  );
   const fixedCellId = String(data?.data?.registrationScope?.cell_id || "");
+  const fixedFellowshipId = String(
+    data?.data?.registrationScope?.fellowship_id ||
+      (fixedCellId
+        ? cells.find((cell: { id: number | string }) => String(cell.id) === fixedCellId)
+            ?.fellowship_id
+        : "") ||
+      "",
+  );
 
   function normalizeServerErrors(
     errors: Record<string, string[] | string>,
@@ -755,7 +760,7 @@ function RegistrationForm({ data }: { data: NonNullable<ReturnType<typeof useWor
                 <Select
                   value={field.state.value}
                   onValueChange={field.handleChange}
-                  disabled={!!fixedFellowshipId}
+                  disabled={!!fixedFellowshipId && !fixedCellId}
                 >
                   <SelectTrigger className="h-[48px]">
                     <SelectValue placeholder="Select a fellowship" />
